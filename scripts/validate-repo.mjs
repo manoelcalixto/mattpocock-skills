@@ -321,6 +321,9 @@ for (const command of [
   "git 'clean' -fd",
   'git "reset" --hard HEAD~1',
   'g""it push origin main',
+  "g$()it push origin main",
+  "$(printf git) push origin main",
+  "$GIT push origin main",
   "git checkout .",
   "git restore -- .",
 ]) {
@@ -338,6 +341,7 @@ for (const command of [
   "git clean -n",
   "git branch -d merged",
   "git restore file.txt",
+  'echo "$message"',
 ]) {
   const safe = spawnSync("bash", [hookScript], {
     input: JSON.stringify({ tool_input: { command } }),

@@ -114,6 +114,13 @@ except ValueError:
         block("an unparseable Git command")
     raise SystemExit(0)
 
+# Shell expansion can assemble an executable name that static tokenization
+# cannot prove is safe (`g$()it`, `$GIT`, or `$(printf git)`). Fail closed when
+# the same command also contains a subcommand this hook is responsible for.
+guarded_subcommands = {"push", "reset", "clean", "branch", "checkout", "restore"}
+if ("$" in command or "`" in command) and any(word in guarded_subcommands for word in words):
+    block("a dynamically assembled command containing a guarded Git operation")
+
 segments: list[list[str]] = []
 segment: list[str] = []
 for word in words:
