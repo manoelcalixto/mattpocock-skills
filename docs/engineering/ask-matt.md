@@ -29,6 +29,8 @@ $mattpocock-skills:grill-with-docs → $mattpocock-skills:to-spec → $mattpococ
 
 `implement` uses the model-invoked `tdd` and `code-review` disciplines. A small change can skip tickets; a huge effort starts in `$mattpocock-skills:wayfinder` and returns through `$mattpocock-skills:to-spec` once the route becomes clear.
 
+For repository safety outside the promoted plugin set, the standalone `$codex-git-guardrails` skill is the route when you want Codex to block destructive Git commands before execution.
+
 ## Session map
 
 `/compact` stays in one summarized thread, `/fork` branches with full history, `/side` handles a tangent, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only when crossing into a genuinely clean `/new` thread. When the optional in-progress `$delegate-handoff` is installed, it hands work to another active agent and `/agent` switches to it.

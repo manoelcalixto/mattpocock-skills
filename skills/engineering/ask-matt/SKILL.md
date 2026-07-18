@@ -26,6 +26,7 @@ If the work is genuinely small, skip tickets and run `$mattpocock-skills:impleme
 - **External facts or documentation** — `research`: produce a cited primary-source report while other work continues when agents are available.
 - **Learning rather than building** — `$mattpocock-skills:teach`: use the directory as a multi-session teaching workspace.
 - **Writing or editing a skill** — `$mattpocock-skills:writing-great-skills`: use the repo's predictability vocabulary and Codex skill contract.
+- **Block destructive Git commands in Codex** — when the standalone `$codex-git-guardrails` skill is installed, use it to configure a trusted `PreToolUse` hook before risky repository work.
 
 ## Session transitions
 

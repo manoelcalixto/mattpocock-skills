@@ -24,6 +24,8 @@ Ask whether the hook should apply to this project or every project:
 
 Copy [scripts/block-dangerous-git.sh](scripts/block-dangerous-git.sh) to the selected script path and make it executable. Resolve the script's absolute path for the config.
 
+Confirm `jq` and `python3` are available because the hook uses them to decode the Codex event and tokenize shell commands without evaluating them. Install the narrow missing dependency when the environment permits it; otherwise stop and tell the user what is missing.
+
 Parse the selected TOML file and preserve every existing field and hook. Add one `PreToolUse` matcher group with one command handler, unless an equivalent handler for the same absolute script path already exists:
 
 ```toml

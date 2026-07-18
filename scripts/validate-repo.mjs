@@ -185,6 +185,11 @@ if (!guardrailSkill.includes(".codex/config.toml") || !guardrailSkill.includes("
 if (guardrailSkill.includes("hooks.json")) {
   fail("codex-git-guardrails must not direct users to hooks.json");
 }
+for (const routerPath of ["skills/engineering/ask-matt/SKILL.md", "docs/engineering/ask-matt.md"]) {
+  if (!read(routerPath).includes("$codex-git-guardrails")) {
+    fail(`${routerPath}: router must mention the standalone $codex-git-guardrails skill`);
+  }
+}
 
 for (const bucket of buckets) {
   const bucketSkills = skills.filter((skill) => skill.bucket === bucket);
@@ -312,6 +317,10 @@ for (const command of [
   "git clean -df",
   "git branch -D old",
   "git branch --delete --force old",
+  'git "push" origin main',
+  "git 'clean' -fd",
+  'git "reset" --hard HEAD~1',
+  'g""it push origin main',
   "git checkout .",
   "git restore -- .",
 ]) {
@@ -323,7 +332,13 @@ for (const command of [
     fail(`git guardrail must block ${JSON.stringify(command)} with exit code 2 and a reason`);
   }
 }
-for (const command of ["git status", "git clean -n", "git branch -d merged", "git restore file.txt"]) {
+for (const command of [
+  "git status",
+  'git "status"',
+  "git clean -n",
+  "git branch -d merged",
+  "git restore file.txt",
+]) {
   const safe = spawnSync("bash", [hookScript], {
     input: JSON.stringify({ tool_input: { command } }),
     encoding: "utf8",
