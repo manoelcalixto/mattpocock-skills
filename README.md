@@ -58,7 +58,7 @@ Use `$ask-matt` when you are unsure which flow fits. For a huge effort whose rou
 - **Explicit skills:** `$skill-name`; `/...` is reserved for Codex commands.
 - **Sessions:** `/compact` summarizes the same thread, `/fork` preserves full history in a branch, `/side` handles tangents, `/resume` reopens persisted work, and `$handoff` creates a curated artifact only for a genuinely clean `/new` thread.
 - **Multi-agent:** `orchestrate-agents` adapts to Codex V1 or V2, defaults to isolated briefs, respects available slots, and protects the shared working directory.
-- **Hooks:** the optional `codex-git-guardrails` skill configures trusted `PreToolUse` hooks in `.codex/hooks.json` or `~/.codex/hooks.json`.
+- **Hooks:** trusted `PreToolUse` hooks are configured in `.codex/config.toml` or `~/.codex/config.toml`.
 - **Repository instructions:** `AGENTS.md` is the only canonical agent-instructions file.
 
 ## Reference

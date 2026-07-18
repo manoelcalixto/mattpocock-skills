@@ -121,12 +121,16 @@ const promotedNames = new Set(promoted.map((skill) => skill.name));
 
 const packageJson = JSON.parse(read("package.json"));
 const plugin = JSON.parse(read(".codex-plugin/plugin.json"));
+const changesetsConfig = JSON.parse(read(".changeset/config.json"));
 if (plugin.name !== "mattpocock-skills") fail("plugin name must be mattpocock-skills");
 if (plugin.version !== packageJson.version) {
   fail(`plugin version ${plugin.version} does not match package version ${packageJson.version}`);
 }
 if (plugin.repository !== "https://github.com/manoelcalixto/mattpocock-skills") {
   fail("plugin repository must point to the fork");
+}
+if (changesetsConfig.changelog?.[1]?.repo !== "manoelcalixto/mattpocock-skills") {
+  fail("Changesets changelog repository must point to the fork");
 }
 if (!Array.isArray(plugin.skills)) fail("plugin skills must be an explicit array");
 const manifestPaths = new Set(
@@ -166,6 +170,20 @@ const topReadmeLinks = new Set(
   ),
 );
 reportSetDifference("top-level README promoted set", promotedPaths, topReadmeLinks);
+const topReadme = read("README.md");
+for (const skill of skills.filter((candidate) => !promotedBuckets.has(candidate.bucket))) {
+  if (topReadme.includes(skill.name)) {
+    fail(`README.md: non-promoted skill ${skill.name} must not appear`);
+  }
+}
+
+const guardrailSkill = read("skills/misc/codex-git-guardrails/SKILL.md");
+if (!guardrailSkill.includes(".codex/config.toml") || !guardrailSkill.includes("~/.codex/config.toml")) {
+  fail("codex-git-guardrails must configure project and global config.toml hooks");
+}
+if (guardrailSkill.includes("hooks.json")) {
+  fail("codex-git-guardrails must not direct users to hooks.json");
+}
 
 for (const bucket of buckets) {
   const bucketSkills = skills.filter((skill) => skill.bucket === bucket);
