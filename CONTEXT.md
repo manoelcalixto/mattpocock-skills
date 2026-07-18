@@ -1,6 +1,6 @@
 # Matt Pocock Skills
 
-A collection of Codex skills, invoked explicitly as `$skill-name` or automatically when policy allows. Skills are organized into buckets and consumed by per-repo configuration emitted by `$setup-matt-pocock-skills`.
+A collection of Codex skills, invoked explicitly as `$mattpocock-skills:skill-name` from the managed plugin (or `$skill-name` when installed standalone), or automatically when policy allows. Skills are organized into buckets and consumed by per-repo configuration emitted by `$mattpocock-skills:setup-matt-pocock-skills`.
 
 ## Language
 

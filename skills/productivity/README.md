@@ -4,7 +4,7 @@ General workflow tools, not code-specific.
 
 ## User-invoked
 
-Reachable only when you type `$skill-name`; `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
+Reachable only when you type `$mattpocock-skills:skill-name`; `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
 
 - **[grill-me](./grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
 - **[handoff](./handoff/SKILL.md)** — Route to `/compact`, `/fork`, `/side`, `/resume`, delegated continuation, or a curated artifact for `/new`.

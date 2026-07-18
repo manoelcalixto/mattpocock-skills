@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$domain-modeling`.
+Start a new Codex thread and type `$mattpocock-skills:domain-modeling`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/domain-modeling)
 
@@ -17,7 +17,7 @@ This is the **active** discipline, not the passive one. Merely reading `CONTEXT.
 
 ## When to reach for it
 
-Type `$domain-modeling`, or the agent reaches for it automatically when a task fits — when you are pinning down terminology, resolving an overloaded word, or recording an architectural decision.
+Type `$mattpocock-skills:domain-modeling`, or the agent reaches for it automatically when a task fits — when you are pinning down terminology, resolving an overloaded word, or recording an architectural decision.
 
 Reach for it when the *words* are the problem: two people mean different things by "cancellation", "account" is doing three jobs, or a design conversation keeps snagging on a concept that has never been named precisely. If instead the module's *shape* is the problem — where the seam goes, how deep the interface is — use [codebase-design](https://aihero.dev/skills-codebase-design). If you want the plan itself interrogated before you build, use [grilling](https://aihero.dev/skills-grilling).
 

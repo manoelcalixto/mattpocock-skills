@@ -11,12 +11,12 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
 
 Two choices, trading different costs:
 
-- A **model-invoked** skill is available to the agent autonomously and to the user as `$skill-name`. Write a model-facing `description` with rich trigger phrasing and omit the `policy` block from `agents/openai.yaml`. Its description contributes to **context load** because Codex can inject it when selecting skills.
-- A **user-invoked** skill is available only when the human types `$skill-name`; no other skill can invoke it. Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`, and keep the `description` human-facing: a one-line summary with trigger lists stripped.
+- A **model-invoked** skill is available to the agent autonomously and to the user by its installed name: `$plugin-name:skill-name` when contributed by a plugin, or `$skill-name` when standalone. Write a model-facing `description` with rich trigger phrasing and omit the `policy` block from `agents/openai.yaml`. Its description contributes to **context load** because Codex can inject it when selecting skills.
+- A **user-invoked** skill is available only when the human types that installed name; no other skill can invoke it. Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`, and keep the `description` human-facing: a one-line summary with trigger lists stripped.
 
 Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.
 
-Keep `SKILL.md` frontmatter to exactly `name` and `description`. Put Codex UI metadata in `agents/openai.yaml`: quoted `display_name`, a 25–64 character `short_description`, and a short `default_prompt` that explicitly mentions `$skill-name`.
+Keep `SKILL.md` frontmatter to exactly `name` and `description`. Put Codex UI metadata in `agents/openai.yaml`: quoted `display_name`, a 25–64 character `short_description`, and a short `default_prompt` that explicitly mentions the exact installed invocation.
 
 When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one user-invoked skill that names the others and when to reach for each.
 

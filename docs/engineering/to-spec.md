@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$to-spec`.
+Start a new Codex thread and type `$mattpocock-skills:to-spec`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/to-spec)
 
@@ -17,7 +17,7 @@ It does **not** interview you again. By the time you reach for it, the alignment
 
 ## When to reach for it
 
-You invoke this by typing `$to-spec` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:to-spec` — the agent won't reach for it on its own.
 
 Reach for it once a change has been talked through and the domain language is settled, and you want that shared understanding written down before any code is written. If you *haven't* aligned yet, grill first — for that, use [grill-with-docs](https://aihero.dev/skills-grill-with-docs). To split the finished spec into tickets, use [to-tickets](https://aihero.dev/skills-to-tickets).
 

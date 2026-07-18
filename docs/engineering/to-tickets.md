@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$to-tickets`.
+Start a new Codex thread and type `$mattpocock-skills:to-tickets`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/to-tickets)
 
@@ -17,7 +17,7 @@ Every ticket is a **tracer bullet** — a thin *vertical* slice that cuts throug
 
 ## When to reach for it
 
-You invoke this by typing `$to-tickets` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:to-tickets` — the agent won't reach for it on its own.
 
 Reach for it once you have an agreed plan or a written spec and you want it split into tickets. Point it at the conversation, or pass a spec or issue reference and it fetches the body and comments first. If the change hasn't been written up as a spec yet, produce one first — for that, use [to-spec](https://aihero.dev/skills-to-spec).
 
@@ -52,4 +52,4 @@ One shape breaks the tracer-bullet rule: a **wide refactor** — a single mechan
 grill-with-docs → to-spec → to-tickets → implement → code-review
 ```
 
-It sits between [to-spec](https://aihero.dev/skills-to-spec), which hands it a settled spec with user stories to slice against, and [implement](https://aihero.dev/skills-implement), which builds each ticket, driving [tdd](https://aihero.dev/skills-tdd) internally before its [code-review](https://aihero.dev/skills-code-review) pass. Work the frontier one ticket per clean thread: run `/new`, then `$implement <ticket-reference>`. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+It sits between [to-spec](https://aihero.dev/skills-to-spec), which hands it a settled spec with user stories to slice against, and [implement](https://aihero.dev/skills-implement), which builds each ticket, driving [tdd](https://aihero.dev/skills-tdd) internally before its [code-review](https://aihero.dev/skills-code-review) pass. Work the frontier one ticket per clean thread: run `/new`, then `$mattpocock-skills:implement <ticket-reference>`. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.

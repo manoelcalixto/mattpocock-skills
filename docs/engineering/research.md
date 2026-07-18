@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$research`.
+Start a new Codex thread and type `$mattpocock-skills:research`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/research)
 
@@ -17,7 +17,7 @@ At the root it delegates one isolated worker when Codex multi-agent tools are av
 
 ## When to reach for it
 
-Type `$research`, or the agent reaches for it automatically when documentation facts, API behavior, specifications, papers, or source-code evidence would unblock a decision.
+Type `$mattpocock-skills:research`, or the agent reaches for it automatically when documentation facts, API behavior, specifications, papers, or source-code evidence would unblock a decision.
 
 Use it for reading legwork. For decision-making after the facts arrive, use [grill-with-docs](https://aihero.dev/skills-grill-with-docs); for turning settled decisions into a buildable document, use [to-spec](https://aihero.dev/skills-to-spec).
 

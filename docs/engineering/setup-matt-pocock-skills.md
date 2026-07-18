@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$setup-matt-pocock-skills`.
+Start a new Codex thread and type `$mattpocock-skills:setup-matt-pocock-skills`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/setup-matt-pocock-skills)
 
@@ -17,7 +17,7 @@ It writes config, it does not hard-code behaviour. The engineering chain assumes
 
 ## When to reach for it
 
-You invoke this by typing `$setup-matt-pocock-skills` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:setup-matt-pocock-skills` — the agent won't reach for it on its own.
 
 Reach for it **once per repo, before the first use of any other engineering skill**. If [triage](https://aihero.dev/skills-triage), [to-spec](https://aihero.dev/skills-to-spec), or [to-tickets](https://aihero.dev/skills-to-tickets) start guessing where your issues live or applying labels that don't exist, they haven't been set up here yet. Re-run it only to switch issue trackers or start over — day-to-day tweaks are just edits to `docs/agents/*.md`.
 

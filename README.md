@@ -18,12 +18,12 @@ The full plugin identity is `mattpocock-skills@manoelcalixto`, so it can coexist
 Start a new Codex thread, open the repository you want to configure, and run:
 
 ```text
-$setup-matt-pocock-skills
+$mattpocock-skills:setup-matt-pocock-skills
 ```
 
 The setup skill configures the issue tracker, triage labels when relevant, and domain-document layout in the repository's root `AGENTS.md` and `docs/agents/` files.
 
-Codex loads plugin changes at a thread boundary. After installing or updating the plugin, use `/new` before testing a changed skill. Use `/skills` to browse available skills and `$skill-name` to invoke one explicitly.
+Codex loads plugin changes at a thread boundary. After installing or updating the plugin, use `/new` before testing a changed skill. Use `/skills` to browse available skills and `$mattpocock-skills:skill-name` to invoke one explicitly.
 
 ### Editable-copy alternative
 
@@ -33,37 +33,37 @@ To copy selected skills into your own setup instead of subscribing to the manage
 npx skills@latest add manoelcalixto/mattpocock-skills
 ```
 
-Maintainers of this clone can link every non-deprecated skill directly into Codex with `scripts/link-skills.sh`.
+Maintainers of this clone can link every non-deprecated skill directly into Codex with `scripts/link-skills.sh`. Directly linked or copied skills use the standalone `$skill-name` form; the examples below use the managed plugin namespace.
 
 ## Core workflow
 
 The default engineering chain is:
 
 ```text
-$grill-with-docs → $to-spec → $to-tickets → /new → $implement
-                                                       ├─ tdd
-                                                       └─ code-review
+$mattpocock-skills:grill-with-docs → $mattpocock-skills:to-spec → $mattpocock-skills:to-tickets → /new → $mattpocock-skills:implement
+                                                                                    ├─ tdd
+                                                                                    └─ code-review
 ```
 
-- `$grill-with-docs` resolves the decision tree while maintaining project vocabulary and ADRs.
-- `$to-spec` synthesizes the conversation without re-interviewing.
-- `$to-tickets` splits larger work into independently executable tracer bullets.
-- Each ticket starts in `/new` with `$implement <ticket>`.
+- `$mattpocock-skills:grill-with-docs` resolves the decision tree while maintaining project vocabulary and ADRs.
+- `$mattpocock-skills:to-spec` synthesizes the conversation without re-interviewing.
+- `$mattpocock-skills:to-tickets` splits larger work into independently executable tracer bullets.
+- Each ticket starts in `/new` with `$mattpocock-skills:implement <ticket>`.
 - `implement` uses the model-invoked `tdd` and `code-review` disciplines.
 
-Use `$ask-matt` when you are unsure which flow fits. For a huge effort whose route cannot fit one thread, use `$wayfinder`. For a hard bug, let `diagnosing-bugs` establish a tight feedback loop first.
+Use `$mattpocock-skills:ask-matt` when you are unsure which flow fits. For a huge effort whose route cannot fit one thread, use `$mattpocock-skills:wayfinder`. For a hard bug, let `diagnosing-bugs` establish a tight feedback loop first.
 
 ## Codex-native behavior
 
-- **Explicit skills:** `$skill-name`; `/...` is reserved for Codex commands.
-- **Sessions:** `/compact` summarizes the same thread, `/fork` preserves full history in a branch, `/side` handles tangents, `/resume` reopens persisted work, and `$handoff` creates a curated artifact only for a genuinely clean `/new` thread.
+- **Explicit skills:** managed plugin skills use `$mattpocock-skills:skill-name`; standalone skills use `$skill-name`; `/...` is reserved for Codex commands.
+- **Sessions:** `/compact` summarizes the same thread, `/fork` preserves full history in a branch, `/side` handles tangents, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only for a genuinely clean `/new` thread.
 - **Multi-agent:** `orchestrate-agents` adapts to Codex V1 or V2, defaults to isolated briefs, respects available slots, and protects the shared working directory.
 - **Hooks:** trusted `PreToolUse` hooks are configured in `.codex/config.toml` or `~/.codex/config.toml`.
 - **Repository instructions:** `AGENTS.md` is the only canonical agent-instructions file.
 
 ## Reference
 
-Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. User-invoked skills run only when you type `$skill-name`; model-invoked skills can also be selected automatically by Codex.
+Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. User-invoked skills run only when you type `$mattpocock-skills:skill-name`; model-invoked skills can also be selected automatically by Codex.
 
 ### Engineering
 

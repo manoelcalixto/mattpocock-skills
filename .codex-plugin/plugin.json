@@ -55,9 +55,9 @@
     ],
     "websiteURL": "https://github.com/manoelcalixto/mattpocock-skills",
     "defaultPrompt": [
-      "Use $ask-matt to choose the right workflow for this task.",
-      "Use $grill-with-docs to sharpen this feature before implementation.",
-      "Use $implement to build the selected spec or ticket."
+      "Use $mattpocock-skills:ask-matt to choose the right workflow for this task.",
+      "Use $mattpocock-skills:grill-with-docs to sharpen this feature before implementation.",
+      "Use $mattpocock-skills:implement to build the selected spec or ticket."
     ]
   }
 }

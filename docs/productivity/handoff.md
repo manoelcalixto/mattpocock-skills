@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$handoff`.
+Start a new Codex thread and type `$mattpocock-skills:handoff`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/productivity/handoff)
 
@@ -17,7 +17,7 @@ It does not treat every context change as a document-writing problem.
 
 ## When to reach for it
 
-You invoke this by typing `$handoff` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:handoff` — the agent won't reach for it on its own.
 
 Reach for it when you know the current thread should change shape but are unsure whether you need compaction, a full-history fork, a tangent, a resumed thread, a blank thread, or another agent.
 

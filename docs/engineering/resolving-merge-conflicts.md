@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$resolving-merge-conflicts`.
+Start a new Codex thread and type `$mattpocock-skills:resolving-merge-conflicts`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/resolving-merge-conflicts)
 
@@ -17,7 +17,7 @@ It resolves by **intent**, not by text. Before touching a hunk it traces each si
 
 ## When to reach for it
 
-Type `$resolving-merge-conflicts`, or the agent reaches for it automatically when a task fits.
+Type `$mattpocock-skills:resolving-merge-conflicts`, or the agent reaches for it automatically when a task fits.
 
 Reach for this when you're mid-merge or mid-rebase and git has stopped on conflicts it can't resolve itself. It's for the conflict in front of you — not for planning the merge or for debugging behaviour that broke afterwards. If the merge is done but something's now failing for reasons you can't see, use [diagnosing-bugs](https://aihero.dev/skills-diagnosing-bugs) instead.
 

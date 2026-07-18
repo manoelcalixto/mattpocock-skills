@@ -1,6 +1,6 @@
 interface:
   display_name: "Triage"
   short_description: "Move issues through triage roles"
-  default_prompt: "Use $triage to move these requests through the configured roles."
+  default_prompt: "Use $mattpocock-skills:triage to move these requests through the configured roles."
 policy:
   allow_implicit_invocation: false

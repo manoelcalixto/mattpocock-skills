@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$ask-matt`.
+Start a new Codex thread and type `$mattpocock-skills:ask-matt`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/ask-matt)
 
@@ -17,21 +17,21 @@ It does no engineering work itself: it is the map, not a hidden mega-workflow.
 
 ## When to reach for it
 
-You invoke this by typing `$ask-matt` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:ask-matt` — the agent won't reach for it on its own.
 
 Reach for it when you have an idea, bug, incoming request, architecture problem, large foggy effort, research question, or context-boundary problem and cannot tell which tool should lead.
 
 ## The main flow
 
 ```text
-$grill-with-docs → $to-spec → $to-tickets → /new → $implement
+$mattpocock-skills:grill-with-docs → $mattpocock-skills:to-spec → $mattpocock-skills:to-tickets → /new → $mattpocock-skills:implement
 ```
 
-`implement` uses the model-invoked `tdd` and `code-review` disciplines. A small change can skip tickets; a huge effort starts in `$wayfinder` and returns through `$to-spec` once the route becomes clear.
+`implement` uses the model-invoked `tdd` and `code-review` disciplines. A small change can skip tickets; a huge effort starts in `$mattpocock-skills:wayfinder` and returns through `$mattpocock-skills:to-spec` once the route becomes clear.
 
 ## Session map
 
-`/compact` stays in one summarized thread, `/fork` branches with full history, `/side` handles a tangent, `/resume` reopens persisted work, and `$handoff` creates a curated artifact only when crossing into a genuinely clean `/new` thread. When the optional in-progress `$delegate-handoff` is installed, it hands work to another active agent and `/agent` switches to it.
+`/compact` stays in one summarized thread, `/fork` branches with full history, `/side` handles a tangent, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only when crossing into a genuinely clean `/new` thread. When the optional in-progress `$delegate-handoff` is installed, it hands work to another active agent and `/agent` switches to it.
 
 ## Where it fits
 

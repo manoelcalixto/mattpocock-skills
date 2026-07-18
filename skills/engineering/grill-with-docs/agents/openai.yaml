@@ -1,6 +1,6 @@
 interface:
   display_name: "Grill with Docs"
   short_description: "Grill a design and write its docs"
-  default_prompt: "Use $grill-with-docs to sharpen this design and maintain its domain docs."
+  default_prompt: "Use $mattpocock-skills:grill-with-docs to sharpen this design and maintain its domain docs."
 policy:
   allow_implicit_invocation: false

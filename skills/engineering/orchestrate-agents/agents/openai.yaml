@@ -1,4 +1,4 @@
 interface:
   display_name: "Orchestrate Agents"
   short_description: "Coordinate Codex multi-agent workflows"
-  default_prompt: "Use $orchestrate-agents to coordinate this delegated work safely."
+  default_prompt: "Use $mattpocock-skills:orchestrate-agents to coordinate this delegated work safely."

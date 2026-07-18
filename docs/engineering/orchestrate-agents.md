@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$orchestrate-agents`.
+Start a new Codex thread and type `$mattpocock-skills:orchestrate-agents`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/orchestrate-agents)
 
@@ -17,7 +17,7 @@ Delegation must already be authorized by the user or active workflow. The skill 
 
 ## When to reach for it
 
-Type `$orchestrate-agents`, or the agent reaches for it automatically when an authorized workflow needs parallel reviews, alternative designs, background research, or another independent subtask.
+Type `$mattpocock-skills:orchestrate-agents`, or the agent reaches for it automatically when an authorized workflow needs parallel reviews, alternative designs, background research, or another independent subtask.
 
 Reach for it when the work can be divided into bounded pieces that make progress alongside the root agent. Keep tightly coupled work inline.
 

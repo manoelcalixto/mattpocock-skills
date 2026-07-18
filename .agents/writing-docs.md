@@ -23,7 +23,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Then start a new Codex thread and type `$<name>`.
+Then start a new Codex thread and type `$mattpocock-skills:<name>`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/<bucket>/<name>)
 
@@ -35,7 +35,7 @@ One or two plain-language paragraphs. Lead with the skill's one-sentence job, th
 
 How and when you reach for the skill — two beats, both effectively always present:
 
-- **Invocation mode.** State whether you type it or the agent fires it. A user-invoked skill: "You invoke this by typing `$<name>` — the agent won't reach for it on its own." A model-invoked skill: "Type `$<name>`, or the agent reaches for it automatically when a task fits."
+- **Invocation mode.** State whether you type it or the agent fires it. A user-invoked skill: "You invoke this by typing `$mattpocock-skills:<name>` — the agent won't reach for it on its own." A model-invoked skill: "Type `$mattpocock-skills:<name>`, or the agent reaches for it automatically when a task fits."
 - **Trigger boundary.** The index entry: "reach for this when …". Where the skill is confusable with a sibling, add the other half — "for <X> instead, use [<sibling>](https://aihero.dev/skills-<sibling>)."
 
 ## Prerequisites
@@ -71,7 +71,7 @@ Always present. Situate the skill in the system in a sentence or two:
 ## Done when
 
 - The page exists at `docs/<bucket>/<name>.md`, and no stale page survives a rename or bucket move.
-- The Quickstart block installs `mattpocock-skills@manoelcalixto`, and the source link names the correct bucket and skill in the fork.
+- The Quickstart block installs `mattpocock-skills@manoelcalixto`, invokes `$mattpocock-skills:<name>`, and the source link names the correct bucket and skill in the fork.
 - `## What it does` states the defining constraint, as plain prose rather than a labelled aside.
 - `## When to reach for it` states invocation mode and the trigger boundary.
 - `## Where it fits` names the role and links to `ask-matt`.

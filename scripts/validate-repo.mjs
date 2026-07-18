@@ -85,8 +85,9 @@ for (const bucket of buckets) {
     ) {
       fail(`${metadataPath}: interface.short_description must be 25-64 characters`);
     }
-    if (typeof defaultPrompt !== "string" || !defaultPrompt.includes(`$${name}`)) {
-      fail(`${metadataPath}: interface.default_prompt must mention $${name}`);
+    const invocation = promotedBuckets.has(bucket) ? `$mattpocock-skills:${name}` : `$${name}`;
+    if (typeof defaultPrompt !== "string" || !defaultPrompt.includes(invocation)) {
+      fail(`${metadataPath}: interface.default_prompt must mention ${invocation}`);
     }
 
     const policy = metadata?.policy;
@@ -230,8 +231,9 @@ for (const skill of promoted) {
   if (!contents.includes("codex plugin add mattpocock-skills@manoelcalixto")) {
     fail(`${docPath}: missing fork plugin install command`);
   }
-  if (!contents.includes(`type \`$${skill.name}\``)) {
-    fail(`${docPath}: quickstart must tell the reader to type $${skill.name}`);
+  const invocation = `$mattpocock-skills:${skill.name}`;
+  if (!contents.includes(`type \`${invocation}\``)) {
+    fail(`${docPath}: quickstart must tell the reader to type ${invocation}`);
   }
   const expectedSource =
     `https://github.com/manoelcalixto/mattpocock-skills/tree/main/${skill.path}`;
@@ -278,12 +280,24 @@ if (tracked.status !== 0) {
     `(^|[^A-Za-z0-9._/\\-])/(${skillPattern})(?![A-Za-z0-9/\\-])`,
     "m",
   );
+  const promotedPattern = [...promotedNames]
+    .sort((a, b) => b.length - a.length)
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const unqualifiedPluginInvocation = new RegExp(
+    `\\$(${promotedPattern})(?![A-Za-z0-9\\-])`,
+    "m",
+  );
 
   for (const file of activeFiles) {
     const contents = read(file);
     if (/claude/i.test(contents)) fail(`${file}: active content still references Claude`);
     const slashMatch = contents.match(slashInvocation);
     if (slashMatch) fail(`${file}: use $${slashMatch[2]} instead of /${slashMatch[2]}`);
+    const unqualifiedMatch = contents.match(unqualifiedPluginInvocation);
+    if (unqualifiedMatch) {
+      fail(`${file}: use $mattpocock-skills:${unqualifiedMatch[1]} for the promoted plugin skill`);
+    }
   }
 }
 

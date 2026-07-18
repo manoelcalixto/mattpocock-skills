@@ -5,7 +5,7 @@ codex plugin marketplace add manoelcalixto/mattpocock-skills
 codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-Start a new Codex thread and type `$codebase-design`.
+Start a new Codex thread and type `$mattpocock-skills:codebase-design`.
 
 [Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/codebase-design)
 
@@ -17,7 +17,7 @@ It is a **language, not a procedure**. It doesn't restructure your code or hand 
 
 ## When to reach for it
 
-Type `$codebase-design`, or the agent reaches for it automatically when a task fits.
+Type `$mattpocock-skills:codebase-design`, or the agent reaches for it automatically when a task fits.
 
 Reach for it when you're designing or improving a module's interface, hunting for deepening opportunities, deciding where a seam goes, or making code more testable and AI-navigable. Other skills pull it in whenever they need the deep-module vocabulary. If you want to sharpen the project's *domain* terms rather than its module design, use [domain-modeling](https://aihero.dev/skills-domain-modeling) instead; to run a whole architecture pass over an existing codebase, use [improve-codebase-architecture](https://aihero.dev/skills-improve-codebase-architecture).
 

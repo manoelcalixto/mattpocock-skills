@@ -1,4 +1,4 @@
 interface:
   display_name: "Code Review"
   short_description: "Review a diff on standards and spec"
-  default_prompt: "Use $code-review to review this diff against standards and its spec."
+  default_prompt: "Use $mattpocock-skills:code-review to review this diff against standards and its spec."
