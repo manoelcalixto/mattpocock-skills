@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=tdd
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update tdd
-```
+Start a new Codex thread and type `$mattpocock-skills:tdd`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/tdd)
 
 ## What it does
 
@@ -18,7 +17,7 @@ It will **not** write all the tests up front. Batching the tests first ("horizon
 
 ## When to reach for it
 
-Type `/tdd`, or the agent reaches for it automatically when a task fits — building a feature or fixing a bug test-first, or when you say "red-green-refactor".
+Type `$mattpocock-skills:tdd`, or the agent reaches for it automatically when a task fits — building a feature or fixing a bug test-first, or when you say "red-green-refactor".
 
 Reach for it when there's a concrete behaviour to build and you want tests that survive a refactor. If the behaviour isn't pinned down yet, settle the spec first — for that, use [to-spec](https://aihero.dev/skills-to-spec). When the work is really about the shape of the interface rather than the tests, use [codebase-design](https://aihero.dev/skills-codebase-design); `tdd` calls into it for the deep-module vocabulary during planning.
 

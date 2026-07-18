@@ -1,5 +1,6 @@
 interface:
   display_name: "Writing Beats"
   short_description: "Assemble raw material into beats"
+  default_prompt: "Use $writing-beats to assemble this material into a journey of beats."
 policy:
   allow_implicit_invocation: false

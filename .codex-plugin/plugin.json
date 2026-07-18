@@ -1,0 +1,63 @@
+{
+  "name": "mattpocock-skills",
+  "version": "1.1.0",
+  "description": "A Codex-native fork of Matt Pocock's engineering and productivity skills, maintained by Manoel Calixto.",
+  "author": {
+    "name": "Manoel Calixto",
+    "url": "https://github.com/manoelcalixto"
+  },
+  "homepage": "https://github.com/manoelcalixto/mattpocock-skills",
+  "repository": "https://github.com/manoelcalixto/mattpocock-skills",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "engineering",
+    "skills",
+    "tdd",
+    "code-review",
+    "multi-agent",
+    "productivity"
+  ],
+  "skills": [
+    "./skills/engineering/ask-matt",
+    "./skills/engineering/diagnosing-bugs",
+    "./skills/engineering/grill-with-docs",
+    "./skills/engineering/triage",
+    "./skills/engineering/improve-codebase-architecture",
+    "./skills/engineering/setup-matt-pocock-skills",
+    "./skills/engineering/tdd",
+    "./skills/engineering/to-spec",
+    "./skills/engineering/to-tickets",
+    "./skills/engineering/wayfinder",
+    "./skills/engineering/implement",
+    "./skills/engineering/prototype",
+    "./skills/engineering/research",
+    "./skills/engineering/domain-modeling",
+    "./skills/engineering/codebase-design",
+    "./skills/engineering/code-review",
+    "./skills/engineering/resolving-merge-conflicts",
+    "./skills/engineering/orchestrate-agents",
+    "./skills/productivity/grill-me",
+    "./skills/productivity/grilling",
+    "./skills/productivity/handoff",
+    "./skills/productivity/teach",
+    "./skills/productivity/writing-great-skills"
+  ],
+  "interface": {
+    "displayName": "Matt Pocock Skills — Codex Fork",
+    "shortDescription": "Codex-native engineering workflows",
+    "longDescription": "A Codex-native fork of Matt Pocock's composable engineering and productivity skills, maintained by Manoel Calixto.",
+    "developerName": "Manoel Calixto",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/manoelcalixto/mattpocock-skills",
+    "defaultPrompt": [
+      "Use $mattpocock-skills:ask-matt to choose the right workflow for this task.",
+      "Use $mattpocock-skills:grill-with-docs to sharpen this feature before implementation.",
+      "Use $mattpocock-skills:implement to build the selected spec or ticket."
+    ]
+  }
+}

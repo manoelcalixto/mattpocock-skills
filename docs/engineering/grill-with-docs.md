@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=grill-with-docs
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update grill-with-docs
-```
+Start a new Codex thread and type `$mattpocock-skills:grill-with-docs`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/grill-with-docs)
 
 ## What it does
 
@@ -18,7 +17,7 @@ The grilling **leaves a paper trail**. A plain interview sharpens your thinking 
 
 ## When to reach for it
 
-You invoke this by typing `/grill-with-docs` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:grill-with-docs` — the agent won't reach for it on its own.
 
 Reach for it at the very start of a change, when the plan is still fuzzy and the domain language isn't settled, and you want to stress-test both before any code exists. If you only want the interview and don't need the artifacts, use [grilling](https://aihero.dev/skills-grilling); if the plan is already clear and you just need to pin down or record terminology, use [domain-modeling](https://aihero.dev/skills-domain-modeling). And if the change is too big to hold in one session and its route is still foggy — a greenfield project, a huge feature build — start upstream with [wayfinder](https://aihero.dev/skills-wayfinder): it charts the effort as a map of decisions, then hands back to this main flow once the way is clear.
 

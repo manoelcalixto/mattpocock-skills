@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=codebase-design
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update codebase-design
-```
+Start a new Codex thread and type `$mattpocock-skills:codebase-design`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/codebase-design)
 
 ## What it does
 
@@ -18,7 +17,7 @@ It is a **language, not a procedure**. It doesn't restructure your code or hand 
 
 ## When to reach for it
 
-Type `/codebase-design`, or the agent reaches for it automatically when a task fits.
+Type `$mattpocock-skills:codebase-design`, or the agent reaches for it automatically when a task fits.
 
 Reach for it when you're designing or improving a module's interface, hunting for deepening opportunities, deciding where a seam goes, or making code more testable and AI-navigable. Other skills pull it in whenever they need the deep-module vocabulary. If you want to sharpen the project's *domain* terms rather than its module design, use [domain-modeling](https://aihero.dev/skills-domain-modeling) instead; to run a whole architecture pass over an existing codebase, use [improve-codebase-architecture](https://aihero.dev/skills-improve-codebase-architecture).
 
@@ -27,6 +26,8 @@ Reach for it when you're designing or improving a module's interface, hunting fo
 A module is **deep** when a large amount of behaviour sits behind a small interface, and **shallow** when the interface is nearly as complex as the implementation. Depth is measured as **leverage** — how much a caller (or a test) can exercise per unit of interface they have to learn. Crucially, depth is a property of the *interface*, not the implementation: a deep module can be internally composed of small, swappable parts that just never surface to callers.
 
 Two checks do most of the work. The **deletion test**: imagine deleting the module — if complexity vanishes, it was a pass-through; if it reappears across N callers, it was earning its keep. And **one adapter means a hypothetical seam; two adapters means a real one** — don't cut a seam until something actually varies across it.
+
+When a chosen seam needs alternative interfaces, the Design It Twice pattern asks three isolated agents for a minimal, flexible, and caller-first design. A fourth ports-and-adapters design runs only when a real external seam and an available slot justify it. [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) maps this to Codex V1/V2 and fills missing designs locally when agents are unavailable.
 
 ## The interface is the test surface
 

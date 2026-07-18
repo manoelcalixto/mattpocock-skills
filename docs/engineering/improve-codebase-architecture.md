@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=improve-codebase-architecture
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update improve-codebase-architecture
-```
+Start a new Codex thread and type `$mattpocock-skills:improve-codebase-architecture`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/improve-codebase-architecture)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/improve-codebase-architecture)
 
 ## What it does
 
@@ -18,9 +17,11 @@ It does **not** hand you a flat list of refactors. Every candidate has to pass t
 
 Unless you point it at a specific area, it also scopes itself to where development is actually landing — reading the recent commits to bias toward the code you're still changing. Deepening a module pays off by making future changes to it easier, so it puts extra weight on the parts of the repo that have recently changed.
 
+The root reads hotspot history, `CONTEXT.md`, and relevant ADRs while [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) performs one isolated read-only architecture scan. When Codex exposes no agent tools, the same scan runs inline.
+
 ## When to reach for it
 
-You invoke this by typing `/improve-codebase-architecture` — the agent won't reach for it on its own.
+You invoke this by typing `$mattpocock-skills:improve-codebase-architecture` — the agent won't reach for it on its own.
 
 Reach for it as a periodic health check: every few days, or whenever a codebase has started to feel like it takes too much bouncing between small modules to understand one concept. It reads the existing architecture and proposes where to deepen it. If you already know the module you want to redesign and just need the vocabulary to think it through, use [codebase-design](https://aihero.dev/skills-codebase-design) instead — this skill is the survey that finds the candidates; that one is the design bench.
 
