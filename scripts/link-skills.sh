@@ -38,10 +38,15 @@ fi
 
 mkdir -p "$DEST"
 
-declare -A current_names=()
-for name in "${names[@]}"; do
-  current_names["$name"]=1
-done
+has_current_name() {
+  wanted="$1"
+  for current_name in "${names[@]}"; do
+    if [ "$current_name" = "$wanted" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 # Remove only stale symlinks that point into this repository. This cleans up
 # renamed or removed skills without touching user-managed directories or links.
@@ -51,7 +56,7 @@ for target in "$DEST"/*; do
   case "$resolved" in
     "$REPO"/skills/*)
       name="$(basename "$target")"
-      if [ -z "${current_names[$name]+present}" ]; then
+      if ! has_current_name "$name"; then
         unlink "$target"
         echo "unlinked stale skill $name"
       fi

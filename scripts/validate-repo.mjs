@@ -290,18 +290,32 @@ if (tracked.status !== 0) {
 const hookScript = path.join(root, "skills/misc/codex-git-guardrails/scripts/block-dangerous-git.sh");
 const syntaxCheck = spawnSync("bash", ["-n", hookScript], { encoding: "utf8" });
 if (syntaxCheck.status !== 0) fail(`git guardrail syntax failed: ${syntaxCheck.stderr.trim()}`);
-const blocked = spawnSync("bash", [hookScript], {
-  input: '{"tool_input":{"command":"git push origin main"}}',
-  encoding: "utf8",
-});
-if (blocked.status !== 2 || !blocked.stderr.includes("BLOCKED")) {
-  fail("git guardrail must block dangerous input with exit code 2 and a stderr reason");
+for (const command of [
+  "git push origin main",
+  "git -C repo push origin main",
+  "git reset --hard HEAD~1",
+  "git clean -fd",
+  "git clean -df",
+  "git branch -D old",
+  "git branch --delete --force old",
+  "git checkout .",
+  "git restore -- .",
+]) {
+  const blocked = spawnSync("bash", [hookScript], {
+    input: JSON.stringify({ tool_input: { command } }),
+    encoding: "utf8",
+  });
+  if (blocked.status !== 2 || !blocked.stderr.includes("BLOCKED")) {
+    fail(`git guardrail must block ${JSON.stringify(command)} with exit code 2 and a reason`);
+  }
 }
-const safe = spawnSync("bash", [hookScript], {
-  input: '{"tool_input":{"command":"git status"}}',
-  encoding: "utf8",
-});
-if (safe.status !== 0) fail("git guardrail must allow safe git commands");
+for (const command of ["git status", "git clean -n", "git branch -d merged", "git restore file.txt"]) {
+  const safe = spawnSync("bash", [hookScript], {
+    input: JSON.stringify({ tool_input: { command } }),
+    encoding: "utf8",
+  });
+  if (safe.status !== 0) fail(`git guardrail must allow ${JSON.stringify(command)}`);
+}
 
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
