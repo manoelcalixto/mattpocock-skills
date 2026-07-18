@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=writing-great-skills
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update writing-great-skills
-```
+Start a new Codex thread and type `$writing-great-skills`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/productivity/writing-great-skills)
 
 ## What it does
 
@@ -18,7 +17,7 @@ A skill's job is to wrangle determinism out of a stochastic system, so the goal 
 
 ## When to reach for it
 
-You invoke this by typing `/writing-great-skills` — the agent won't reach for it on its own.
+You invoke this by typing `$writing-great-skills` — the agent won't reach for it on its own.
 
 Reach for it whenever you're authoring a new skill or editing an existing one and want it to behave the same way every time: deciding invocation mode, writing a description, choosing what lives in `SKILL.md` versus a linked file, or diagnosing why a skill misfires.
 
@@ -26,8 +25,10 @@ Reach for it whenever you're authoring a new skill or editing an existing one an
 
 The concept the whole reference turns on is **cognitive load** — and its counterpart, **context load**. Every skill spends one or the other:
 
-- A **model-invoked** skill keeps a description in the window every turn, so it costs **context load** but fires on its own.
-- A **user-invoked** skill strips that description; it costs zero context load, but now *you* are the index that has to remember it exists — that's **cognitive load**.
+- A **model-invoked** skill keeps rich trigger language in its description and omits an invocation policy, so Codex can select it autonomously.
+- A **user-invoked** skill sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; only a human typing `$skill-name` can reach it.
+
+Both use frontmatter containing only `name` and `description`, plus Codex UI metadata and a `$skill-name` default prompt in `agents/openai.yaml`.
 
 Most of these skills are user-invoked, which is why cognitive load is the pressure the whole system is built to manage: when user-invoked skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
 

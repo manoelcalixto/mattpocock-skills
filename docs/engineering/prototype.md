@@ -1,14 +1,13 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=prototype
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update prototype
-```
+Start a new Codex thread and type `$prototype`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/prototype)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/prototype)
 
 ## What it does
 
@@ -18,7 +17,7 @@ The code is **throwaway from day one**, and marked as such. It carries no tests,
 
 ## When to reach for it
 
-Type `/prototype`, or the agent reaches for it automatically when a task fits.
+Type `$prototype`, or the agent reaches for it automatically when a task fits.
 
 Reach for it when you have a design question that's hard to settle on paper — a state machine with cases you can't hold in your head, or a screen you can't picture until you see a few versions side by side. If instead something already built is misbehaving and you need to find out why, use [diagnosing-bugs](https://aihero.dev/skills-diagnosing-bugs); prototyping explores what to build, not why the built thing is broken.
 

@@ -5,17 +5,15 @@ set -euo pipefail
 # It is not a supported installer. Modifications to it — or requests for
 # modifications — will not be approved.
 #
-# Links all skills in the repository into the local skill directories used by
-# each agent harness:
-#   - ~/.claude/skills  — Claude Code
-#   - ~/.agents/skills  — Codex and other Agent Skills-compatible harnesses
+# Links all non-deprecated skills in the repository into Codex's user skill
+# directory:
+#   - ~/.agents/skills
 # Each entry is a symlink into this repo, so a `git pull` is all that's needed
 # to keep installed skills up to date.
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-DESTS=("$HOME/.claude/skills" "$HOME/.agents/skills")
+DEST="$HOME/.agents/skills"
 
-# Collect the repo's skills once, link into every destination.
 names=()
 srcs=()
 while IFS= read -r -d '' skill_md; do
@@ -24,33 +22,52 @@ while IFS= read -r -d '' skill_md; do
   srcs+=("$src")
 done < <(find "$REPO/skills" -name SKILL.md -not -path '*/node_modules/*' -not -path '*/deprecated/*' -print0)
 
-for DEST in "${DESTS[@]}"; do
-  # If $DEST is a symlink that resolves into this repo, we'd end up writing the
-  # per-skill symlinks back into the repo's own skills/ tree. Detect and bail
-  # out instead of polluting the working copy.
-  if [ -L "$DEST" ]; then
-    resolved="$(readlink -f "$DEST")"
-    case "$resolved" in
-      "$REPO"|"$REPO"/*)
-        echo "error: $DEST is a symlink into this repo ($resolved)." >&2
-        echo "Remove it (rm \"$DEST\") and re-run; the script will recreate it as a real dir." >&2
-        exit 1
-        ;;
-    esac
+# If $DEST is a symlink that resolves into this repo, we'd end up writing the
+# per-skill symlinks back into the repo's own skills/ tree. Detect and bail out
+# instead of polluting the working copy.
+if [ -L "$DEST" ]; then
+  resolved="$(readlink -f "$DEST")"
+  case "$resolved" in
+    "$REPO"|"$REPO"/*)
+      echo "error: $DEST is a symlink into this repo ($resolved)." >&2
+      echo "Remove it (rm \"$DEST\") and re-run; the script will recreate it as a real dir." >&2
+      exit 1
+      ;;
+  esac
+fi
+
+mkdir -p "$DEST"
+
+declare -A current_names=()
+for name in "${names[@]}"; do
+  current_names["$name"]=1
+done
+
+# Remove only stale symlinks that point into this repository. This cleans up
+# renamed or removed skills without touching user-managed directories or links.
+for target in "$DEST"/*; do
+  [ -L "$target" ] || continue
+  resolved="$(readlink -f "$target")"
+  case "$resolved" in
+    "$REPO"/skills/*)
+      name="$(basename "$target")"
+      if [ -z "${current_names[$name]+present}" ]; then
+        unlink "$target"
+        echo "unlinked stale skill $name"
+      fi
+      ;;
+  esac
+done
+
+for i in "${!names[@]}"; do
+  name="${names[$i]}"
+  src="${srcs[$i]}"
+  target="$DEST/$name"
+
+  if [ -e "$target" ] && [ ! -L "$target" ]; then
+    rm -rf "$target"
   fi
 
-  mkdir -p "$DEST"
-
-  for i in "${!names[@]}"; do
-    name="${names[$i]}"
-    src="${srcs[$i]}"
-    target="$DEST/$name"
-
-    if [ -e "$target" ] && [ ! -L "$target" ]; then
-      rm -rf "$target"
-    fi
-
-    ln -sfn "$src" "$target"
-    echo "linked $name -> $src ($DEST)"
-  done
+  ln -sfn "$src" "$target"
+  echo "linked $name -> $src"
 done

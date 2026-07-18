@@ -1,29 +1,40 @@
 Quickstart:
 
 ```bash
-npx skills add mattpocock/skills --skill=research
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
 
-```bash
-npx skills update research
-```
+Start a new Codex thread and type `$research`.
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/research)
+[Source](https://github.com/manoelcalixto/mattpocock-skills/tree/main/skills/engineering/research)
 
 ## What it does
 
-`research` answers a question by reading the sources that own the answer and leaving a cited Markdown file behind. It works only from **primary sources** — official docs, source code, specs, first-party APIs — never a secondary write-up of them, so what it saves is traceable back to something authoritative rather than a summary of a summary.
+`research` answers a question from primary sources and leaves one cited Markdown report in the repository's existing research location.
+
+At the root it delegates one isolated worker when Codex multi-agent tools are available; inside a subagent it researches directly, preventing recursive agent trees. With no agent tools it produces the same artifact inline.
 
 ## When to reach for it
 
-Type `/research`, or the agent reaches for it automatically when a task turns into reading legwork.
+Type `$research`, or the agent reaches for it automatically when documentation facts, API behavior, specifications, papers, or source-code evidence would unblock a decision.
 
-Reach for it when the next step is *finding something out* — how an API behaves, what a spec actually says, whether a claim holds — and you'd rather not stall your own thread doing the reading. For sharpening a plan by interview instead of by reading, use [grilling](https://aihero.dev/skills-grilling); for exploring what to build with throwaway code, use [prototype](https://aihero.dev/skills-prototype).
+Use it for reading legwork. For decision-making after the facts arrive, use [grill-with-docs](https://aihero.dev/skills-grill-with-docs); for turning settled decisions into a buildable document, use [to-spec](https://aihero.dev/skills-to-spec).
 
-## Delegated legwork
+## Primary sources
 
-The defining move is that the reading runs as a **background agent**. You keep working; it goes off, follows each claim back to its primary source, and drops a single cited Markdown file into wherever the repo keeps such notes. Research is legwork you delegate, not thinking you outsource — you get back a document to react to, with its sources attached.
+The report follows every material claim to the source that owns it: official docs, source code, standards, papers, or first-party APIs. It records version constraints, conflicts, and uncertainty rather than laundering secondary summaries into facts.
+
+## Safe background work
+
+The delegated worker receives an isolated, self-contained brief and a unique output path. It cannot switch branches, commit, mutate trackers, or spawn another research agent. The root keeps working and waits only when the report becomes blocking.
+
+## It's working if
+
+- One Markdown report answers the question and cites claims beside their sources.
+- Running inside a subagent never creates a nested research agent.
+- Missing multi-agent tools change latency, not the report contract.
 
 ## Where it fits
 
-A reach-for-it-anytime standalone that feeds the thinking skills: the file it produces is something to grill, plan, or design against, so it sits upstream of work like [grilling](https://aihero.dev/skills-grilling) and [to-prd](https://aihero.dev/skills-to-prd) rather than in the build chain. For the whole map, see [ask-matt](https://aihero.dev/skills-ask-matt).
+`research` is a reach-for-it-anytime input to design and planning. [wayfinder](https://aihero.dev/skills-wayfinder) uses it for AFK research tickets, while [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) supplies the adaptive V1/V2 delegation contract. [ask-matt](https://aihero.dev/skills-ask-matt) maps the whole set.

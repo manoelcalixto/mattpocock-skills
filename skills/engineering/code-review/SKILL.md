@@ -10,7 +10,7 @@ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
 Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
-The issue tracker should have been provided to you — run `/setup-matt-pocock-skills` if `docs/agents/issue-tracker.md` is missing.
+The issue tracker should have been provided to you. If `docs/agents/issue-tracker.md` is missing, ask the human to run `$setup-matt-pocock-skills` before continuing.
 
 ## Process
 
@@ -55,9 +55,9 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
-### 4. Spawn both sub-agents in parallel
+### 4. Run both review axes in isolation
 
-Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both.
+Use the `orchestrate-agents` skill to start both read-only reviews together. Give each agent a self-contained brief and no write access. In V2 name the tasks `standards_review` and `spec_review`, using `fork_turns="none"`; in V1 use `fork_context=false`. Continue any root-side preparation while they run, then wait only when their reports are needed.
 
 **Standards sub-agent prompt** — include:
 
@@ -72,6 +72,8 @@ Send a single message with two `Agent` tool calls. Use the `general-purpose` sub
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
+
+If multi-agent tools are unavailable, run Standards and Spec sequentially with the same briefs. Keep their notes separate and disclose that the fallback lost context isolation.
 
 ### 5. Aggregate
 

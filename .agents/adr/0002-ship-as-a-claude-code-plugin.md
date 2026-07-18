@@ -1,4 +1,6 @@
-# Ship the skill set as a native Claude Code plugin; defer a native Codex plugin
+# Superseded: ship as a Claude Code plugin and defer Codex
+
+> Superseded by [ADR 0003](./0003-ship-the-fork-as-a-codex-plugin.md). Codex now accepts arrays in the `skills` manifest field, removing the constraint this decision was based on. This file remains as historical context.
 
 These skills have always been installable via [skills.sh](https://skills.sh/mattpocock/skills) (`npx skills add mattpocock/skills`), which copies editable skill files into a user's project across Claude Code, Codex, and other Agent-Skills-standard harnesses. A recurring request is a **plug-and-play** distribution: subscribe to the set as a read-only, always-current bundle you don't edit, rather than a fork you own. That is exactly what native plugin systems provide.
 

@@ -2,9 +2,9 @@
 "mattpocock-skills": minor
 ---
 
-Add Codex metadata alongside each skill's Claude Code frontmatter so the set works in both harnesses without generated copies.
+Make the fork Codex-native and installable from its own marketplace as `mattpocock-skills@manoelcalixto`.
 
-- Add an `agents/openai.yaml` beside every `SKILL.md` with Codex UI metadata (`interface.display_name`, `interface.short_description`).
-- Mark every user-invoked skill with `policy.allow_implicit_invocation: false`, the Codex analog of `disable-model-invocation: true`, so Codex excludes it from implicit invocation while explicit `$skill` invocation still works.
-- Document the dual-harness invocation model in `.agents/invocation.md`, `CLAUDE.md`, and the promoted-bucket READMEs.
-- Add `AGENTS.md` as a symlink to `CLAUDE.md` so Codex reads the same repo instructions.
+- Add `.codex-plugin/plugin.json` and `.agents/plugins/marketplace.json`, shipping exactly the promoted skills from `manoelcalixto/mattpocock-skills`.
+- Replace legacy-harness frontmatter, invocation, setup, hooks, and session guidance with Codex contracts and `$skill` syntax.
+- Add adaptive V1/V2 multi-agent orchestration, native session routing, and Codex handoff/guardrail skills.
+- Add repository validation and automatic plugin/package version synchronization.
