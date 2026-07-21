@@ -30,7 +30,7 @@ The concept the whole reference turns on is **cognitive load** — and its count
 
 Both use frontmatter containing only `name` and `description`, plus Codex UI metadata and a default prompt containing the exact installed invocation in `agents/openai.yaml`.
 
-This repository keeps every skill model-invoked, so its descriptions must earn their context load with clear trigger boundaries. In a collection that uses user-invoked skills, cognitive load becomes the counter-pressure: when those skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
+This repository requires every skill to be model-invoked, so its descriptions must earn their context load with clear trigger boundaries and `agents/openai.yaml` must omit the invocation policy. The user-invoked option applies only to other collections whose standards allow it. In those collections, cognitive load becomes the counter-pressure: when user-invoked skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
 
 ## The other levers
 
