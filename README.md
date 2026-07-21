@@ -49,7 +49,7 @@ $mattpocock-skills:grill-with-docs → $mattpocock-skills:to-spec → $mattpococ
 - `$mattpocock-skills:to-spec` synthesizes the conversation without re-interviewing.
 - `$mattpocock-skills:to-tickets` splits larger work into independently executable tracer bullets.
 - Each ticket starts in `/new` with `$mattpocock-skills:implement <ticket>`.
-- `implement` uses the model-invoked `tdd` and `code-review` disciplines.
+- `implement` uses the `tdd` and `code-review` disciplines.
 
 Use `$mattpocock-skills:ask-matt` when you are unsure which flow fits. For a huge effort whose route cannot fit one thread, use `$mattpocock-skills:wayfinder`. For a hard bug, let `diagnosing-bugs` establish a tight feedback loop first.
 
@@ -63,11 +63,9 @@ Use `$mattpocock-skills:ask-matt` when you are unsure which flow fits. For a hug
 
 ## Reference
 
-Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. User-invoked skills run only when you type `$mattpocock-skills:skill-name`; model-invoked skills can also be selected automatically by Codex.
+Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. Every skill can be selected automatically by Codex or invoked explicitly with `$mattpocock-skills:skill-name`.
 
 ### Engineering
-
-#### User-invoked
 
 - **[ask-matt](./skills/engineering/ask-matt/SKILL.md)** — Route a situation to the right skill, workflow, or session transition.
 - **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Sharpen a design while maintaining `CONTEXT.md` and ADRs.
@@ -78,9 +76,6 @@ Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. User-invoked s
 - **[to-tickets](./skills/engineering/to-tickets/SKILL.md)** — Split work into tracer-bullet tickets with blocking edges.
 - **[implement](./skills/engineering/implement/SKILL.md)** — Implement a spec or ticket with test-first seams and closing review.
 - **[wayfinder](./skills/engineering/wayfinder/SKILL.md)** — Map a large, foggy effort as decision tickets until the route is clear.
-
-#### Model-invoked
-
 - **[prototype](./skills/engineering/prototype/SKILL.md)** — Build throwaway evidence for one design question.
 - **[diagnosing-bugs](./skills/engineering/diagnosing-bugs/SKILL.md)** — Diagnose hard bugs and regressions through a tight feedback loop.
 - **[research](./skills/engineering/research/SKILL.md)** — Produce a cited primary-source research report, delegated when available.
@@ -93,15 +88,10 @@ Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. User-invoked s
 
 ### Productivity
 
-#### User-invoked
-
 - **[grill-me](./skills/productivity/grill-me/SKILL.md)** — Relentlessly interview a plan or idea outside a codebase.
 - **[handoff](./skills/productivity/handoff/SKILL.md)** — Route between Codex session transitions and clean-thread handoffs.
 - **[teach](./skills/productivity/teach/SKILL.md)** — Build a stateful multi-session learning workspace.
 - **[writing-great-skills](./skills/productivity/writing-great-skills/SKILL.md)** — Write predictable Codex skills with deliberate invocation and context load.
-
-#### Model-invoked
-
 - **[grilling](./skills/productivity/grilling/SKILL.md)** — Resolve a decision tree one question at a time.
 
 ## Attribution

@@ -17,7 +17,7 @@ It does **not** interview you again. By the time you reach for it, the alignment
 
 ## When to reach for it
 
-You invoke this by typing `$mattpocock-skills:to-spec` — the agent won't reach for it on its own.
+Type `$mattpocock-skills:to-spec`, or the agent reaches for it automatically when a task fits.
 
 Reach for it once a change has been talked through and the domain language is settled, and you want that shared understanding written down before any code is written. If you *haven't* aligned yet, grill first — for that, use [grill-with-docs](https://aihero.dev/skills-grill-with-docs). To split the finished spec into tickets, use [to-tickets](https://aihero.dev/skills-to-tickets).
 

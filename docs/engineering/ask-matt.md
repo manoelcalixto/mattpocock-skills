@@ -17,7 +17,7 @@ It does no engineering work itself: it is the map, not a hidden mega-workflow.
 
 ## When to reach for it
 
-You invoke this by typing `$mattpocock-skills:ask-matt` — the agent won't reach for it on its own.
+Type `$mattpocock-skills:ask-matt`, or the agent reaches for it automatically when a task fits.
 
 Reach for it when you have an idea, bug, incoming request, architecture problem, large foggy effort, research question, or context-boundary problem and cannot tell which tool should lead.
 

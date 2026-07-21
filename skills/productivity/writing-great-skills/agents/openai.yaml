@@ -2,5 +2,3 @@ interface:
   display_name: "Writing Great Skills"
   short_description: "Principles for predictable skills"
   default_prompt: "Use $mattpocock-skills:writing-great-skills to make this Codex skill more predictable."
-policy:
-  allow_implicit_invocation: false
