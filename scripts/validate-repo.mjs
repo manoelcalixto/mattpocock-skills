@@ -90,21 +90,14 @@ for (const bucket of buckets) {
       fail(`${metadataPath}: interface.default_prompt must mention ${invocation}`);
     }
 
-    const policy = metadata?.policy;
-    if (policy !== undefined) {
-      if (
-        Object.keys(policy).join(",") !== "allow_implicit_invocation" ||
-        policy.allow_implicit_invocation !== false
-      ) {
-        fail(`${metadataPath}: the only supported policy is allow_implicit_invocation: false`);
-      }
+    if (metadata?.policy !== undefined) {
+      fail(`${metadataPath}: policy must be omitted so every skill remains model-invoked`);
     }
 
     skills.push({
       bucket,
       name,
       path: skillPath,
-      userInvoked: policy?.allow_implicit_invocation === false,
     });
   }
 }
@@ -206,14 +199,16 @@ for (const bucket of buckets) {
   if (promotedBuckets.has(bucket)) {
     const userHeading = readme.indexOf("## User-invoked");
     const modelHeading = readme.indexOf("## Model-invoked");
-    if (userHeading === -1 || modelHeading === -1 || userHeading > modelHeading) {
-      fail(`skills/${bucket}/README.md: expected User-invoked then Model-invoked sections`);
+    if (userHeading !== -1) {
+      fail(`skills/${bucket}/README.md: User-invoked section is not supported`);
+    }
+    if (modelHeading === -1) {
+      fail(`skills/${bucket}/README.md: expected a Model-invoked section`);
     } else {
       for (const skill of bucketSkills) {
         const linkIndex = readme.indexOf(`./${skill.name}/SKILL.md`);
-        const listedAsUser = linkIndex > userHeading && linkIndex < modelHeading;
-        if (listedAsUser !== skill.userInvoked) {
-          fail(`skills/${bucket}/README.md: ${skill.name} is in the wrong invocation section`);
+        if (linkIndex < modelHeading) {
+          fail(`skills/${bucket}/README.md: ${skill.name} must be listed as Model-invoked`);
         }
       }
     }

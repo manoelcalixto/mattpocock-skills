@@ -2,5 +2,3 @@ interface:
   display_name: "To Questionnaire"
   short_description: "Front-load questions into a doc for someone to answer"
   default_prompt: "Use $to-questionnaire to prepare this decision for an external answer."
-policy:
-  allow_implicit_invocation: false

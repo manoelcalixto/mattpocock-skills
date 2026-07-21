@@ -2,5 +2,3 @@ interface:
   display_name: "Delegate Handoff"
   short_description: "Hand off work to a fresh Codex agent"
   default_prompt: "Use $delegate-handoff to transfer this work to a fresh Codex agent."
-policy:
-  allow_implicit_invocation: false

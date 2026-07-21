@@ -1,6 +1,6 @@
 ---
 name: teach
-description: Teach the user a new skill or concept, within this workspace.
+description: Teach a skill or concept as a stateful, multi-session learning project in the current workspace. Use when the user wants guided practice and persistent progress, not a one-off explanation.
 ---
 
 The user has asked you to teach them something. This is a stateful request - they intend to learn the topic over multiple sessions.

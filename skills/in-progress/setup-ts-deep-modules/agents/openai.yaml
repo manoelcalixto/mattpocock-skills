@@ -2,5 +2,3 @@ interface:
   display_name: "Setup TS Deep Modules"
   short_description: "Enforce deep TypeScript modules"
   default_prompt: "Use $setup-ts-deep-modules to enforce deep package boundaries here."
-policy:
-  allow_implicit_invocation: false

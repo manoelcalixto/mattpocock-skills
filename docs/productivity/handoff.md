@@ -17,7 +17,7 @@ It does not treat every context change as a document-writing problem.
 
 ## When to reach for it
 
-You invoke this by typing `$mattpocock-skills:handoff` — the agent won't reach for it on its own.
+Type `$mattpocock-skills:handoff`, or the agent reaches for it automatically when a task fits.
 
 Reach for it when you know the current thread should change shape but are unsure whether you need compaction, a full-history fork, a tangent, a resumed thread, a blank thread, or another agent.
 

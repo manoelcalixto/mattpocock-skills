@@ -2,5 +2,3 @@ interface:
   display_name: "Loop Me"
   short_description: "Spec the workflows you want to build"
   default_prompt: "Use $loop-me to design the workflows for this workspace."
-policy:
-  allow_implicit_invocation: false

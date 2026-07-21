@@ -9,12 +9,14 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
 
 ## Invocation
 
-Two choices, trading different costs:
+This repository requires every skill to be **model-invoked**. When working here, keep rich trigger language in `description` and omit the `policy` block from `agents/openai.yaml`.
+
+Other collections whose standards allow both modes have two choices, trading different costs:
 
 - A **model-invoked** skill is available to the agent autonomously and to the user by its installed name: `$plugin-name:skill-name` when contributed by a plugin, or `$skill-name` when standalone. Write a model-facing `description` with rich trigger phrasing and omit the `policy` block from `agents/openai.yaml`. Its description contributes to **context load** because Codex can inject it when selecting skills.
 - A **user-invoked** skill is available only when the human types that installed name; no other skill can invoke it. Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`, and keep the `description` human-facing: a one-line summary with trigger lists stripped.
 
-Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.
+Outside this repository, pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked and pay no context load.
 
 Keep `SKILL.md` frontmatter to exactly `name` and `description`. Put Codex UI metadata in `agents/openai.yaml`: quoted `display_name`, a 25–64 character `short_description`, and a short `default_prompt` that explicitly mentions the exact installed invocation.
 
