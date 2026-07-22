@@ -18,7 +18,7 @@ Show this to the user, then immediately proceed to Step 2. The user reads and th
 
 ### 2. Generate isolated designs
 
-Use the `orchestrate-agents` skill to start exactly three read-only design agents by default. In V2 use the task names `minimal_interface`, `flexible_interface`, and `caller_first_interface`, with `fork_turns="none"`; in V1 use `fork_context=false`. Start a fourth `ports_and_adapters` agent only when an additional slot is available and the candidate crosses a real external seam. Each agent must produce a **radically different** interface.
+Use the `orchestrate-agents` skill to start exactly three read-only design agents at `high` effort by default. Use the task names `minimal_interface`, `flexible_interface`, and `caller_first_interface`, with `fork_turns="none"` and no permission to spawn descendants. Start a fourth `ports_and_adapters` agent only when an additional slot is available and the candidate crosses a real external seam. Each agent must produce a **radically different** interface.
 
 Prompt each sub-agent with a separate technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the user-facing problem-space explanation in Step 1. Give each agent a different design constraint:
 
@@ -37,7 +37,7 @@ Each sub-agent outputs:
 4. Dependency strategy and adapters (see [DEEPENING.md](DEEPENING.md))
 5. Trade-offs — where leverage is high, where it's thin
 
-Continue root-side comparison setup while the designs run and wait only when blocked on their reports. If multi-agent tools or enough slots are unavailable, generate the missing designs locally with the same independent constraints and disclose that they did not receive isolated contexts.
+Continue root-side comparison setup while the designs run and use the event-driven mailbox wait only when blocked on their reports. If MultiAgent V2 or enough slots are unavailable, generate the missing designs locally with the same independent constraints and disclose that they did not receive isolated contexts.
 
 ### 3. Present and compare
 

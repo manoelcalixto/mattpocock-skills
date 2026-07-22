@@ -13,9 +13,9 @@ Write one cited Markdown report where the repository already keeps research note
 
 If already running as a subagent, do the research directly. Never spawn another research agent.
 
-At the root, use the `orchestrate-agents` skill to dispatch one read-only/background research worker when multi-agent tools are available. Give it a self-contained question, source constraints, the unique output path, and instructions not to change branches, commit, or spawn children. In V2 use a descriptive `research_<topic>` task name and `fork_turns="none"`; in V1 use `fork_context=false`.
+At the root, use the `orchestrate-agents` skill to dispatch one read-only/background research worker starting at `medium` effort when MultiAgent V2 is available. Give it a self-contained question, source constraints, the unique output path, a descriptive `research_<topic>` task name, `fork_turns="none"`, and instructions not to change branches, commit, or spawn children.
 
-Continue useful root work while it reads and wait only when the report becomes a blocker. Verify the finished report's citations and claims before relying on it. If multi-agent tools are unavailable, research inline and produce the same artifact.
+Continue useful root work while it reads and use the event-driven mailbox wait only when the report becomes a blocker. Verify the finished report's citations and claims before relying on it. If MultiAgent V2 is unavailable, research inline and produce the same artifact.
 
 ## Report contract
 

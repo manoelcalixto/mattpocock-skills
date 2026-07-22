@@ -21,7 +21,7 @@ This command is _informed_ by the project's domain model and built on a shared d
 - If the user named a direction — a module, a subsystem, a pain point — take it, and skip the inference below.
 - Otherwise, walk back a good stretch of the commit history (`git log --oneline`) to find the codebase's hot spots — the files and areas that keep coming up — and let those paths pull your attention first. If the changes are scattered with no clear hot spot, widen the net.
 
-Read the project's domain glossary (`CONTEXT.md`), relevant ADRs, and hotspot history on the root. In parallel, use the `orchestrate-agents` skill to dispatch one bounded, read-only architecture scan with a self-contained brief covering the chosen paths and vocabulary. Use V2 task name `architecture_scan` with `fork_turns="none"`, or V1 with `fork_context=false`. Do not assign a hardcoded agent role or model. If multi-agent tools are unavailable, perform the scan inline.
+Read the project's domain glossary (`CONTEXT.md`), relevant ADRs, and hotspot history on the root. In parallel, use the `orchestrate-agents` skill to dispatch one bounded, read-only architecture scan starting at `high` effort with a self-contained brief covering the chosen paths and vocabulary. Use task name `architecture_scan`, `fork_turns="none"`, and no permission to spawn descendants. Do not assign a hardcoded agent role; let the orchestrator enforce Sol. If MultiAgent V2 is unavailable, perform the scan inline.
 
 Walk the scoped code organically and note where you experience friction:
 

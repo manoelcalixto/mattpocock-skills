@@ -27,7 +27,7 @@ A module is **deep** when a large amount of behaviour sits behind a small interf
 
 Two checks do most of the work. The **deletion test**: imagine deleting the module — if complexity vanishes, it was a pass-through; if it reappears across N callers, it was earning its keep. And **one adapter means a hypothetical seam; two adapters means a real one** — don't cut a seam until something actually varies across it.
 
-When a chosen seam needs alternative interfaces, the Design It Twice pattern asks three isolated agents for a minimal, flexible, and caller-first design. A fourth ports-and-adapters design runs only when a real external seam and an available slot justify it. [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) maps this to Codex V1/V2 and fills missing designs locally when agents are unavailable.
+When a chosen seam needs alternative interfaces, the Design It Twice pattern asks three isolated, non-recursive GPT-5.6 Sol agents starting at high effort for a minimal, flexible, and caller-first design. A fourth ports-and-adapters design runs only when a real external seam and an available slot justify it. [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) coordinates the V2 tree and fills missing designs locally when MultiAgent V2 is unavailable.
 
 ## The interface is the test surface
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Orchestrate Agents"
-  short_description: "Coordinate Codex multi-agent workflows"
+  short_description: "Coordinate Sol-only MultiAgent V2 workflows"
   default_prompt: "Use $mattpocock-skills:orchestrate-agents to coordinate this delegated work safely."

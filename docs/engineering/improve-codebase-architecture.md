@@ -17,7 +17,7 @@ It does **not** hand you a flat list of refactors. Every candidate has to pass t
 
 Unless you point it at a specific area, it also scopes itself to where development is actually landing — reading the recent commits to bias toward the code you're still changing. Deepening a module pays off by making future changes to it easier, so it puts extra weight on the parts of the repo that have recently changed.
 
-The root reads hotspot history, `CONTEXT.md`, and relevant ADRs while [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) performs one isolated read-only architecture scan. When Codex exposes no agent tools, the same scan runs inline.
+The root reads hotspot history, `CONTEXT.md`, and relevant ADRs while [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) performs one isolated, non-recursive GPT-5.6 Sol architecture scan starting at high effort. When Codex exposes no MultiAgent V2 tools, the same scan runs inline.
 
 ## When to reach for it
 

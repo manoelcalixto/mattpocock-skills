@@ -23,7 +23,7 @@ If the work is genuinely small, skip tickets and run `$mattpocock-skills:impleme
 - **Incoming bugs, requests, or external PRs** — `$mattpocock-skills:triage`: move raw requests through the configured tracker states. Tickets created by `$mattpocock-skills:to-tickets` are already agent-ready and should not be triaged.
 - **A huge effort whose route cannot fit one session** — `$mattpocock-skills:wayfinder`: chart decision tickets and resolve the frontier until the route is clear. Then return through `$mattpocock-skills:to-spec`; do not jump straight to implementation unless the effort collapsed into something small.
 - **Architecture entropy** — `$mattpocock-skills:improve-codebase-architecture`: scan active hotspots for deepening opportunities and grill the chosen candidate. Use `codebase-design` for interface/seam vocabulary and alternative designs.
-- **External facts or documentation** — `research`: produce a cited primary-source report while other work continues when agents are available.
+- **External facts or documentation** — `research`: produce a cited primary-source report while other work continues when MultiAgent V2 is available.
 - **Learning rather than building** — `$mattpocock-skills:teach`: use the directory as a multi-session teaching workspace.
 - **Writing or editing a skill** — `$mattpocock-skills:writing-great-skills`: use the repo's predictability vocabulary and Codex skill contract.
 - **Block destructive Git commands in Codex** — when the standalone `$codex-git-guardrails` skill is installed, use it to configure a trusted `PreToolUse` hook before risky repository work.
@@ -45,7 +45,7 @@ Use `$mattpocock-skills:handoff` only when native context-preserving transitions
 - `domain-modeling` — active glossary and ADR maintenance.
 - `tdd` — test-first red-green-refactor discipline.
 - `codebase-design` — deep-module, interface, seam, leverage, and locality vocabulary.
-- `orchestrate-agents` — adaptive V1/V2 delegation when the user or active skill authorizes agents.
+- `orchestrate-agents` — GPT-5.6 Sol-only MultiAgent V2 delegation with adaptive effort when the user or active skill authorizes agents.
 
 ## Prerequisite
 

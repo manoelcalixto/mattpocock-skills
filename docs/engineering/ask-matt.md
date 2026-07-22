@@ -35,6 +35,10 @@ For repository safety outside the promoted plugin set, the standalone `$codex-gi
 
 `/compact` stays in one summarized thread, `/fork` branches with full history, `/side` handles a tangent, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only when crossing into a genuinely clean `/new` thread. When the optional in-progress `$delegate-handoff` is installed, it hands work to another active agent and `/agent` switches to it.
 
+## Agent work
+
+When a routed workflow explicitly needs parallel or delegated work, [orchestrate-agents](https://aihero.dev/skills-orchestrate-agents) supplies the GPT-5.6 Sol-only MultiAgent V2 contract, task-shaped effort, isolated briefs, workflow-authorized recursion, and event-driven waiting. It is a shared primitive, not a reason to create agents for an otherwise local task.
+
 ## Where it fits
 
 `ask-matt` is the router over the whole set. It commonly leads to [grill-with-docs](https://aihero.dev/skills-grill-with-docs), [diagnosing-bugs](https://aihero.dev/skills-diagnosing-bugs), [triage](https://aihero.dev/skills-triage), or [wayfinder](https://aihero.dev/skills-wayfinder); every other page points back here when the next route is unclear.

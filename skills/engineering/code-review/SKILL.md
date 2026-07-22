@@ -57,7 +57,7 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Run both review axes in isolation
 
-Use the `orchestrate-agents` skill to start both read-only reviews together. Give each agent a self-contained brief and no write access. In V2 name the tasks `standards_review` and `spec_review`, using `fork_turns="none"`; in V1 use `fork_context=false`. Continue any root-side preparation while they run, then wait only when their reports are needed.
+Use the `orchestrate-agents` skill to start both read-only reviews together, starting at `high` effort. Give each agent a self-contained brief, no write access, no permission to spawn descendants, the task names `standards_review` and `spec_review`, and `fork_turns="none"`. Continue any root-side preparation while they run, then use the event-driven mailbox wait only when their reports are needed.
 
 **Standards sub-agent prompt** — include:
 
@@ -73,7 +73,7 @@ Use the `orchestrate-agents` skill to start both read-only reviews together. Giv
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-If multi-agent tools are unavailable, run Standards and Spec sequentially with the same briefs. Keep their notes separate and disclose that the fallback lost context isolation.
+If MultiAgent V2 is unavailable, run Standards and Spec sequentially with the same briefs. Keep their notes separate and disclose that the fallback lost context isolation.
 
 ### 5. Aggregate
 

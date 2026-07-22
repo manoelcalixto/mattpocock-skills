@@ -57,7 +57,7 @@ Use `$mattpocock-skills:ask-matt` when you are unsure which flow fits. For a hug
 
 - **Explicit skills:** managed plugin skills use `$mattpocock-skills:skill-name`; standalone skills use `$skill-name`; `/...` is reserved for Codex commands.
 - **Sessions:** `/compact` summarizes the same thread, `/fork` preserves full history in a branch, `/side` handles tangents, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only for a genuinely clean `/new` thread.
-- **Multi-agent:** `orchestrate-agents` adapts to Codex V1 or V2, defaults to isolated briefs, respects available slots, and protects the shared working directory.
+- **Multi-agent:** `orchestrate-agents` uses Codex MultiAgent V2 and GPT-5.6 Sol only, selects explicit task-shaped effort, defaults to isolated briefs, waits on mailbox events, respects available slots, and protects the shared working directory.
 - **Hooks:** trusted `PreToolUse` hooks are configured in `.codex/config.toml` or `~/.codex/config.toml`.
 - **Repository instructions:** `AGENTS.md` is the only canonical agent-instructions file.
 
@@ -84,7 +84,7 @@ Promoted skills are shipped by `mattpocock-skills@manoelcalixto`. Every skill ca
 - **[codebase-design](./skills/engineering/codebase-design/SKILL.md)** — Design deep modules, interfaces, seams, and adapters.
 - **[code-review](./skills/engineering/code-review/SKILL.md)** — Review Standards and Spec in isolated axes.
 - **[resolving-merge-conflicts](./skills/engineering/resolving-merge-conflicts/SKILL.md)** — Resolve merge or rebase conflicts by intent.
-- **[orchestrate-agents](./skills/engineering/orchestrate-agents/SKILL.md)** — Coordinate safe, bounded V1/V2 multi-agent work.
+- **[orchestrate-agents](./skills/engineering/orchestrate-agents/SKILL.md)** — Coordinate safe, bounded GPT-5.6 Sol work through MultiAgent V2.
 
 ### Productivity
 
