@@ -8,6 +8,10 @@
 
   Document the opt-in `default_mode_request_user_input` feature, centralize tool shape, fallback, cadence, and timeout rules, and bundle a synchronized contract with each direct interaction owner so standalone copies remain self-contained.
 
+- [#4](https://github.com/manoelcalixto/mattpocock-skills/pull/4) [`007a052`](https://github.com/manoelcalixto/mattpocock-skills/commit/007a0525bca9f75232f764444e182e6201a2c244) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Restore explicit invocation for skills that should remain user-invoked.
+
+  Reinstate `policy.allow_implicit_invocation: false` and the corresponding docs classification, undoing the automatic model selection introduced by #2 while preserving later Codex-native changes.
+
 ## 1.2.0
 
 ### Minor Changes
