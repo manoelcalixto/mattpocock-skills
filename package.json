@@ -10,6 +10,7 @@
   "license": "MIT",
   "scripts": {
     "changeset": "changeset",
+    "sync:request-user-input": "node scripts/sync-request-user-input.mjs",
     "validate": "node scripts/validate-repo.mjs",
     "version": "changeset version && node scripts/sync-plugin-version.mjs"
   },

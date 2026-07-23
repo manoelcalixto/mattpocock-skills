@@ -22,6 +22,10 @@ Keep `SKILL.md` frontmatter to exactly `name` and `description`. Put Codex UI me
 
 When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one user-invoked skill that names the others and when to reach for each.
 
+## Decision prompts
+
+When a skill directly creates a bounded, user-owned choice, treat it as a **Decision prompt** and apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md). Put a synchronized, co-located copy in the owning skill so standalone installs remain self-contained; a consumer that delegates the interaction inherits it.
+
 ## Writing the description
 
 A model-invoked **description** does two jobs — state what the skill is, and list the **branches** that should trigger it. Every word increases **context load**, so a description earns even harder pruning than the body:

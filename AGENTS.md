@@ -17,6 +17,8 @@ The published docs URL remains `https://aihero.dev/skills-<skill-name>` regardle
 
 Every non-deprecated `SKILL.md` has only `name` and `description` in frontmatter. Every skill is model-invoked, so `agents/openai.yaml` must omit the `policy` block and the frontmatter description must make automatic selection reliable. Every `agents/openai.yaml` has a `default_prompt` that explicitly mentions the installed invocation: `$mattpocock-skills:<skill-name>` for promoted plugin skills and `$<skill-name>` for standalone non-promoted skills. See [.agents/invocation.md](./.agents/invocation.md).
 
+Every skill that owns a **Decision prompt** — a bounded, user-owned choice — must point to a co-located `REQUEST-USER-INPUT.md` copy of the canonical [.agents/request-user-input.md](./.agents/request-user-input.md) contract. Run `npm run sync:request-user-input` after changing the canonical contract or adding an owner; `npm run validate` rejects missing, stale, or divergent copies. Skills that delegate the interaction to an owning skill inherit that behavior and carry no copy. Never make a skill enable `default_mode_request_user_input` or edit the user's Codex configuration.
+
 [`ask-matt`](./skills/engineering/ask-matt/SKILL.md) maps every user-reachable skill and how the flows relate. Whenever a user-reachable skill is added, renamed, removed, or changes place in a flow, update `ask-matt` and its docs page.
 
 To relink every non-deprecated skill into Codex's local harness directory, run `scripts/link-skills.sh`. Each entry is a symlink into this repo, so a `git pull` keeps installed skills current; rerun the script after adding, removing, or renaming a skill.

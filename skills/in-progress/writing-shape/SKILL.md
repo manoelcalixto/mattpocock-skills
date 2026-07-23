@@ -11,6 +11,8 @@ Then run a shaping session that produces a separate article document. This is **
 
 If the user did not say where to save the article, ask once and remember the path.
 
+When opening or format selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
+
 </what-to-do>
 
 <supporting-info>

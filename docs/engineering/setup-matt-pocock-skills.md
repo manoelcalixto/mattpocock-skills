@@ -23,7 +23,7 @@ Reach for it **once per repo, before the first use of any other engineering skil
 
 ## The three decisions
 
-It leads each with a recommended answer you can accept in a word, and skips whatever it can already infer — so most runs are a couple of quick confirmations:
+It leads each with a recommended answer you can accept in a word, skips whatever it can already infer, and uses native Codex prompts for the remaining bounded choices when available — so most runs are a couple of quick decisions:
 
 - **Issue tracker** — where work is tracked, so `triage`/`to-spec`/`to-tickets` know whether to call `gh`, `glab`, write markdown under `.scratch/`, or follow a workflow you describe. GitHub, GitLab, local markdown, or other. (It proposes the one that matches your `git remote`.)
 - **Triage labels** — asked only if the `triage` skill is installed, and then just: keep the default labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)? Say no only if your tracker already uses other names, so `triage` applies real ones instead of creating duplicates.

@@ -8,7 +8,11 @@ Every `agents/openai.yaml` contains quoted `interface.display_name`, `interface.
 
 ## Dependencies between skills
 
-Express internal dependencies as harness-neutral prose, such as "Use the `grilling` skill." Reserve `$mattpocock-skills:skill-name` or standalone `$skill-name` for text the human should type. Shared references live with the skill that owns them; other skills use the owning skill rather than deep-linking across folders.
+Express internal dependencies as harness-neutral prose, such as "Use the `grilling` skill." Reserve `$mattpocock-skills:skill-name` or standalone `$skill-name` for text the human should type. Skill-specific references live with the skill that owns them; repository-wide Codex contracts with no independent invocation live under `.agents/`. Other skills use an owning skill rather than duplicating its context pointers.
+
+## Decision prompts
+
+A skill that directly creates a bounded, user-owned choice points to a co-located `REQUEST-USER-INPUT.md`, synchronized from [the canonical Codex-native user-input contract](./request-user-input.md). Co-location keeps standalone copies self-contained; validation keeps the generated files from becoming independent sources of truth. Consumers that delegate the interaction inherit the owning skill's behavior and carry no copy.
 
 ## Passive vs active domain work
 

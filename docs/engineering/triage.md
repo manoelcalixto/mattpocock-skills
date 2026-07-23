@@ -13,7 +13,7 @@ Start a new Codex thread and type `$mattpocock-skills:triage`.
 
 `triage` moves issues on your project's tracker through a small **state machine** of triage roles — categorise them, verify the claim, grill them into shape if needed, and leave a ready-for-agent brief.
 
-It never labels blind. Every triaged item carries exactly one **category** role (`bug` / `enhancement`) and one **state** role (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), and it *recommends and waits* — it tells you its category and state call with reasoning, then acts only on your direction. Before anything is promoted to `ready-for-agent`, it verifies the claim first: a bug gets reproduced, a PR gets checked out and run.
+It never labels blind. Every triaged item carries exactly one **category** role (`bug` / `enhancement`) and one **state** role (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), and it *recommends and waits* — it tells you its category and state call with reasoning, then acts only on your direction. Bounded maintainer choices use native Codex prompts when available. Before anything is promoted to `ready-for-agent`, it verifies the claim first: a bug gets reproduced, a PR gets checked out and run.
 
 ## When to reach for it
 

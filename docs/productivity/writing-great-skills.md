@@ -21,6 +21,10 @@ Type `$mattpocock-skills:writing-great-skills`, or the agent reaches for it auto
 
 Reach for it whenever you're authoring a new skill or editing an existing one and want it to behave the same way every time: deciding invocation mode, writing a description, choosing what lives in `SKILL.md` versus a linked file, or diagnosing why a skill misfires.
 
+## Codex-native interaction
+
+A bounded, user-owned choice is a **Decision prompt**. The skill that creates it carries a generated, co-located copy of the repository's canonical `request_user_input` contract, so a standalone installation remains self-contained; validation keeps every copy synchronized. Composed consumers inherit that behavior instead of carrying another copy. This gives interactive skills one consistent native UI, capability fallback, cadence, and timeout policy without turning the contract into another invocable skill.
+
 ## Cognitive load
 
 The concept the whole reference turns on is **cognitive load** — and its counterpart, **context load**. Every skill spends one or the other:

@@ -11,6 +11,8 @@ The delightful UX is already solved by [template.sh](template.sh) — progress w
 
 A wizard is ephemeral by default — built for one run, saved to a scratch or `scripts/` path, deleted when the job's done. Commit it only when the user wants a repeatable setup path that should live in the repo.
 
+When stage approval or another bounded choice becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
+
 ## Process
 
 ### 1. Scope the procedure

@@ -18,6 +18,10 @@ A `wayfinder` unit — a child **Issue** of a `wayfinder:map` holding a *questio
 **Triage role**:
 A canonical state-machine label applied to an **Issue** during triage (e.g. `needs-triage`, `ready-for-afk`). Each role maps to a real label string in the **Issue tracker** via `docs/agents/triage-labels.md`.
 
+**Decision prompt**:
+A bounded, user-owned choice among mutually exclusive options. It is distinct from an open question and from a discoverable fact.
+_Avoid_: confirmation, question, input gate
+
 ## Relationships
 
 - An **Issue tracker** holds many **Issues**

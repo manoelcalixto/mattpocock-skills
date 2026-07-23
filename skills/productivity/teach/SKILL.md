@@ -5,6 +5,8 @@ description: Teach a skill or concept as a stateful, multi-session learning proj
 
 The user has asked you to teach them something. This is a stateful request - they intend to learn the topic over multiple sessions.
 
+When this skill reaches a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
+
 ## Teaching Workspace
 
 Treat the current directory as a teaching workspace. The state of their learning is captured in this directory in several files:
