@@ -17,7 +17,7 @@ A skill's job is to wrangle determinism out of a stochastic system, so the goal 
 
 ## When to reach for it
 
-Type `$mattpocock-skills:writing-great-skills`, or the agent reaches for it automatically when a task fits.
+You invoke this by typing `$mattpocock-skills:writing-great-skills` — the agent won't reach for it on its own.
 
 Reach for it whenever you're authoring a new skill or editing an existing one and want it to behave the same way every time: deciding invocation mode, writing a description, choosing what lives in `SKILL.md` versus a linked file, or diagnosing why a skill misfires.
 
@@ -34,7 +34,7 @@ The concept the whole reference turns on is **cognitive load** — and its count
 
 Both use frontmatter containing only `name` and `description`, plus Codex UI metadata and a default prompt containing the exact installed invocation in `agents/openai.yaml`.
 
-This repository requires every skill to be model-invoked, so its descriptions must earn their context load with clear trigger boundaries and `agents/openai.yaml` must omit the invocation policy. The user-invoked option applies only to other collections whose standards allow it. In those collections, cognitive load becomes the counter-pressure: when user-invoked skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
+Most of these skills are user-invoked, which is why cognitive load is the pressure the whole system is built to manage: when user-invoked skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
 
 ## The other levers
 

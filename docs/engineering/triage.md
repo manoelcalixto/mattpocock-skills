@@ -17,7 +17,7 @@ It never labels blind. Every triaged item carries exactly one **category** role 
 
 ## When to reach for it
 
-Type `$mattpocock-skills:triage` and describe what you want in natural language, or let the agent reach for it automatically when a task fits: "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
+You invoke this by typing `$mattpocock-skills:triage` and describing what you want in natural language — the agent won't reach for it on its own. "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
 
 Reach for it when your issue tracker has raw, unevaluated reports and you want them sorted, verified, and turned into work an agent or human can pick up. To turn a settled conversation into a fresh spec instead, use [to-spec](https://aihero.dev/skills-to-spec); to split an existing spec into tickets, use [to-tickets](https://aihero.dev/skills-to-tickets). `triage` is the reverse direction — it processes what's *already* landed in the tracker.
 
