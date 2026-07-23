@@ -35,7 +35,7 @@ It speaks in the shared design vocabulary (**module**, **interface**, **depth**,
 
 The output is a browser-ready HTML file written to your OS temp directory — nothing lands in the repo. Each candidate is a card with the files involved, the friction, a plain-English solution, the benefit in terms of locality and leverage, a before/after diagram, and a `Strong` / `Worth exploring` / `Speculative` badge. It closes with the one it would tackle first.
 
-Then it stops and asks which one you want to explore. Pick one and it runs the [grilling](https://aihero.dev/skills-grilling) loop over that design — constraints, what sits behind the seam, which tests survive — updating the domain model inline as decisions crystallise.
+Then it stops and asks which one you want to explore. A bounded candidate choice uses a native Codex prompt when available; larger candidate sets remain easy to select by the names in the report. Pick one and it runs the [grilling](https://aihero.dev/skills-grilling) loop over that design — constraints, what sits behind the seam, which tests survive — updating the domain model inline as decisions crystallise.
 
 ## Where it fits
 

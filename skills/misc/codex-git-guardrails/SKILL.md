@@ -7,6 +7,8 @@ description: Set up Codex hooks that block dangerous git commands before executi
 
 Install a `PreToolUse` hook that intercepts Codex's `Bash` tool alias and rejects dangerous git commands with exit code 2.
 
+When installation scope or customization becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+
 The bundled script blocks:
 
 - `git push`, including force pushes.

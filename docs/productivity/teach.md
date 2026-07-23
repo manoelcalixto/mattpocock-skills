@@ -35,7 +35,7 @@ Reach for it when you want to *learn* a topic over time — a language, a framew
 
 ## Mission, and the zone of proximal development
 
-Every lesson hangs off the **mission**. Without it, knowledge has nothing to attach to and lessons feel abstract — so the mission is the first thing `teach` pins down and keeps updating as you grow. From the mission and your learning records it computes your **zone of proximal development**: the next lesson should challenge you *just enough*, no more.
+Every lesson hangs off the **mission**. Without it, knowledge has nothing to attach to and lessons feel abstract — so the mission is the first thing `teach` pins down and keeps updating as you grow. Mission changes remain yours to approve, surfaced as native Codex prompts when the choice is bounded and the UI is available. From the mission and your learning records it computes your **zone of proximal development**: the next lesson should challenge you *just enough*, no more.
 
 ## Storage strength, not fluency
 

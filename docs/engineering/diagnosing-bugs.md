@@ -32,6 +32,7 @@ It gives you a ladder of ways to build that loop — failing test, curl script, 
 - It builds and runs a repro command *before* theorising — and pastes the invocation and its red output.
 - The loop asserts the symptom you actually reported, not a nearby failure.
 - Hypotheses arrive as a ranked, falsifiable list shown to you before any are tested.
+- Bounded choices at human checkpoints use native Codex prompts when available; the non-blocking hypothesis checkpoint can continue with the stated ranking.
 - Debug instrumentation is tagged (`[DEBUG-...]`) and grepped away before it declares done.
 
 ## Where it fits

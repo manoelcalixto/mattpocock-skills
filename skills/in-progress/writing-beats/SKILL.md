@@ -9,6 +9,8 @@ The user has passed (or will pass) a markdown file of raw material. This is **ex
 
 If the user did not say where to save the article, ask once and remember the path.
 
+When candidate-beat selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+
 Then run a beat-by-beat journey, choose-your-own-adventure style:
 
 1. **Establish the prerequisites.** Before any beats, settle with the user what the audience already knows walking in — the concepts that are **grounded** from the start. Everything else must be grounded by a beat before a later beat can use it. See [Grounding](#grounding).

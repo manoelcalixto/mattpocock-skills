@@ -56,10 +56,28 @@ Use `$mattpocock-skills:ask-matt` when you are unsure which flow fits. For a hug
 ## Codex-native behavior
 
 - **Explicit skills:** managed plugin skills use `$mattpocock-skills:skill-name`; standalone skills use `$skill-name`; `/...` is reserved for Codex commands.
+- **Decision prompts:** bounded choices use Codex's native `request_user_input` UI when available; free-form questions and compatibility fallbacks stay concise and textual.
 - **Sessions:** `/compact` summarizes the same thread, `/fork` preserves full history in a branch, `/side` handles tangents, `/resume` reopens persisted work, and `$mattpocock-skills:handoff` creates a curated artifact only for a genuinely clean `/new` thread.
 - **Multi-agent:** `orchestrate-agents` uses Codex MultiAgent V2 and GPT-5.6 Sol only, selects explicit task-shaped effort, defaults to isolated briefs, waits on mailbox events, respects available slots, and protects the shared working directory.
 - **Hooks:** trusted `PreToolUse` hooks are configured in `.codex/config.toml` or `~/.codex/config.toml`.
 - **Repository instructions:** `AGENTS.md` is the only canonical agent-instructions file.
+
+### Native decision prompts in Default mode
+
+`request_user_input` is available in Plan mode. To also make it available to interactive skills in Default mode, opt into Codex's under-development feature:
+
+```bash
+codex features enable default_mode_request_user_input
+```
+
+The equivalent persistent configuration in `~/.codex/config.toml` is:
+
+```toml
+[features]
+default_mode_request_user_input = true
+```
+
+The feature is disabled by default. Skills detect whether the tool is actually available and fall back to a concise plain-text question; they never enable the feature or edit Codex configuration themselves. See the [Codex-native user-input contract](./.agents/request-user-input.md) for the option shape, timeout policy, and upstream source references.
 
 ## Reference
 
