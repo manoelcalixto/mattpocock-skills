@@ -9,7 +9,7 @@ Make every package in this repo a **deep module**: a lot of behaviour behind a s
 
 Use the `codebase-design` skill for the vocabulary (deep module, interface, seam, depth), and use its language throughout.
 
-When package-root selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When package-root selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 ## The shape this enforces
 

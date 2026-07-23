@@ -9,7 +9,7 @@ The user has passed (or will pass) a markdown file of raw material. This is **ex
 
 If the user did not say where to save the article, ask once and remember the path.
 
-When candidate-beat selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When candidate-beat selection becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 Then run a beat-by-beat journey, choose-your-own-adventure style:
 

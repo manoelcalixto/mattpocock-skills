@@ -11,6 +11,9 @@ const promotedBuckets = new Set(["engineering", "productivity"]);
 const fail = (message) => errors.push(message);
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const exists = (relativePath) => fs.existsSync(path.join(root, relativePath));
+const decisionContract = read(".agents/request-user-input.md");
+const decisionContractPointer = "./REQUEST-USER-INPUT.md";
+let decisionContractOwners = 0;
 const listDirs = (relativePath) =>
   fs
     .readdirSync(path.join(root, relativePath), { withFileTypes: true })
@@ -56,6 +59,21 @@ for (const bucket of buckets) {
     }
     if (typeof frontmatter?.description !== "string" || !frontmatter.description.trim()) {
       fail(`${skillPath}/SKILL.md: description must be a non-empty string`);
+    }
+
+    const localDecisionContractPath = `${skillPath}/REQUEST-USER-INPUT.md`;
+    if (contents.includes(decisionContractPointer)) {
+      decisionContractOwners += 1;
+      if (!exists(localDecisionContractPath)) {
+        fail(`${localDecisionContractPath}: missing synchronized Decision prompt contract`);
+      } else if (read(localDecisionContractPath) !== decisionContract) {
+        fail(`${localDecisionContractPath}: diverges from .agents/request-user-input.md`);
+      }
+    } else if (exists(localDecisionContractPath)) {
+      fail(`${localDecisionContractPath}: stale copy without a SKILL.md context pointer`);
+    }
+    if (contents.includes("../../../.agents/request-user-input.md")) {
+      fail(`${skillPath}/SKILL.md: Decision prompt contract must be co-located for standalone installs`);
     }
 
     const metadataPath = `${skillPath}/agents/openai.yaml`;
@@ -104,6 +122,9 @@ for (const bucket of buckets) {
 
 if (skills.length !== 38) {
   fail(`expected 38 active skills, found ${skills.length}`);
+}
+if (decisionContractOwners !== 19) {
+  fail(`expected 19 Decision prompt owners, found ${decisionContractOwners}`);
 }
 
 const promoted = skills.filter((skill) => promotedBuckets.has(skill.bucket));

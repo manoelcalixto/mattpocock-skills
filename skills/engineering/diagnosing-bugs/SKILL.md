@@ -9,7 +9,7 @@ A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `CONTEXT.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
-When this skill reaches a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When this skill reaches a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 ## Phase 1 — Build a feedback loop
 

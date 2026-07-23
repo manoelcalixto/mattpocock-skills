@@ -23,7 +23,7 @@ Reach for it whenever you're authoring a new skill or editing an existing one an
 
 ## Codex-native interaction
 
-A bounded, user-owned choice is a **Decision prompt**. The skill that creates it owns a pointer to the repository's shared `request_user_input` contract; composed consumers inherit that behavior instead of restating it. This gives interactive skills one consistent native UI, capability fallback, cadence, and timeout policy without turning the contract into another invocable skill.
+A bounded, user-owned choice is a **Decision prompt**. The skill that creates it carries a generated, co-located copy of the repository's canonical `request_user_input` contract, so a standalone installation remains self-contained; validation keeps every copy synchronized. Composed consumers inherit that behavior instead of carrying another copy. This gives interactive skills one consistent native UI, capability fallback, cadence, and timeout policy without turning the contract into another invocable skill.
 
 ## Cognitive load
 

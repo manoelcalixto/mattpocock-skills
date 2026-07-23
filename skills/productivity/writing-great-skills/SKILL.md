@@ -24,7 +24,7 @@ When user-invoked skills multiply past what you can remember, that piled-up cogn
 
 ## Decision prompts
 
-When a skill directly creates a bounded, user-owned choice, treat it as a **Decision prompt** and apply the [Codex-native user-input contract](../../../.agents/request-user-input.md). Put that context pointer in the owning skill; a consumer that delegates the interaction inherits it.
+When a skill directly creates a bounded, user-owned choice, treat it as a **Decision prompt** and apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md). Put a synchronized, co-located copy in the owning skill so standalone installs remain self-contained; a consumer that delegates the interaction inherits it.
 
 ## Writing the description
 

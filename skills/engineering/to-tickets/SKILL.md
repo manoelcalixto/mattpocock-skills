@@ -9,7 +9,7 @@ Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet 
 
 The issue tracker and triage label vocabulary should have been provided to you. If not, ask the human to run `$mattpocock-skills:setup-matt-pocock-skills`.
 
-When reviewing the proposed breakdown reaches a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When reviewing the proposed breakdown reaches a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 ## Process
 

@@ -12,7 +12,7 @@ Express internal dependencies as harness-neutral prose, such as "Use the `grilli
 
 ## Decision prompts
 
-A skill that directly creates a bounded, user-owned choice points to [the Codex-native user-input contract](./request-user-input.md). Consumers that delegate the interaction inherit the owning skill's behavior. This keeps the tool schema, Default-mode feature, fallback, cadence, and timeout policy in one external reference.
+A skill that directly creates a bounded, user-owned choice points to a co-located `REQUEST-USER-INPUT.md`, synchronized from [the canonical Codex-native user-input contract](./request-user-input.md). Co-location keeps standalone copies self-contained; validation keeps the generated files from becoming independent sources of truth. Consumers that delegate the interaction inherit the owning skill's behavior and carry no copy.
 
 ## Passive vs active domain work
 

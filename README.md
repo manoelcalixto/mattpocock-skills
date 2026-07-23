@@ -35,6 +35,8 @@ npx skills@latest add manoelcalixto/mattpocock-skills
 
 Maintainers of this clone can link every non-deprecated skill directly into Codex with `scripts/link-skills.sh`. Directly linked or copied skills use the standalone `$skill-name` form; the examples below use the managed plugin namespace.
 
+Interactive standalone copies remain self-contained: each skill that owns a Decision prompt includes a generated `REQUEST-USER-INPUT.md` synchronized from the repository's canonical contract.
+
 ## Core workflow
 
 The default engineering chain is:

@@ -9,7 +9,7 @@ TDD is the red → green loop. This skill is the reference that makes that loop 
 
 When exploring the codebase, read `CONTEXT.md` (if it exists) so test names and interface vocabulary match the project's domain language, and respect ADRs in the area you're touching.
 
-When seam approval becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When seam approval becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 ## What a good test is
 

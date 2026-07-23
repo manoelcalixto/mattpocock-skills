@@ -7,7 +7,7 @@ description: Route a Codex conversation to compact, fork, side thread, resume, c
 
 Choose the smallest Codex-native transition that preserves the context the user actually needs. Infer the destination from the user's request and current conversation; ask only when two materially different routes remain plausible.
 
-When that ambiguity becomes a **Decision prompt**, apply the [Codex-native user-input contract](../../../.agents/request-user-input.md).
+When that ambiguity becomes a **Decision prompt**, apply the [Codex-native user-input contract](./REQUEST-USER-INPUT.md).
 
 ## Routes
 
