@@ -1,5 +1,13 @@
 # mattpocock-skills
 
+## 1.3.0
+
+### Minor Changes
+
+- [#3](https://github.com/manoelcalixto/mattpocock-skills/pull/3) [`148788d`](https://github.com/manoelcalixto/mattpocock-skills/commit/148788d9e9232b6eb42ae45aa6796315028feada) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Adopt Codex-native decision prompts across interactive skills.
+
+  Document the opt-in `default_mode_request_user_input` feature, centralize tool shape, fallback, cadence, and timeout rules, and bundle a synchronized contract with each direct interaction owner so standalone copies remain self-contained.
+
 ## 1.2.0
 
 ### Minor Changes
