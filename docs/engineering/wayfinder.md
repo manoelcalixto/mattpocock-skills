@@ -15,7 +15,7 @@ Start a new Codex thread and type `$mattpocock-skills:wayfinder`.
 
 ## When to reach for it
 
-Type `$mattpocock-skills:wayfinder`, or the agent reaches for it automatically when a task fits.
+You invoke this by typing `$mattpocock-skills:wayfinder` — the agent won't reach for it on its own.
 
 Reach for it when an effort is **more than one agent session can hold** and the route to its **destination** is still foggy — you can feel the shape of the work but can't yet write it down as a spec or a plan. For turning an *already-clear* thread into a spec, use [to-spec](https://aihero.dev/skills-to-spec); for slicing an already-understood plan into buildable tickets, use [to-tickets](https://aihero.dev/skills-to-tickets). Wayfinder sits upstream of both: it's what you run when there's too much fog to spec directly.
 

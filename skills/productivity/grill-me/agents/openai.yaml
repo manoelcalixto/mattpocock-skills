@@ -2,3 +2,5 @@ interface:
   display_name: "Grill Me"
   short_description: "Sharpen a plan through interview"
   default_prompt: "Use $mattpocock-skills:grill-me to sharpen this plan through a relentless interview."
+policy:
+  allow_implicit_invocation: false

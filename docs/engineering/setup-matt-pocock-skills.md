@@ -17,7 +17,7 @@ It writes config, it does not hard-code behaviour. The engineering chain assumes
 
 ## When to reach for it
 
-Type `$mattpocock-skills:setup-matt-pocock-skills`, or the agent reaches for it automatically when a task fits.
+You invoke this by typing `$mattpocock-skills:setup-matt-pocock-skills` — the agent won't reach for it on its own.
 
 Reach for it **once per repo, before the first use of any other engineering skill**. If [triage](https://aihero.dev/skills-triage), [to-spec](https://aihero.dev/skills-to-spec), or [to-tickets](https://aihero.dev/skills-to-tickets) start guessing where your issues live or applying labels that don't exist, they haven't been set up here yet. Re-run it only to switch issue trackers or start over — day-to-day tweaks are just edits to `docs/agents/*.md`.
 

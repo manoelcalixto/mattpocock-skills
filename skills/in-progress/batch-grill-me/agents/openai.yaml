@@ -2,3 +2,5 @@ interface:
   display_name: "Batch Grill Me"
   short_description: "Sharpen a plan a round of questions at a time"
   default_prompt: "Use $batch-grill-me to sharpen this plan in frontier rounds."
+policy:
+  allow_implicit_invocation: false
