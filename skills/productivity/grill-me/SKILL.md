@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: A relentless interview to sharpen a plan or design.
+description: Relentlessly interview the user to sharpen a plan, decision, or design. Use when the user wants their thinking stress-tested outside a repository or asks to be grilled.
 ---
 
 Run a `$grilling` session.

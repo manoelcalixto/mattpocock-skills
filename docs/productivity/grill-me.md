@@ -27,7 +27,7 @@ It asks **one question at a time** and waits. It never dumps a batch of question
 
 ## When to reach for it
 
-Type `$grill-me`; Codex will not select it implicitly.
+Type `$grill-me`, or Codex may select it automatically when you ask to be grilled or want a plan, decision, or design stress-tested outside a repository.
 
 Reach for it before you build, when a plan feels roughly right but you can sense unresolved decisions hiding in it — the moment you want the soft spots found and forced into the open. If you want that same interrogation to also leave a paper trail of ADRs and a glossary behind, use [grill-with-docs](../engineering/grill-with-docs.md) instead. And if the effort is too big to hold in one session and the route to the goal is still foggy — a greenfield project, a huge feature build — start further upstream with [wayfinder](../engineering/wayfinder.md), which charts it as a map of decisions first and then merges back into this flow.
 
@@ -39,4 +39,4 @@ The session walks the plan as a tree of decisions, resolving dependencies betwee
 
 ## Where it fits
 
-`grill-me` is a reach-for-it-anytime standalone — the pre-build stress test you run whenever a plan needs hardening. It is the stateless, user-invoked front door to the [grilling](../productivity/grilling.md) primitive; its closest neighbour is [grill-with-docs](../engineering/grill-with-docs.md), the stateful sibling that runs the same interview but additionally records the decisions as ADRs and a glossary. If the outcome is a spec you want written down, hand off to [to-spec](../engineering/to-spec.md), which synthesises the settled understanding into a spec without re-interviewing you. When you're unsure which flow fits, [ask-matt](../engineering/ask-matt.md) routes you.
+`grill-me` is a reach-for-it-anytime standalone — the pre-build stress test you run whenever a plan needs hardening. It is the stateless front door to the [grilling](../productivity/grilling.md) primitive; its closest neighbour is [grill-with-docs](../engineering/grill-with-docs.md), the stateful sibling that runs the same interview but additionally records the decisions as ADRs and a glossary. If the outcome is a spec you want written down, hand off to [to-spec](../engineering/to-spec.md), which synthesises the settled understanding into a spec without re-interviewing you. When you're unsure which flow fits, [ask-matt](../engineering/ask-matt.md) routes you.

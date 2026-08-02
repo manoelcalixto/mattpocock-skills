@@ -27,7 +27,7 @@ The grilling **leaves a paper trail**. A plain interview sharpens your thinking 
 
 ## When to reach for it
 
-Type `$grill-with-docs`; Codex will not select it implicitly.
+Type `$grill-with-docs`, or Codex may select it automatically when a repository-backed plan needs pressure-testing and a durable glossary or ADR trail.
 
 Reach for it at the very start of a change, when the plan is still fuzzy and the domain language isn't settled, and you want to stress-test both before any code exists. If you only want the interview and don't need the artifacts, use [grilling](../productivity/grilling.md); if the plan is already clear and you just need to pin down or record terminology, use [domain-modeling](../engineering/domain-modeling.md). And if the change is too big to hold in one session and its route is still foggy — a greenfield project, a huge feature build — start upstream with [wayfinder](../engineering/wayfinder.md): it charts the effort as a map of decisions, then hands back to this main flow once the way is clear.
 

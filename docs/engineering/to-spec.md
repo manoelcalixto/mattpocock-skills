@@ -27,7 +27,7 @@ It does **not** interview you again. By the time you reach for it, the alignment
 
 ## When to reach for it
 
-Type `$to-spec`; Codex will not select it implicitly.
+Type `$to-spec`, or Codex may select it automatically when you want the settled conversation synthesized into a spec without another interview.
 
 Reach for it once a change has been talked through and the domain language is settled, and you want that shared understanding written down before any code is written. If you *haven't* aligned yet, grill first — for that, use [grill-with-docs](../engineering/grill-with-docs.md). To split the finished spec into tickets, use [to-tickets](../engineering/to-tickets.md).
 

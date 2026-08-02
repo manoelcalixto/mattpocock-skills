@@ -27,7 +27,7 @@ A skill's job is to wrangle determinism out of a stochastic system, so the goal 
 
 ## When to reach for it
 
-Type `$writing-great-skills`; Codex will not select it implicitly.
+Type `$writing-great-skills`, or Codex may select it automatically when you are authoring or revising an agent skill.
 
 Reach for it whenever you're authoring a new skill or editing an existing one and want it to behave the same way every time: deciding invocation mode, writing a description, choosing what lives in `SKILL.md` versus a linked file, or diagnosing why a skill misfires.
 
@@ -38,7 +38,7 @@ The concept the whole reference turns on is **cognitive load** — and its count
 - A **model-invoked** skill keeps a description in the window every turn, so it costs **context load** but fires on its own.
 - A **user-invoked** skill strips that description; it costs zero context load, but now *you* are the index that has to remember it exists — that's **cognitive load**.
 
-Most of these skills are user-invoked, which is why cognitive load is the pressure the whole system is built to manage: when user-invoked skills multiply past what you can hold in your head, the cure is a **router skill** that names the others and when to reach for each. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, model- or user-invoked — become the same trade made in different places.
+This distribution makes every promoted skill model-invoked, accepting the context load so Codex can discover the whole set while every skill remains explicitly reachable with `$skill-name`. In sets that opt skills out of implicit selection, a **router skill** can still reduce the cognitive load of remembering them. Once you're thinking in these two loads, most authoring decisions — split or don't, inline or disclose, implicit or explicit-only — become the same trade made in different places.
 
 ## The other levers
 
@@ -51,4 +51,4 @@ The rest of the reference is the toolkit for spending those loads well:
 
 ## Where it fits
 
-This is a reach-for-it-anytime standalone reference — the meta-skill you consult while building the rest of the set, not a step in a chain. Its natural neighbour is any router you maintain, because a router is the direct cure for the cognitive load that user-invoked skills pile up; when you're unsure which skill or flow fits a task, [ask-matt](../engineering/ask-matt.md) routes you over the whole set.
+This is a reach-for-it-anytime standalone reference — the meta-skill you consult while building the rest of the set, not a step in a chain. Its natural neighbour is any router you maintain; when you're unsure which skill or flow fits a task, [ask-matt](../engineering/ask-matt.md) routes you over the whole set.

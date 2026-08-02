@@ -23,11 +23,11 @@ Select Codex when prompted. Use `npx skills update ask-matt` to refresh an edita
 
 `ask-matt` is the router over the skills in this repo. You describe the situation you're in; it tells you which skill or flow fits and in what order to run them.
 
-It **does no work itself**. It doesn't grill, write a spec, or fix anything — it only orients. It exists for the **user-invoked** skills above all: nothing fires those for you, so *you* have to remember they exist, and `ask-matt` is the memory you offload that to. It also points at the model-invoked skills you'd reach for by name — `$tdd`, `$diagnosing-bugs`, `$prototype`, `$code-review`, and the two vocabulary references, `$domain-modeling` and `$codebase-design`. It answers "which one, and when", then hands you off to the skill that actually does the job.
+It **does no work itself**. It doesn't grill, write a spec, or fix anything — it only orients. It exists so neither you nor Codex has to remember the whole flow map at once. It answers "which skill, and when", then hands you off to the workflow or reusable discipline that actually does the job.
 
 ## When to reach for it
 
-Type `$ask-matt`; Codex will not select it implicitly.
+Type `$ask-matt`, or Codex may select it automatically when you are unsure which skill or workflow fits your situation.
 
 Reach for it whenever you're unsure which skill or flow a situation calls for: you have an idea and don't know where to start, a pile of bug reports and don't know if they're for `$triage`, or two skills that look interchangeable and you can't tell them apart. If you already know the skill you want, skip the router and invoke it directly.
 

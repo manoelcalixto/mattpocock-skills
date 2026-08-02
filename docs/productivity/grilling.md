@@ -37,7 +37,7 @@ The mental model is a **decision tree**: every plan branches into decisions, and
 
 ## Pulled out on purpose
 
-`grilling` is the **single source of truth** for the interview technique, split out as a model-invoked **primitive** so every skill that needs an interview can reach it instead of reinventing one. [grill-me](../productivity/grill-me.md) and [grill-with-docs](../engineering/grill-with-docs.md) are its two user-invoked front doors, but [improve-codebase-architecture](../engineering/improve-codebase-architecture.md) and [triage](../engineering/triage.md) also lean on it to pressure-test their own decisions.
+`grilling` is the **single source of truth** for the interview technique, split out as a reusable **primitive** so every skill that needs an interview can reach it instead of reinventing one. [grill-me](../productivity/grill-me.md) and [grill-with-docs](../engineering/grill-with-docs.md) are its two front doors, while [improve-codebase-architecture](../engineering/improve-codebase-architecture.md) and [triage](../engineering/triage.md) also lean on it to pressure-test their own decisions.
 
 Keeping the technique in one place means you can also reach for it directly when you just want the interview — without the ADR-writing or ticket-shaping that its wrappers add on top.
 

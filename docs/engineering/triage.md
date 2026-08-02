@@ -27,7 +27,7 @@ It never labels blind. Every triaged item carries exactly one **category** role 
 
 ## When to reach for it
 
-Type `$triage` and describe what you want in natural language; Codex will not select it implicitly. "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
+Type `$triage` and describe what you want in natural language, or Codex may select it automatically for incoming issues and external PRs you did not author. "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
 
 Reach for it when your issue tracker has raw, unevaluated reports and you want them sorted, verified, and turned into work an agent or human can pick up. To turn a settled conversation into a fresh spec instead, use [to-spec](../engineering/to-spec.md); to split an existing spec into tickets, use [to-tickets](../engineering/to-tickets.md). `triage` is the reverse direction — it processes what's *already* landed in the tracker.
 

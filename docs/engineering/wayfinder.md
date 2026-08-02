@@ -25,7 +25,7 @@ Select Codex when prompted. Use `npx skills update wayfinder` to refresh an edit
 
 ## When to reach for it
 
-Type `$wayfinder`; Codex will not select it implicitly.
+Type `$wayfinder`, or Codex may select it automatically when a huge, foggy effort exceeds one agent session and the implementation path is not yet visible.
 
 Reach for it when an effort is **more than one agent session can hold** and the route to its **destination** is still foggy — you can feel the shape of the work but can't yet write it down as a spec or a plan. For turning an *already-clear* thread into a spec, use [to-spec](../engineering/to-spec.md); for slicing an already-understood plan into buildable tickets, use [to-tickets](../engineering/to-tickets.md). Wayfinder sits upstream of both: it's what you run when there's too much fog to spec directly.
 

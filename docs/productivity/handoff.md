@@ -27,7 +27,7 @@ It does **not** re-state what already lives elsewhere. Anything captured in a sp
 
 ## When to reach for it
 
-Type `$handoff`; Codex will not select it implicitly. Pass a note about what the next session is for and the document is tailored to it.
+Type `$handoff`, or Codex may select it automatically when you need a fresh context window without losing the current conversation. Pass a note about what the next session is for and the document is tailored to it.
 
 Reach for this when a conversation has gone long enough that its context is at risk — you're near a context limit, wrapping for the day, or deliberately handing the work to another agent — and you want the thread preserved without dragging the whole transcript along.
 

@@ -1,6 +1,6 @@
 ---
 name: implement
-description: "Implement a piece of work based on a spec or set of tickets."
+description: Implement work from a spec or set of tickets with tests and final review. Use when the user asks to build an agreed plan, execute agent-ready tickets, or continue a specified implementation.
 ---
 
 Implement the work described by the user in the spec or tickets.

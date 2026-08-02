@@ -1,6 +1,6 @@
 ---
 name: writing-great-skills
-description: Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable.
+description: Design or revise predictable, concise agent skills. Use when the user is authoring a skill, choosing invocation or disclosure boundaries, improving a description, or diagnosing why a skill behaves inconsistently.
 ---
 
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same _process_ every run, not producing the same output — is the root virtue; every lever below serves it.
@@ -9,14 +9,14 @@ A skill exists to wrangle determinism out of a stochastic system. **Predictabili
 
 ## Invocation
 
-Two choices, trading different costs. Both keep the Agent Skills specification's required `description` field:
+Codex supports two choices, trading different costs. Both keep the Agent Skills specification's required `description` field:
 
 - A **model-invoked** skill is advertised to Codex for implicit selection, so the agent can fire it autonomously and the human can still type `$skill-name`. It contributes to **context load** through its advertised metadata. Mechanics: omit the `policy` block from `agents/openai.yaml`, and write a model-facing description with rich trigger phrasing ("Use when the user wants…, mentions…").
-- A **user-invoked** skill is hidden from implicit selection: only the human, typing or selecting `$skill-name`, starts it. It reduces model-facing context load but spends **cognitive load**: _you_ are the index that must remember it exists. Mechanics: set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; write a concise human-facing description with trigger lists stripped.
+- A **user-invoked** skill is hidden from implicit selection: only the human, typing or selecting `$skill-name`, starts it. It reduces model-facing context load but spends **cognitive load**: _you_ are the index that must remember it exists. Mechanics: use Codex's product-specific implicit-invocation opt-out in `agents/openai.yaml`, and write a concise human-facing description with trigger lists stripped.
 
-Pick model-invocation only when Codex should reach the skill on its own. If it only ever starts by hand, make it user-invoked.
+This distribution makes every promoted skill model-invoked: omit the invocation `policy` block, give every description concrete trigger phrasing, and keep `$skill-name` available when the human wants deterministic selection. Outside this distribution, pick model-invocation only when Codex should reach the skill on its own; if it only ever starts by hand, make it user-invoked.
 
-When user-invoked skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one user-invoked skill that names the others and when to reach for each.
+When skills multiply past what you can remember, that piled-up cognitive load is cured by a **router skill**: one skill that names the others and when to reach for each.
 
 ## Writing the description
 

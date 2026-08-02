@@ -29,7 +29,7 @@ Unless you point it at a specific area, it also scopes itself to where developme
 
 ## When to reach for it
 
-Type `$improve-codebase-architecture`; Codex will not select it implicitly.
+Type `$improve-codebase-architecture`, or Codex may select it automatically when you want to find deepening opportunities, improve module boundaries, or make a codebase easier for agents to navigate.
 
 Reach for it as a periodic health check: every few days, or whenever a codebase has started to feel like it takes too much bouncing between small modules to understand one concept. It reads the existing architecture and proposes where to deepen it. If you already know the module you want to redesign and just need the vocabulary to think it through, use [codebase-design](../engineering/codebase-design.md) instead — this skill is the survey that finds the candidates; that one is the design bench.
 

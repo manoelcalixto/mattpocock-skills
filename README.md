@@ -33,7 +33,7 @@ After either installation, run `$setup-matt-pocock-skills` once in each engineer
 
 ## Use
 
-Type `$ask-matt` when you know the situation but not the workflow. Explicit workflows use Codex's `$skill-name` syntax; reusable disciplines may also be selected automatically when their trigger matches.
+Type `$ask-matt` when you know the situation but not the workflow. Every promoted skill can be invoked explicitly with Codex's `$skill-name` syntax or selected automatically when its trigger matches.
 
 The main build flow is:
 
@@ -45,7 +45,7 @@ Use `$grill-me` for a stateless interview outside a repository, `$triage` for in
 
 ## Engineering skills
 
-### Explicit workflows
+### Workflow entry points
 
 - [ask-matt](docs/engineering/ask-matt.md) — route a situation to the right skill or flow.
 - [grill-with-docs](docs/engineering/grill-with-docs.md) — stress-test an idea while updating `CONTEXT.md` and ADRs.
@@ -70,7 +70,7 @@ Use `$grill-me` for a stateless interview outside a repository, `$triage` for in
 
 ## Productivity skills
 
-### Explicit workflows
+### Workflow entry points
 
 - [grill-me](docs/productivity/grill-me.md) — stress-test any plan one decision at a time.
 - [handoff](docs/productivity/handoff.md) — capture a conversation for a fresh Codex task.

@@ -1,5 +1,15 @@
 # mattpocock-skills
 
+## 2.0.1
+
+### Patch Changes
+
+- Enable implicit invocation for every promoted skill while preserving explicit `$skill-name` invocation.
+
+  - Remove the invocation opt-out from all promoted and workbench skill metadata.
+  - Add concrete trigger phrasing to the newly discoverable promoted workflows.
+  - Align the router, READMEs, and per-skill documentation with the uniform invocation contract.
+
 ## 2.0.0
 
 ### Major Changes
