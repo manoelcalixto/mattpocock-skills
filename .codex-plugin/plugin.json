@@ -1,0 +1,43 @@
+{
+  "name": "mattpocock-skills",
+  "version": "2.0.0",
+  "description": "Matt Pocock's engineering and productivity workflows, packaged as a native Codex plugin by the manoelcalixto fork.",
+  "author": {
+    "name": "Matt Pocock",
+    "url": "https://www.aihero.dev"
+  },
+  "homepage": "https://github.com/manoelcalixto/mattpocock-skills",
+  "repository": "https://github.com/manoelcalixto/mattpocock-skills",
+  "license": "MIT",
+  "keywords": [
+    "codex",
+    "engineering",
+    "skills",
+    "tdd",
+    "code-review",
+    "grilling",
+    "domain-modeling",
+    "productivity"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Matt Pocock Skills",
+    "shortDescription": "Engineering workflows for Codex",
+    "longDescription": "Use Matt Pocock's skill set in Codex for grilling ideas, writing specs and tickets, test-driven implementation, debugging, code review, architecture, domain modeling, and reusable productivity workflows. This Codex-focused distribution is maintained in the manoelcalixto fork.",
+    "developerName": "Matt Pocock",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/manoelcalixto/mattpocock-skills",
+    "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
+    "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
+    "defaultPrompt": [
+      "Use $ask-matt to help me choose the right workflow.",
+      "Use $grill-with-docs to sharpen this idea before implementation.",
+      "Use $diagnosing-bugs to debug this failure."
+    ]
+  }
+}

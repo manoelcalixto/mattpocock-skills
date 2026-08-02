@@ -18,19 +18,19 @@ How a skill is reached — and the two loads you pay for the choice.
 
 ### Model-Invoked
 
-A skill that keeps its **description** field, so the agent can see it and fire it autonomously — and the human can still type its name, so model-invocation always _includes_ user reach. There is no model-only state: a description only ever _adds_ agent discovery, never removes the human's. Pays a permanent **context load** on every turn in exchange for that discoverability. Reachable by other skills, because the description that makes it agent-discoverable makes it invocable. A model-invoked skill whose content is all **reference** is also one home for shared reference: another skill can invoke it, so reference needed by several skills lives in one place. Pick model-invocation only when the agent must reach the skill on its own; if it never fires except by hand, drop the description and pay no context load.
+A skill whose metadata Codex may use for implicit selection, so the agent can fire it autonomously and the human can still type `$skill-name`. It pays **context load** for that discoverability. In `agents/openai.yaml`, model invocation is the default: omit the `policy` block. Write its required **description** as a machine-facing trigger with concrete conditions. Pick model-invocation only when the agent should reach the skill on its own.
 
 _Avoid_: ability, tool, capability
 
 ### User-Invoked
 
-A skill with its **description** stripped — invisible to the agent and reachable only by the human typing its name (user-_only_, where **model-invoked** is user-_and-agent_). Trades agent-discoverability for zero **context load**. Because it has no description, nothing but the human can reach it: no other skill can fire it.
+A skill hidden from Codex's implicit selection and reachable only when the human types or selects `$skill-name` (user-_only_, where **model-invoked** is user-_and-agent_). It keeps the Agent Skills specification's required **description**, but sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. Its description is a concise human-facing picker summary rather than an autonomous trigger. This trades agent-discoverability for lower model-facing **context load**, while spending **cognitive load**.
 
 _Avoid_: procedure, workflow, command
 
 ### Description
 
-The skill's machine-readable trigger, and the one **context pointer** a **model-invoked** skill is forced to keep loaded at all times. Its mere presence _is_ the invocation axis: keep it and the skill is model-invoked (and reachable by other skills); delete it and the skill is **user-invoked**, reachable only by the human. The source of a model-invoked skill's **context load**.
+Required Agent Skills metadata that explains what the skill does. For a **model-invoked** skill, it is also the machine-readable trigger and top-level **context pointer** Codex uses for implicit selection. For a **user-invoked** skill, it is a concise picker summary; `agents/openai.yaml` policy, not the field's presence, disables implicit selection.
 
 _Avoid_: frontmatter, summary
 
@@ -42,7 +42,7 @@ _Avoid_: link, reference, import
 
 ### Context Load
 
-The cost a **model-invoked** skill imposes on the agent's context window — its **description**, always loaded, spending both tokens and attention. What **user-invoked** skills escape by having no description, and the brake on splitting into more model-invoked skills.
+The cost a **model-invoked** skill imposes on the agent's context window through metadata advertised for implicit selection, spending both tokens and attention. **User-invoked** skills reduce that model-facing load by opting out of implicit selection. This is the brake on splitting into more model-invoked skills.
 
 _Avoid_: token cost, context bloat
 
@@ -54,7 +54,7 @@ _Avoid_: human index, burden, overhead
 
 ### Router Skill
 
-A **user-invoked** skill whose job is to point at your other user-invoked skills — naming each and when to reach for it — so the human has one skill to remember instead of many. It can only hint, never fire them: user-invoked skills have no **description**, so nothing but the human can reach them. The cure for **cognitive load** when user-invoked skills multiply.
+A **user-invoked** skill whose job is to point at your other user-invoked skills — naming each and when to reach for it — so the human has one skill to remember instead of many. It can only recommend them, never silently start them: their policy requires explicit human invocation. The cure for **cognitive load** when user-invoked skills multiply.
 
 _Avoid_: dispatcher, menu, registry, index, router procedure
 
@@ -94,7 +94,7 @@ _Avoid_: supporting material, docs, background
 
 ### External Reference
 
-**Reference** that lives outside the skill system — a plain file, no **description**, no **steps**, not invocable — that any skill can point at. The home for shared reference that needn't fire on its own, and the only shared home two **user-invoked** skills can use, since neither has a description and so neither can fire the other.
+**Reference** that lives outside the skill system — a plain file, no skill metadata, no **steps**, not invocable — that any skill can point at. The home for shared reference that needn't fire on its own, and the shared home two **user-invoked** skills can use without one silently starting the other.
 
 _Avoid_: doc, resource, knowledge base
 

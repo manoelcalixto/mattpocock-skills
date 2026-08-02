@@ -1,14 +1,23 @@
-Quickstart:
+# Resolving Merge Conflicts
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=resolving-merge-conflicts
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update resolving-merge-conflicts
+npx skills add manoelcalixto/mattpocock-skills --skill=resolving-merge-conflicts
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/resolving-merge-conflicts)
+Select Codex when prompted. Use `npx skills update resolving-merge-conflicts` to refresh an editable install.
+
+[Skill source](../../skills/engineering/resolving-merge-conflicts/SKILL.md)
 
 ## What it does
 
@@ -18,9 +27,9 @@ It resolves by **intent**, not by text. Before touching a hunk it traces each si
 
 ## When to reach for it
 
-Type `/resolving-merge-conflicts`, or the agent reaches for it automatically when a task fits.
+Type `$resolving-merge-conflicts`, or Codex may select it automatically when a task fits.
 
-Reach for this when you're mid-merge or mid-rebase and git has stopped on conflicts it can't resolve itself. It's for the conflict in front of you — not for planning the merge or for debugging behaviour that broke afterwards. If the merge is done but something's now failing for reasons you can't see, use [diagnosing-bugs](https://aihero.dev/skills-diagnosing-bugs) instead.
+Reach for this when you're mid-merge or mid-rebase and git has stopped on conflicts it can't resolve itself. It's for the conflict in front of you — not for planning the merge or for debugging behaviour that broke afterwards. If the merge is done but something's now failing for reasons you can't see, use [diagnosing-bugs](../engineering/diagnosing-bugs.md) instead.
 
 ## Resolving by intent
 
@@ -37,4 +46,4 @@ That's why the primary sources matter. You can't preserve an intent you haven't 
 
 ## Where it fits
 
-A reach-for-it-anytime standalone: you invoke it at the moment a merge or rebase stalls, and it hands you back a clean, committed tree. Its natural neighbour is [diagnosing-bugs](https://aihero.dev/skills-diagnosing-bugs), because a merge that resolves cleanly but misbehaves afterwards is a diagnosis problem, not a conflict one. When you're unsure which skill fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+A reach-for-it-anytime standalone: you invoke it at the moment a merge or rebase stalls, and it hands you back a clean, committed tree. Its natural neighbour is [diagnosing-bugs](../engineering/diagnosing-bugs.md), because a merge that resolves cleanly but misbehaves afterwards is a diagnosis problem, not a conflict one. When you're unsure which skill fits, [ask-matt](../engineering/ask-matt.md) routes you.

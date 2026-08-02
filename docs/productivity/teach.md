@@ -1,14 +1,23 @@
-Quickstart:
+# Teach
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=teach
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update teach
+npx skills add manoelcalixto/mattpocock-skills --skill=teach
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/productivity/teach)
+Select Codex when prompted. Use `npx skills update teach` to refresh an editable install.
+
+[Skill source](../../skills/productivity/teach/SKILL.md)
 
 ## What it does
 
@@ -18,7 +27,7 @@ It does **not** teach from the model's own memory. Parametric knowledge is treat
 
 ## When to reach for it
 
-You invoke this by typing `/teach` — the agent won't reach for it on its own.
+Type `$teach`; Codex will not select it implicitly.
 
 Reach for it when you want to *learn* a topic over time — a language, a framework, yoga, theoretical physics — and want the sessions to accumulate rather than evaporate. It is not for a one-off explanation; if you just need something clarified in the moment, ask directly. Reach for `teach` when the learning is a project.
 
@@ -44,4 +53,4 @@ The word to think with is **storage strength** — long-term retention — as op
 
 ## Where it fits
 
-`teach` is a reach-for-it-anytime standalone — a long-running learning project you drive session by session, not a step in a build chain. It shares no workflow with the other productivity skills; it simply owns its workspace directory and lives there. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+`teach` is a reach-for-it-anytime standalone — a long-running learning project you drive session by session, not a step in a build chain. It shares no workflow with the other productivity skills; it simply owns its workspace directory and lives there. When you're unsure which skill or flow fits, [ask-matt](../engineering/ask-matt.md) routes you.

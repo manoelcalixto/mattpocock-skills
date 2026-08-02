@@ -1,14 +1,23 @@
-Quickstart:
+# Handoff
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=handoff
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update handoff
+npx skills add manoelcalixto/mattpocock-skills --skill=handoff
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff)
+Select Codex when prompted. Use `npx skills update handoff` to refresh an editable install.
+
+[Skill source](../../skills/productivity/handoff/SKILL.md)
 
 ## What it does
 
@@ -18,7 +27,7 @@ It does **not** re-state what already lives elsewhere. Anything captured in a sp
 
 ## When to reach for it
 
-You invoke this by typing `/handoff` — the agent won't reach for it on its own. Pass a note about what the next session is for and the document is tailored to it.
+Type `$handoff`; Codex will not select it implicitly. Pass a note about what the next session is for and the document is tailored to it.
 
 Reach for this when a conversation has gone long enough that its context is at risk — you're near a context limit, wrapping for the day, or deliberately handing the work to another agent — and you want the thread preserved without dragging the whole transcript along.
 
@@ -33,4 +42,4 @@ The idea to hold onto is **compaction**: a handoff is the conversation squeezed 
 
 ## Where it fits
 
-`handoff` is a reach-for-it-anytime standalone — it sits at the seam between two sessions rather than inside a build chain. It pairs naturally with the artifact-producing skills whose output it points at: [to-spec](https://aihero.dev/skills-to-spec), because a finished spec is exactly the kind of settled detail a handoff references instead of repeating. When you're unsure which skill fits the moment, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+`handoff` is a reach-for-it-anytime standalone — it sits at the seam between two sessions rather than inside a build chain. It pairs naturally with the artifact-producing skills whose output it points at: [to-spec](../engineering/to-spec.md), because a finished spec is exactly the kind of settled detail a handoff references instead of repeating. When you're unsure which skill fits the moment, [ask-matt](../engineering/ask-matt.md) routes you.

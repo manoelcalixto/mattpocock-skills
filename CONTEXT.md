@@ -1,11 +1,27 @@
 # Matt Pocock Skills
 
-A collection of agent skills (slash commands and behaviors) loaded by Claude Code. Skills are organized into buckets and consumed by per-repo configuration emitted by `/setup-matt-pocock-skills`.
+A collection of skills and workflow entry points for Codex. Promoted skills are available through both managed and editable installation and consume per-repo configuration emitted by `setup-matt-pocock-skills`.
 
 ## Language
 
+**Managed installation**:
+The native Codex plugin distribution. Codex installs and updates the promoted skill set as a managed bundle.
+_Avoid_: Native installation, read-only installation
+
+**Editable installation**:
+The `skills.sh` distribution for Codex users who want local skill files they can modify and update deliberately.
+_Avoid_: Universal installation, cross-agent installation
+
+**Promoted skill**:
+A production-ready skill included in both the **Managed installation** and the **Editable installation**.
+_Avoid_: Shipped skill, public skill
+
+**Workbench skill**:
+A preserved draft, personal, miscellaneous, or deprecated skill kept outside the installable `skills/` tree.
+_Avoid_: Non-promoted skill, hidden skill, unshipped skill
+
 **Issue tracker**:
-The tool that hosts a repo's issues — GitHub Issues, Linear, a local `.scratch/` markdown convention, or similar. Skills like `to-tickets`, `to-spec`, `triage`, and `qa` read from and write to it.
+The tool that hosts a repo's issues — GitHub Issues, Linear, a local `.scratch/` markdown convention, or similar. Skills like `to-tickets`, `to-spec`, and `triage` read from and write to it.
 _Avoid_: backlog manager, backlog backend, issue host
 
 **Issue**:
