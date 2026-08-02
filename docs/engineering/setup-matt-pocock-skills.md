@@ -27,7 +27,7 @@ It writes config, it does not hard-code behaviour. The engineering chain assumes
 
 ## When to reach for it
 
-Type `$setup-matt-pocock-skills`; Codex will not select it implicitly.
+Type `$setup-matt-pocock-skills`, or Codex may select it automatically when a repository needs the issue-tracker, triage, and domain-document conventions required by the engineering workflows.
 
 Reach for it **once per repo, before the first use of any other engineering skill**. If [triage](../engineering/triage.md), [to-spec](../engineering/to-spec.md), or [to-tickets](../engineering/to-tickets.md) start guessing where your issues live or applying labels that don't exist, they haven't been set up here yet. Re-run it only to switch issue trackers or start over — day-to-day tweaks are just edits to `docs/agents/*.md`.
 

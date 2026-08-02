@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
+description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through the selected one. Use when the user wants architecture improvements, deeper modules, or a more agent-navigable codebase.
 ---
 
 # Improve Codebase Architecture

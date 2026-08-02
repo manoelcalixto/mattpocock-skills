@@ -37,7 +37,7 @@ Follow the Agent Skills specification and the Codex skill metadata contract:
 - The frontmatter `name` must match the skill directory.
 - Use imperative instructions and keep `SKILL.md` concise. Put conditional detail in a directly linked sibling reference.
 - Every promoted skill has `agents/openai.yaml` with `interface.display_name`, `interface.short_description`, and an `interface.default_prompt` that explicitly names `$skill-name`.
-- User-invoked orchestrators set `policy.allow_implicit_invocation: false`; model-invoked disciplines omit the policy block.
+- Every promoted skill omits the invocation `policy` block so Codex can select it implicitly or the user can invoke it explicitly with `$skill-name`.
 - Refer to another skill with Codex's `$skill-name` syntax. Preserve real Codex slash commands such as `/compact` and third-party command syntax such as GitLab quick actions.
 - When a workflow benefits from parallel or background subagents, use Codex collaboration tools when available and provide a clearly disclosed sequential fallback when they are unavailable.
 

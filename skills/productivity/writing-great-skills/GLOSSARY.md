@@ -24,7 +24,7 @@ _Avoid_: ability, tool, capability
 
 ### User-Invoked
 
-A skill hidden from Codex's implicit selection and reachable only when the human types or selects `$skill-name` (user-_only_, where **model-invoked** is user-_and-agent_). It keeps the Agent Skills specification's required **description**, but sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. Its description is a concise human-facing picker summary rather than an autonomous trigger. This trades agent-discoverability for lower model-facing **context load**, while spending **cognitive load**.
+A skill hidden from Codex's implicit selection and reachable only when the human types or selects `$skill-name` (user-_only_, where **model-invoked** is user-_and-agent_). It keeps the Agent Skills specification's required **description**, but uses the product-specific implicit-invocation opt-out in `agents/openai.yaml`. Its description is a concise human-facing picker summary rather than an autonomous trigger. This trades agent-discoverability for lower model-facing **context load**, while spending **cognitive load**.
 
 _Avoid_: procedure, workflow, command
 
@@ -54,7 +54,7 @@ _Avoid_: human index, burden, overhead
 
 ### Router Skill
 
-A **user-invoked** skill whose job is to point at your other user-invoked skills — naming each and when to reach for it — so the human has one skill to remember instead of many. It can only recommend them, never silently start them: their policy requires explicit human invocation. The cure for **cognitive load** when user-invoked skills multiply.
+A skill whose job is to point at other skills — naming each and when to reach for it — so the human and agent have one map instead of memorizing the set. It can recommend explicit-only skills but cannot silently start them. The cure for **cognitive load** when a skill set becomes hard to navigate.
 
 _Avoid_: dispatcher, menu, registry, index, router procedure
 
@@ -94,7 +94,7 @@ _Avoid_: supporting material, docs, background
 
 ### External Reference
 
-**Reference** that lives outside the skill system — a plain file, no skill metadata, no **steps**, not invocable — that any skill can point at. The home for shared reference that needn't fire on its own, and the shared home two **user-invoked** skills can use without one silently starting the other.
+**Reference** that lives outside the skill system — a plain file, no skill metadata, no **steps**, not invocable — that any skill can point at. The home for shared reference that needn't fire on its own, and the shared home two skills can use without one starting the other.
 
 _Avoid_: doc, resource, knowledge base
 
@@ -154,7 +154,7 @@ _Avoid_: horizon, fog of war, lookahead
 
 ### Premature Completion
 
-_Failure mode._ Ending the current step before it is genuinely done, because the agent's attention slips to being done rather than to the work. A between-steps failure: it needs **steps** to occur — a skill with no steps that quits early isn't premature completion but thin **legwork** under an unmet demand. A tug-of-war between two forces: visible **post-completion steps** (the pull forward) and the **completion criterion**'s clarity (the resistance — a sharp, checkable bar holds; a vague one gives way). Fuzziness is the necessary condition: a sharp bound resists the pull no matter how many later steps are visible, so a step that never rushes needs no defending. Two levers hold a step that does, but reach for them in order: **sharpen the bound first** — it is local and cheap. Only when the criterion is irreducibly fuzzy _and_ you actually observe the rush do you **hide the later steps** — and hiding only works across a real context boundary (a user-invoked hand-off or a subagent dispatch; an inline model-invoked call leaves the later steps in context and clears nothing). One cause of thin legwork, but distinct from it: legwork can be thin even when a step runs to full completion.
+_Failure mode._ Ending the current step before it is genuinely done, because the agent's attention slips to being done rather than to the work. A between-steps failure: it needs **steps** to occur — a skill with no steps that quits early isn't premature completion but thin **legwork** under an unmet demand. A tug-of-war between two forces: visible **post-completion steps** (the pull forward) and the **completion criterion**'s clarity (the resistance — a sharp, checkable bar holds; a vague one gives way). Fuzziness is the necessary condition: a sharp bound resists the pull no matter how many later steps are visible, so a step that never rushes needs no defending. Two levers hold a step that does, but reach for them in order: **sharpen the bound first** — it is local and cheap. Only when the criterion is irreducibly fuzzy _and_ you actually observe the rush do you **hide the later steps** — and hiding only works across a real context boundary (a handoff to a fresh task or a subagent dispatch; an inline skill call leaves the later steps in context and clears nothing). One cause of thin legwork, but distinct from it: legwork can be thin even when a step runs to full completion.
 
 _Avoid_: premature closure, the rush, rushing, shortcutting
 

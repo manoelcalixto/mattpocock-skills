@@ -2,11 +2,11 @@
 
 Skills I use daily for code work.
 
-## User-invoked
+Every promoted skill can be invoked explicitly with `$skill-name`, and Codex may also select it automatically when its description matches the task.
 
-Reachable only when you explicitly type or select `$skill-name`; their `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
+## Workflow entry points
 
-- **[ask-matt](./ask-matt/SKILL.md)** — Ask which skill or flow fits your situation. A router over the user-invoked skills in this repo.
+- **[ask-matt](./ask-matt/SKILL.md)** — Ask which skill or flow fits your situation. A router over the skills in this repo.
 - **[grill-with-docs](./grill-with-docs/SKILL.md)** — Grilling session that also builds your project's domain model, sharpening terminology and updating `CONTEXT.md` and ADRs inline.
 - **[triage](./triage/SKILL.md)** — Move issues through a state machine of triage roles.
 - **[improve-codebase-architecture](./improve-codebase-architecture/SKILL.md)** — Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
@@ -16,9 +16,9 @@ Reachable only when you explicitly type or select `$skill-name`; their `agents/o
 - **[implement](./implement/SKILL.md)** — Build the work described by a spec or set of tickets, driving `$tdd` at pre-agreed seams and closing out with `$code-review` before committing.
 - **[wayfinder](./wayfinder/SKILL.md)** — Plan a huge chunk of work — more than one agent session can hold — as a shared map of decision tickets on the issue tracker, resolved one at a time until the way to the destination is clear.
 
-## Model-invoked
+## Reusable disciplines
 
-Model- or user-reachable (rich trigger phrasing so the model can reach for them).
+These may run on their own or support the workflow entry points above.
 
 - **[prototype](./prototype/SKILL.md)** — Build a throwaway prototype to answer a design question: a runnable terminal app for state/logic, or several toggleable UI variations.
 

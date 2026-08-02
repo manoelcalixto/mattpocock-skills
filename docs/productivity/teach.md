@@ -27,7 +27,7 @@ It does **not** teach from the model's own memory. Parametric knowledge is treat
 
 ## When to reach for it
 
-Type `$teach`; Codex will not select it implicitly.
+Type `$teach`, or Codex may select it automatically when you ask to learn a topic through guided exercises or a stateful, multi-session workspace.
 
 Reach for it when you want to *learn* a topic over time — a language, a framework, yoga, theoretical physics — and want the sessions to accumulate rather than evaporate. It is not for a one-off explanation; if you just need something clarified in the moment, ask directly. Reach for `teach` when the learning is a project.
 

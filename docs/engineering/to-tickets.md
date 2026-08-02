@@ -27,7 +27,7 @@ Every ticket is a **tracer bullet** — a thin *vertical* slice that cuts throug
 
 ## When to reach for it
 
-Type `$to-tickets`; Codex will not select it implicitly.
+Type `$to-tickets`, or Codex may select it automatically when a plan or spec needs to become tracer-bullet tickets with explicit blocking edges.
 
 Reach for it once you have an agreed plan or a written spec and you want it split into tickets. Point it at the conversation, or pass a spec or issue reference and it fetches the body and comments first. If the change hasn't been written up as a spec yet, produce one first — for that, use [to-spec](../engineering/to-spec.md).
 

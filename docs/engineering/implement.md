@@ -27,7 +27,7 @@ It does **not** decide what to build. The spec is already settled and the seams 
 
 ## When to reach for it
 
-Type `$implement`; Codex will not select it implicitly.
+Type `$implement`, or Codex may select it automatically when you ask to build work from an agreed spec or set of agent-ready tickets.
 
 Reach for it once the work is written down as a spec or split into tickets and you're ready to turn that into code. If the spec doesn't exist yet, write it first — for that, use [to-spec](../engineering/to-spec.md), or [to-tickets](../engineering/to-tickets.md) to break a spec into tickets. If you just want to build something test-first without a full spec, drop to [tdd](../engineering/tdd.md) directly.
 

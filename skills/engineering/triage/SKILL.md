@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Move issues and external PRs through a state machine of triage roles — categorise, verify, grill if needed, and write agent-ready briefs.
+description: Move issues and external PRs through a state machine of triage roles by categorizing, verifying, grilling when needed, and writing agent-ready briefs. Use for incoming work the user did not author or when they ask what needs triage attention.
 ---
 
 # Triage

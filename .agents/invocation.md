@@ -1,15 +1,15 @@
-# Model-invoked vs user-invoked
+# Invocation
 
-Every promoted `SKILL.md` carries a standards-compliant `name` and `description`. Codex's policy metadata decides who may reach it implicitly:
+Every promoted `SKILL.md` carries a standards-compliant `name` and `description`. Every promoted skill supports both Codex invocation paths:
 
-- **User-invoked** — reachable only when the human selects or types `$skill-name`. Set `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. Write a concise human-facing description for the skill picker and keep autonomous trigger language out of it.
-- **Model-invoked** — reachable by the model or the human. Omit the policy block from `agents/openai.yaml`, which leaves implicit invocation enabled. Write a model-facing description with concrete trigger language so Codex can choose it reliably.
+- **Explicit** — the human selects or types `$skill-name`.
+- **Implicit** — Codex selects the skill when its description matches the task.
 
-A user-invoked skill may direct the human toward another user-invoked skill, but it cannot silently run that workflow. It may actively invoke model-invoked disciplines that form part of its own workflow.
+Omit the invocation `policy` block from every promoted `agents/openai.yaml`; implicit invocation is the default. Write each `SKILL.md` description as a concise model-facing trigger with concrete conditions so Codex can choose the skill reliably.
 
-Every promoted skill carries `agents/openai.yaml` beside `SKILL.md`. It holds `interface.display_name`, `interface.short_description`, and an `interface.default_prompt` that explicitly names `$skill-name`. User-invoked skills additionally carry `policy.allow_implicit_invocation: false`.
+Every promoted skill carries `agents/openai.yaml` beside `SKILL.md`. It holds `interface.display_name`, `interface.short_description`, and an `interface.default_prompt` that explicitly names `$skill-name`.
 
-Bucket `README.md`s and the top-level `README.md` group entries into **User-invoked** and **Model-invoked**.
+Bucket `README.md`s and the top-level `README.md` may group skills into **Workflow entry points** and **Reusable disciplines** for orientation. Those groups do not change invocation behavior.
 
 ## Dependencies between them
 

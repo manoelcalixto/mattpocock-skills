@@ -36,7 +36,7 @@ Select Codex when prompted. Use `npx skills update <name>` to refresh an editabl
 Then use these sections:
 
 - `## What it does` — one or two plain-language paragraphs. Lead with the one-sentence job and state the defining constraint that makes the skill differ from the obvious default.
-- `## When to reach for it` — state the invocation mode and trigger boundary. For explicit workflows: "Type `$<name>`; Codex will not select it implicitly." For reusable disciplines: "Type `$<name>`, or Codex may select it automatically when the task fits."
+- `## When to reach for it` — state the trigger boundary: "Type `$<name>`, or Codex may select it automatically when the task fits." Name the concrete task signals that should trigger it.
 - `## Prerequisites` — optional; include only for a required workspace, prior setup, or repository-specific tooling.
 - One to three free-form sections — use the skill's own leading words and explain the artifact, loop, fork, or anti-pattern that makes it click.
 - `## It's working if` — optional; a short list of crisp observable signals.
@@ -48,7 +48,7 @@ Explain why and when, not the internal runbook. Keep pages short, use `$skill-na
 
 - The page path mirrors the promoted skill path and begins with an H1.
 - Both install modes and the relative source link name the correct repository, bucket, and skill.
-- Invocation mode and trigger boundary match `agents/openai.yaml`.
+- The trigger boundary matches the `SKILL.md` description and the repository's implicit-invocation default.
 - The defining constraint and leading vocabulary are visible without copying `SKILL.md`.
 - `## Where it fits` links to relevant neighbors and the router.
 - Every relative link resolves, and no historical `aihero.dev/skills-*` publishing URL remains.
