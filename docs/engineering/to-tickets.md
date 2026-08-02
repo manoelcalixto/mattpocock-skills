@@ -1,14 +1,23 @@
-Quickstart:
+# To Tickets
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=to-tickets
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update to-tickets
+npx skills add manoelcalixto/mattpocock-skills --skill=to-tickets
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/to-tickets)
+Select Codex when prompted. Use `npx skills update to-tickets` to refresh an editable install.
+
+[Skill source](../../skills/engineering/to-tickets/SKILL.md)
 
 ## What it does
 
@@ -18,13 +27,13 @@ Every ticket is a **tracer bullet** — a thin *vertical* slice that cuts throug
 
 ## When to reach for it
 
-You invoke this by typing `/to-tickets` — the agent won't reach for it on its own.
+Type `$to-tickets`; Codex will not select it implicitly.
 
-Reach for it once you have an agreed plan or a written spec and you want it split into tickets. Point it at the conversation, or pass a spec or issue reference and it fetches the body and comments first. If the change hasn't been written up as a spec yet, produce one first — for that, use [to-spec](https://aihero.dev/skills-to-spec).
+Reach for it once you have an agreed plan or a written spec and you want it split into tickets. Point it at the conversation, or pass a spec or issue reference and it fetches the body and comments first. If the change hasn't been written up as a spec yet, produce one first — for that, use [to-spec](../engineering/to-spec.md).
 
 ## Prerequisites
 
-`to-tickets` publishes into your issue tracker, so [setup-matt-pocock-skills](https://aihero.dev/skills-setup-matt-pocock-skills) must have configured the tracker and its triage label vocabulary for this repo first. On a real tracker it applies the ready-for-agent label as it publishes.
+`to-tickets` publishes into your issue tracker, so [setup-matt-pocock-skills](../engineering/setup-matt-pocock-skills.md) must have configured the tracker and its triage label vocabulary for this repo first. On a real tracker it applies the ready-for-agent label as it publishes.
 
 ## One artifact, two readings
 
@@ -53,4 +62,4 @@ One shape breaks the tracer-bullet rule: a **wide refactor** — a single mechan
 grill-with-docs → to-spec → to-tickets → implement → code-review
 ```
 
-It sits between [to-spec](https://aihero.dev/skills-to-spec), which hands it a settled spec with user stories to slice against, and [implement](https://aihero.dev/skills-implement), which builds each ticket, driving [tdd](https://aihero.dev/skills-tdd) internally to write the tests test-first, before its [code-review](https://aihero.dev/skills-code-review) pass. Work the frontier one ticket per fresh context, clearing between them. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+It sits between [to-spec](../engineering/to-spec.md), which hands it a settled spec with user stories to slice against, and [implement](../engineering/implement.md), which builds each ticket, driving [tdd](../engineering/tdd.md) internally to write the tests test-first, before its [code-review](../engineering/code-review.md) pass. Work the frontier one ticket per fresh context, clearing between them. When you're unsure which skill or flow fits, [ask-matt](../engineering/ask-matt.md) routes you.

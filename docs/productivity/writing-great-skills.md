@@ -1,14 +1,23 @@
-Quickstart:
+# Writing Great Skills
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=writing-great-skills
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update writing-great-skills
+npx skills add manoelcalixto/mattpocock-skills --skill=writing-great-skills
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
+Select Codex when prompted. Use `npx skills update writing-great-skills` to refresh an editable install.
+
+[Skill source](../../skills/productivity/writing-great-skills/SKILL.md)
 
 ## What it does
 
@@ -18,7 +27,7 @@ A skill's job is to wrangle determinism out of a stochastic system, so the goal 
 
 ## When to reach for it
 
-You invoke this by typing `/writing-great-skills` — the agent won't reach for it on its own.
+Type `$writing-great-skills`; Codex will not select it implicitly.
 
 Reach for it whenever you're authoring a new skill or editing an existing one and want it to behave the same way every time: deciding invocation mode, writing a description, choosing what lives in `SKILL.md` versus a linked file, or diagnosing why a skill misfires.
 
@@ -42,4 +51,4 @@ The rest of the reference is the toolkit for spending those loads well:
 
 ## Where it fits
 
-This is a reach-for-it-anytime standalone reference — the meta-skill you consult while building the rest of the set, not a step in a chain. Its natural neighbour is any router you maintain, because a router is the direct cure for the cognitive load that user-invoked skills pile up; when you're unsure which skill or flow fits a task, [ask-matt](https://aihero.dev/skills-ask-matt) routes you over the whole set.
+This is a reach-for-it-anytime standalone reference — the meta-skill you consult while building the rest of the set, not a step in a chain. Its natural neighbour is any router you maintain, because a router is the direct cure for the cognitive load that user-invoked skills pile up; when you're unsure which skill or flow fits a task, [ask-matt](../engineering/ask-matt.md) routes you over the whole set.

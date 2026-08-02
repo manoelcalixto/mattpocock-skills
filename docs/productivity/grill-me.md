@@ -1,14 +1,23 @@
-Quickstart:
+# Grill Me
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=grill-me
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update grill-me
+npx skills add manoelcalixto/mattpocock-skills --skill=grill-me
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me)
+Select Codex when prompted. Use `npx skills update grill-me` to refresh an editable install.
+
+[Skill source](../../skills/productivity/grill-me/SKILL.md)
 
 ## What it does
 
@@ -18,16 +27,16 @@ It asks **one question at a time** and waits. It never dumps a batch of question
 
 ## When to reach for it
 
-You invoke this by typing `/grill-me` — the agent won't reach for it on its own.
+Type `$grill-me`; Codex will not select it implicitly.
 
-Reach for it before you build, when a plan feels roughly right but you can sense unresolved decisions hiding in it — the moment you want the soft spots found and forced into the open. If you want that same interrogation to also leave a paper trail of ADRs and a glossary behind, use [grill-with-docs](https://aihero.dev/skills-grill-with-docs) instead. And if the effort is too big to hold in one session and the route to the goal is still foggy — a greenfield project, a huge feature build — start further upstream with [wayfinder](https://aihero.dev/skills-wayfinder), which charts it as a map of decisions first and then merges back into this flow.
+Reach for it before you build, when a plan feels roughly right but you can sense unresolved decisions hiding in it — the moment you want the soft spots found and forced into the open. If you want that same interrogation to also leave a paper trail of ADRs and a glossary behind, use [grill-with-docs](../engineering/grill-with-docs.md) instead. And if the effort is too big to hold in one session and the route to the goal is still foggy — a greenfield project, a huge feature build — start further upstream with [wayfinder](../engineering/wayfinder.md), which charts it as a map of decisions first and then merges back into this flow.
 
 ## The decision tree
 
 The session walks the plan as a tree of decisions, resolving dependencies between them one by one — a parent decision settled before the choices that hang off it. The point is not to reach agreement quickly; it is to make every implicit call explicit, so nothing important is left silently assumed. You come out the other side with a plan whose branches have all been visited.
 
-`grill-me` is **stateless**: it writes nothing and leaves no workspace behind. It runs anywhere, and the only artifact is the sharpened understanding in the conversation itself. That is the deliberate contrast with [grill-with-docs](https://aihero.dev/skills-grill-with-docs), which captures the same interview as durable ADRs and a glossary.
+`grill-me` is **stateless**: it writes nothing and leaves no workspace behind. It runs anywhere, and the only artifact is the sharpened understanding in the conversation itself. That is the deliberate contrast with [grill-with-docs](../engineering/grill-with-docs.md), which captures the same interview as durable ADRs and a glossary.
 
 ## Where it fits
 
-`grill-me` is a reach-for-it-anytime standalone — the pre-build stress test you run whenever a plan needs hardening. It is the stateless, user-invoked front door to the [grilling](https://aihero.dev/skills-grilling) primitive; its closest neighbour is [grill-with-docs](https://aihero.dev/skills-grill-with-docs), the stateful sibling that runs the same interview but additionally records the decisions as ADRs and a glossary. If the outcome is a spec you want written down, hand off to [to-spec](https://aihero.dev/skills-to-spec), which synthesises the settled understanding into a spec without re-interviewing you. When you're unsure which flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+`grill-me` is a reach-for-it-anytime standalone — the pre-build stress test you run whenever a plan needs hardening. It is the stateless, user-invoked front door to the [grilling](../productivity/grilling.md) primitive; its closest neighbour is [grill-with-docs](../engineering/grill-with-docs.md), the stateful sibling that runs the same interview but additionally records the decisions as ADRs and a glossary. If the outcome is a spec you want written down, hand off to [to-spec](../engineering/to-spec.md), which synthesises the settled understanding into a spec without re-interviewing you. When you're unsure which flow fits, [ask-matt](../engineering/ask-matt.md) routes you.

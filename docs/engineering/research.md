@@ -1,14 +1,23 @@
-Quickstart:
+# Research
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=research
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update research
+npx skills add manoelcalixto/mattpocock-skills --skill=research
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/research)
+Select Codex when prompted. Use `npx skills update research` to refresh an editable install.
+
+[Skill source](../../skills/engineering/research/SKILL.md)
 
 ## What it does
 
@@ -16,14 +25,14 @@ npx skills update research
 
 ## When to reach for it
 
-Type `/research`, or the agent reaches for it automatically when a task turns into reading legwork.
+Type `$research`, or Codex may select it automatically when you request a reusable cited research note or delegate primary-source reading. It should not intercept an ordinary fact question that does not need a repository artifact.
 
-Reach for it when the next step is *finding something out* — how an API behaves, what a spec actually says, whether a claim holds — and you'd rather not stall your own thread doing the reading. For sharpening a plan by interview instead of by reading, use [grilling](https://aihero.dev/skills-grilling); for exploring what to build with throwaway code, use [prototype](https://aihero.dev/skills-prototype).
+Reach for it when the next step is *finding something out* — how an API behaves, what a spec actually says, whether a claim holds — and you'd rather not stall your own thread doing the reading. For sharpening a plan by interview instead of by reading, use [grilling](../productivity/grilling.md); for exploring what to build with throwaway code, use [prototype](../engineering/prototype.md).
 
 ## Delegated legwork
 
-The defining move is that the reading runs as a **background agent**. You keep working; it goes off, follows each claim back to its primary source, and drops a single cited Markdown file into wherever the repo keeps such notes. Research is legwork you delegate, not thinking you outsource — you get back a document to react to, with its sources attached.
+The defining move is that the reading runs in a Codex **subagent** when collaboration is available. It follows each claim back to its primary source and drops a single cited Markdown file into wherever the repo keeps such notes. Without collaboration, the same work runs in the current task and the fallback is disclosed. Research is legwork you delegate, not thinking you outsource — you get back a document to react to, with its sources attached.
 
 ## Where it fits
 
-A reach-for-it-anytime standalone that feeds the thinking skills: the file it produces is something to grill, plan, or design against, so it sits upstream of work like [grilling](https://aihero.dev/skills-grilling) and [to-prd](https://aihero.dev/skills-to-prd) rather than in the build chain. For the whole map, see [ask-matt](https://aihero.dev/skills-ask-matt).
+A reach-for-it-anytime standalone that feeds the thinking skills: the file it produces is something to grill, plan, or design against, so it sits upstream of work like [grilling](../productivity/grilling.md) and [to-spec](to-spec.md) rather than in the build chain. For the whole map, see [ask-matt](ask-matt.md).

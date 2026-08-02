@@ -1,5 +1,51 @@
 # mattpocock-skills
 
+## 2.0.0
+
+### Major Changes
+
+- Migrate the fork to a Codex-native `2.0.0` distribution.
+
+  - Add the root `mattpocock-skills` Codex plugin and `manoelcalixto` marketplace.
+  - Make `$skill-name`, `AGENTS.md`, Codex collaboration, and `agents/openai.yaml` the only supported invocation and configuration contracts.
+  - Ship only the 22 promoted engineering and productivity skills; preserve the other 19 skills under `workbench/` outside product discovery.
+  - Publish GitHub-native documentation with both managed-plugin and editable-install instructions for the fork.
+  - Remove the superseded Claude plugin and dual-harness guidance.
+
+### Minor Changes
+
+- [#488](https://github.com/mattpocock/skills/pull/488) [`cdec9f6`](https://github.com/manoelcalixto/mattpocock-skills/commit/cdec9f6eb24dbfe606e3ad9b3eb457ba09210b85) Thanks [@mattpocock](https://github.com/mattpocock)! - Reword how the **`prototype`** skill handles its artifacts around a single idea: **the prototype is a primary source**. Rather than being deleted once it's answered its question, the prototype is captured as runnable evidence on a throwaway branch (`prototype/<name>`) out of main, with a context pointer to it left on the implementation issue — so the main branch keeps only the validated decision while the exploration stays findable. The answer (verdict + question) is still captured durably in an issue/ADR/commit.
+
+- [#538](https://github.com/mattpocock/skills/pull/538) [`2602257`](https://github.com/manoelcalixto/mattpocock-skills/commit/260225724133c4a204489599f04642aa089259a0) Thanks [@mattpocock](https://github.com/mattpocock)! - Wayfinder now burns research tickets down with subagents instead of leaving them parked for a separately-launched session.
+
+  Research stays a real ticket type — it's a genuine shared blocker that downstream decisions hang on, and that dependency is exactly what the frontier's blocking edges exist to render. What changes is how it's resolved: because research is AFK, charting doesn't stop and read it. With Codex collaboration available, it fires a `$research` subagent for each research ticket in parallel, assigning a unique output artifact in the shared working tree; otherwise it runs the passes sequentially and discloses the fallback. Research tickets are the one exception to _one ticket per task_.
+
+- [#533](https://github.com/mattpocock/skills/pull/533) [`45afd80`](https://github.com/manoelcalixto/mattpocock-skills/commit/45afd8074a8b7de5fe073845d080fa9dd6c429fa) Thanks [@mattpocock](https://github.com/mattpocock)! - Add a YAGNI scoping filter to the **`improve-codebase-architecture`** skill's Explore step. Instead of scanning the whole repo evenly, it now scopes to where change is actually landing: if you name a direction it takes it, otherwise it reads the last ~20 commit messages to bias exploration toward actively-developed paths. A deepening opportunity in code nobody touches is a refactor you'll never cash in — the leverage only pays off where you keep editing — so the report stops tidying dormant corners of the repo.
+
+### Patch Changes
+
+- [#535](https://github.com/mattpocock/skills/pull/535) [`e74fee8`](https://github.com/manoelcalixto/mattpocock-skills/commit/e74fee89feb6025a6a74f6282feb7d33b1b6e578) Thanks [@mattpocock](https://github.com/mattpocock)! - Make `$ask-matt` clued-up about `$wayfinder` — the heaviest, most cognitively demanding flow.
+
+  The router now sharpens the two routing mistakes people most often make with wayfinder:
+
+  - **Over-reaching for it.** It's slower and denser than a single grill, so it's flagged as the heaviest flow and reserved for the idea that genuinely won't fit one session — a well-scoped feature belongs on `$grill-with-docs`, not here.
+  - **Losing the way at the handoff.** When the map clears, wayfinder hands off, it doesn't build: merge onto the main flow at `$to-spec` (which collapses the map's linked decisions into a buildable plan) rather than looping the map straight into `$implement`. Straight-to-`$implement` is only for efforts that turned out genuinely small.
+
+- [#502](https://github.com/mattpocock/skills/pull/502) [`44eed54`](https://github.com/manoelcalixto/mattpocock-skills/commit/44eed545186ffd0263e8004867750b80cfddd215) Thanks [@mattpocock](https://github.com/mattpocock)! - Make `$setup-matt-pocock-skills` friendlier and align the local-markdown tracker with the current spec.
+
+  - **Triage labels** are now asked about only when the `triage` skill is installed, and then as a single recommended-yes question ("keep the default triage labels?") instead of an override interrogation. When `triage` isn't installed, the section — and `docs/agents/triage-labels.md` — are skipped.
+  - **External PRs as a request surface** is no longer a setup question. The GitHub/GitLab templates still carry the flag, defaulted off; a user can flip it in `docs/agents/issue-tracker.md` later.
+  - **Domain docs** default to single-context without asking; multi-context is only offered when the repo shows monorepo signals.
+  - **Local-markdown tickets** are now one file per ticket under `.scratch/<feature>/issues/<NN>-<slug>.md` — never a single combined `tickets.md`. `$to-tickets` and the local issue-tracker template now agree, and the spec file is `spec.md` (not `PRD.md`) to match `$to-spec`.
+
+  Docs pages for `setup-matt-pocock-skills` and `to-tickets` re-synced.
+
+- [#532](https://github.com/mattpocock/skills/pull/532) [`170ad48`](https://github.com/manoelcalixto/mattpocock-skills/commit/170ad48655825783d0193e850e31a9aac957bb95) Thanks [@mattpocock](https://github.com/mattpocock)! - Reword **`grilling`** for general use. Its description and body no longer scope the interview to a software plan: "this plan" → "this", "enact the plan" → "act on it", and "exploring the codebase" → "exploring the environment". The technique is unchanged; it now reads as a stress-test of any plan, decision, or idea.
+
+- [#534](https://github.com/mattpocock/skills/pull/534) [`7d694b7`](https://github.com/manoelcalixto/mattpocock-skills/commit/7d694b7ae981ca221a8f759b15273fe7b5dc393e) Thanks [@mattpocock](https://github.com/mattpocock)! - Name the `$wayfinder` unit a **decision ticket**.
+
+  People kept reading a wayfinder ticket as an ordinary _implementation_ ticket — a slice of a build to execute — when wayfinder uses them as **decision tickets**: questions whose resolution is a decision. The skill description and its opening line now introduce "decision ticket" (and say what makes it one), and the `ask-matt` / engineering README wayfinder blurbs and the docs page match — while "ticket" stays the everyday word once the term is established. `CONTEXT.md` records **Decision ticket** as a domain term so the "avoid: ticket" guidance no longer contradicts wayfinder's deliberate use of the word.
+
 ## 1.1.0
 
 ### Minor Changes

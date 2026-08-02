@@ -1,14 +1,23 @@
-Quickstart:
+# Improve Codebase Architecture
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=improve-codebase-architecture
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update improve-codebase-architecture
+npx skills add manoelcalixto/mattpocock-skills --skill=improve-codebase-architecture
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/improve-codebase-architecture)
+Select Codex when prompted. Use `npx skills update improve-codebase-architecture` to refresh an editable install.
+
+[Skill source](../../skills/engineering/improve-codebase-architecture/SKILL.md)
 
 ## What it does
 
@@ -20,9 +29,9 @@ Unless you point it at a specific area, it also scopes itself to where developme
 
 ## When to reach for it
 
-You invoke this by typing `/improve-codebase-architecture` — the agent won't reach for it on its own.
+Type `$improve-codebase-architecture`; Codex will not select it implicitly.
 
-Reach for it as a periodic health check: every few days, or whenever a codebase has started to feel like it takes too much bouncing between small modules to understand one concept. It reads the existing architecture and proposes where to deepen it. If you already know the module you want to redesign and just need the vocabulary to think it through, use [codebase-design](https://aihero.dev/skills-codebase-design) instead — this skill is the survey that finds the candidates; that one is the design bench.
+Reach for it as a periodic health check: every few days, or whenever a codebase has started to feel like it takes too much bouncing between small modules to understand one concept. It reads the existing architecture and proposes where to deepen it. If you already know the module you want to redesign and just need the vocabulary to think it through, use [codebase-design](../engineering/codebase-design.md) instead — this skill is the survey that finds the candidates; that one is the design bench.
 
 ## Deepening opportunities
 
@@ -34,8 +43,8 @@ It speaks in the shared design vocabulary (**module**, **interface**, **depth**,
 
 The output is a browser-ready HTML file written to your OS temp directory — nothing lands in the repo. Each candidate is a card with the files involved, the friction, a plain-English solution, the benefit in terms of locality and leverage, a before/after diagram, and a `Strong` / `Worth exploring` / `Speculative` badge. It closes with the one it would tackle first.
 
-Then it stops and asks which one you want to explore. Pick one and it runs the [grilling](https://aihero.dev/skills-grilling) loop over that design — constraints, what sits behind the seam, which tests survive — updating the domain model inline as decisions crystallise.
+Then it stops and asks which one you want to explore. Pick one and it runs the [grilling](../productivity/grilling.md) loop over that design — constraints, what sits behind the seam, which tests survive — updating the domain model inline as decisions crystallise.
 
 ## Where it fits
 
-`improve-codebase-architecture` is **periodic maintenance** — run it every few days, not as a step in a chain. Its neighbours are [codebase-design](https://aihero.dev/skills-codebase-design), which owns the depth-and-seam vocabulary every candidate is written in, [grilling](https://aihero.dev/skills-grilling), which walks the decision tree once you've chosen a candidate, and [domain-modeling](https://aihero.dev/skills-domain-modeling), which keeps `CONTEXT.md` and the ADRs current as the redesign settles. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+`improve-codebase-architecture` is **periodic maintenance** — run it every few days, not as a step in a chain. Its neighbours are [codebase-design](../engineering/codebase-design.md), which owns the depth-and-seam vocabulary every candidate is written in, [grilling](../productivity/grilling.md), which walks the decision tree once you've chosen a candidate, and [domain-modeling](../engineering/domain-modeling.md), which keeps `CONTEXT.md` and the ADRs current as the redesign settles. When you're unsure which skill or flow fits, [ask-matt](../engineering/ask-matt.md) routes you.

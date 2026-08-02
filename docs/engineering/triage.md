@@ -1,14 +1,23 @@
-Quickstart:
+# Triage
+
+## Install
+
+Native Codex plugin (installs all promoted skills):
 
 ```bash
-npx skills add mattpocock/skills --skill=triage
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills@manoelcalixto
 ```
+
+Editable single-skill install:
 
 ```bash
-npx skills update triage
+npx skills add manoelcalixto/mattpocock-skills --skill=triage
 ```
 
-[Source](https://github.com/mattpocock/skills/tree/main/skills/engineering/triage)
+Select Codex when prompted. Use `npx skills update triage` to refresh an editable install.
+
+[Skill source](../../skills/engineering/triage/SKILL.md)
 
 ## What it does
 
@@ -18,13 +27,13 @@ It never labels blind. Every triaged item carries exactly one **category** role 
 
 ## When to reach for it
 
-You invoke this by typing `/triage` and describing what you want in natural language — the agent won't reach for it on its own. "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
+Type `$triage` and describe what you want in natural language; Codex will not select it implicitly. "Show me anything that needs my attention", "let's look at #42", "move #42 to ready-for-agent".
 
-Reach for it when your issue tracker has raw, unevaluated reports and you want them sorted, verified, and turned into work an agent or human can pick up. To turn a settled conversation into a fresh spec instead, use [to-spec](https://aihero.dev/skills-to-spec); to split an existing spec into tickets, use [to-tickets](https://aihero.dev/skills-to-tickets). `triage` is the reverse direction — it processes what's *already* landed in the tracker.
+Reach for it when your issue tracker has raw, unevaluated reports and you want them sorted, verified, and turned into work an agent or human can pick up. To turn a settled conversation into a fresh spec instead, use [to-spec](../engineering/to-spec.md); to split an existing spec into tickets, use [to-tickets](../engineering/to-tickets.md). `triage` is the reverse direction — it processes what's *already* landed in the tracker.
 
 ## Prerequisites
 
-`triage` reads and writes your issue tracker, so [setup-matt-pocock-skills](https://aihero.dev/skills-setup-matt-pocock-skills) must have configured the tracker and the label mapping first. The role names above are **canonical** — the actual label strings in your tracker may differ, and that mapping is what setup provides. The config also decides whether external PRs count as a request surface, and who counts as external.
+`triage` reads and writes your issue tracker, so [setup-matt-pocock-skills](../engineering/setup-matt-pocock-skills.md) must have configured the tracker and the label mapping first. The role names above are **canonical** — the actual label strings in your tracker may differ, and that mapping is what setup provides. The config also decides whether external PRs count as a request surface, and who counts as external.
 
 ## A PR is an issue with attached code
 
@@ -43,4 +52,4 @@ The step that separates `triage` from ad-hoc labelling is verification. It repro
 
 ## Where it fits
 
-`triage` is the **periodic maintenance** pass over your issue tracker — run it whenever reports pile up, to keep the queue sorted and the `ready-for-agent` column trustworthy. It sits at the front of the tracker, upstream of the build chain: the briefs it writes are what [tdd](https://aihero.dev/skills-tdd) later picks up to implement. When a request needs sharpening it leans on [grilling](https://aihero.dev/skills-grilling) and [domain-modeling](https://aihero.dev/skills-domain-modeling) to grill it into shape one question at a time. Its close neighbour is [to-spec](https://aihero.dev/skills-to-spec), which populates the tracker from a fresh conversation where `triage` processes what's already there. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+`triage` is the **periodic maintenance** pass over your issue tracker — run it whenever reports pile up, to keep the queue sorted and the `ready-for-agent` column trustworthy. It sits at the front of the tracker, upstream of the build chain: the briefs it writes are what [tdd](../engineering/tdd.md) later picks up to implement. When a request needs sharpening it leans on [grilling](../productivity/grilling.md) and [domain-modeling](../engineering/domain-modeling.md) to grill it into shape one question at a time. Its close neighbour is [to-spec](../engineering/to-spec.md), which populates the tracker from a fresh conversation where `triage` processes what's already there. When you're unsure which skill or flow fits, [ask-matt](../engineering/ask-matt.md) routes you.
