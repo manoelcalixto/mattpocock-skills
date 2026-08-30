@@ -50,7 +50,14 @@ No. A file without a Planning context marker returns the legacy result. Fail-clo
 
 **How do I validate a remote ticket without creating a file?**
 
-Obtain its body from the configured tracker with an explicit target, then pipe it to `validate --context-stdin`. For GitHub, use `gh issue view <number> --repo owner/repository --json body --jq .body`; replace `owner/repository` with the target in `docs/agents/issue-tracker.md`. The helper reads stdin without creating a ticket or Planning artifact in the repository.
+Obtain its body from the configured tracker with an explicit target, and invoke the validator only after that read succeeds. For GitHub, replace `owner/repository` with the target in `docs/agents/issue-tracker.md`:
+
+```bash
+issue_body="$(gh issue view <number> --repo owner/repository --json body --jq .body)" && \
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-stdin --phase final <<<"$issue_body"
+```
+
+If the tracker read returns an error, `&&` prevents the helper from running. The here-string also preserves the helper's exit status. Report that read failure as a preflight failure, never as `legacy`. The helper reads successful stdin without creating a ticket or Planning artifact in the repository.
 
 **What evidence does valid JSON expose?**
 

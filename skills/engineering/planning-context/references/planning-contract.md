@@ -106,6 +106,8 @@ A marker is fail-closed: its format, effort, ledger, checkpoint, decision IDs, t
 
 With `--json`, a valid result identifies its input through `context` and `source`. A local marker uses the repository-relative path and `source: marker`; a marker received through stdin uses `context: <stdin>` and `source: stdin`; a local markerless artifact resolved through a trailer uses `source: trailer`. The result's `coverage` object has one entry for every selected decision and one nested entry for every declared obligation, each carrying the ledger's `status` and `evidence`. Its `ancestry` object has the resolved full `checkpoint_sha`, the current `head_sha`, and `is_ancestor: true`, which is emitted only after the helper proves the branch relationship.
 
+When obtaining remote content for stdin, capture the tracker response successfully before invoking the validator. A nonzero tracker read is a preflight failure before stdin transport or `validate`; it must never be replaced with empty input or interpreted as `legacy`.
+
 For example, a valid marker may return this deterministic shape:
 
 ```json
@@ -139,7 +141,8 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file spec.md --phase final
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file local-ticket.md --effort demo --phase final
-gh issue view <number> --repo owner/repository --json body --jq .body | python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-stdin --phase final
+issue_body="$(gh issue view <number> --repo owner/repository --json body --jq .body)" && \
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-stdin --phase final <<<"$issue_body"
 ```
 
 The harness runs each scenario in a temporary Git repository and invokes only this interface. Future producers and consumers extend the same harness rather than adding a parallel planning state store.

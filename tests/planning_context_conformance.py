@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HELPER = REPO_ROOT / "skills" / "engineering" / "planning-context" / "scripts" / "planning_context.py"
 IMPLEMENT_SKILL = REPO_ROOT / "skills" / "engineering" / "implement" / "SKILL.md"
 IMPLEMENT_DOCS = REPO_ROOT / "docs" / "engineering" / "implement.md"
+PLANNING_CONTRACT = REPO_ROOT / "skills" / "engineering" / "planning-context" / "references" / "planning-contract.md"
 
 
 class HarnessFailure(AssertionError):
@@ -391,6 +393,7 @@ def test_validation_and_immutability() -> None:
 def test_implement_preflight_wiring() -> None:
     skill = IMPLEMENT_SKILL.read_text()
     docs = IMPLEMENT_DOCS.read_text()
+    planning_contract = PLANNING_CONTRACT.read_text()
     preflight = skill.find("## Planning preflight")
     tdd = skill.find('Call the Skill tool with "tdd"')
     if preflight < 0 or tdd < 0 or preflight > tdd:
@@ -411,6 +414,15 @@ def test_implement_preflight_wiring() -> None:
         raise HarnessFailure("implement does not return decision conflicts to planning-context")
     if "## Planning preflight" not in docs or "Active decision conflicts with the implementation" not in docs:
         raise HarnessFailure("implement documentation does not describe the Planning preflight")
+    unsafe_tracker_pipe = re.compile(r"gh issue view[^\n]*(?:\|\s*python3|(?:\\\n[ \t]*)+\|\s*python3)")
+    for name, text in (("implement skill", skill), ("planning contract", planning_contract)):
+        if unsafe_tracker_pipe.search(text):
+            raise HarnessFailure(f"{name} invokes the validator through an unchecked tracker pipeline")
+    safe_validator = "python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-stdin --phase final <<<\"$issue_body\""
+    if 'issue_body="$(gh issue view' not in skill or safe_validator not in skill:
+        raise HarnessFailure("implement does not capture tracker content before stdin validation")
+    if "never interpret a tracker read failure as `legacy`" not in skill:
+        raise HarnessFailure("implement does not keep tracker read failures out of the legacy path")
 
 
 def test_implement_preflight_valid() -> None:
