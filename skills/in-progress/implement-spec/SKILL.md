@@ -20,7 +20,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 2. (optional) Use an **exploration subagent** to conduct any exploration required by the tickets - relevant codebase files or external documentation. Ensure the exploration subagent can save files - it should save its markdown notes in a directory outside the repo, accessible by all future subagents. This lets **implementer subagents** focus on implementation rather than exploration.
 
-3. Create a branch, and a draft PR. The PR should be marked as 'closing' the spec issue and tickets.
+3. Record the current `HEAD` SHA as the fixed point for the whole implementation batch. Then create a branch and a draft PR. The PR should be marked as 'closing' the spec issue and tickets.
 
 4. Use **implementer subagents** to implement each ticket. Each implementer subagent should work in its own worktree, on its own branch.
 
@@ -30,7 +30,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 Ticket commits and merges are part of one implementation batch. They are not review checkpoints and do not trigger `code-review` from this workflow.
 
-7. Once all tickets are complete and integrated, treat the PR branch as this workflow's only **review checkpoint** and pin its exact head for the initial pass. Call the Skill tool with "code-review" once on that checkpoint. Check every finding's citation, then use a single **implementer subagent** to apply the applicable findings in one **fix batch** and validate it. A fix batch may span one or more commits. Documented-standard violations and spec gaps can require a fix; baseline smells are judgement calls.
+7. Once all tickets are complete and integrated, treat the PR branch as this workflow's only **review checkpoint** and pin its exact head for the initial pass. Call the Skill tool with "code-review" once on that checkpoint, using the SHA recorded in step 3 as its fixed point. Check every finding's citation, then use a single **implementer subagent** to apply the applicable findings in one **fix batch** and validate it. A fix batch may span one or more commits. Documented-standard violations and spec gaps can require a fix; baseline smells are judgement calls.
 
    Follow `code-review`'s bounded follow-up and terminal rule. If an eligible follow-up produces applicable findings, use one final **implementer subagent** for the final fix batch. Report rejected, deferred, or residual findings before stopping.
 
