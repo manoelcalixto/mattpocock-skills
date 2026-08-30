@@ -1,4 +1,3 @@
 interface:
   display_name: "Implement Spec"
-  short_description: "Implement a whole spec as one PR"
-
+  short_description: "Coordinate a whole spec from one checkpoint"

@@ -26,6 +26,8 @@ The leading word is **checkpoint**. An intermediate checkpoint can leave future 
 
 Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning; a changed choice receives a new ID and a new checkpoint, while coverage and evidence can be appended.
 
+For a whole ticket graph, implementers keep the shared ledger unchanged and put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers. Evidence already read from a remote ticket can use the deterministic `DEC-NNN | origin | observable evidence` record. After all relevant branches are merged, the coordinator calls the owner with `coverage aggregate`, which proves the common final checkpoint, merged worker tips, and complete verification set before one ledger write. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early.
+
 For a remote tracker, the `Repository` value in a marker is metadata for the reader, not a target-selection mechanism. Publishing skills read `docs/agents/issue-tracker.md` and pass its fully qualified `owner/repository` to every GitHub command. The final checkpoint is created only after the specification and all ticket or justified non-ticket coverage is recorded, then the parent and children receive fresh markers with its exact SHA.
 
 ## Prerequisites
@@ -66,6 +68,14 @@ If the tracker read returns an error, `&&` prevents the helper from running. The
 **Can I update evidence after a checkpoint?**
 
 Yes. Coverage and verification evidence are appendable. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
+
+**How does a parallel implementation avoid ledger conflicts?**
+
+Each worker branch starts from the same validated checkpoint and records evidence on its own ticket or commit surface. The coordinator waits for every relevant branch to merge, then runs `coverage aggregate` with the final checkpoint, integration head, worker tips, and applicable decision IDs. The owner rejects an unmerged tip or a worker ledger edit and fails atomically if any selected verification is absent.
+
+**Can verification evidence live only in a remote ticket?**
+
+Yes. After a successful ticket read, pass a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value to `coverage aggregate`. The origin is required, and the coordinator still validates the complete set before recording it.
 
 **How does Wayfinder reuse a decision that is already in the ledger?**
 
