@@ -751,11 +751,18 @@ def command_marker(repo: Path, args: argparse.Namespace) -> dict[str, object]:
 
 
 def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
-    context_path = relative_path(repo, args.context_file, must_exist=True)
-    marker = parse_marker((repo / context_path).read_text())
+    if args.context_stdin:
+        context_path = None
+        context_label = "<stdin>"
+        context_text = sys.stdin.read()
+    else:
+        context_path = relative_path(repo, args.context_file, must_exist=True)
+        context_label = context_path.as_posix()
+        context_text = (repo / context_path).read_text()
+    marker = parse_marker(context_text)
     if marker is None:
         if not args.effort:
-            return {"status": "legacy", "context": context_path.as_posix()}
+            return {"status": "legacy", "context": context_label}
         effort = validate_effort(args.effort)
         load_config(repo)
         ledger_relative = ledger_relative_path(repo, effort)
@@ -779,7 +786,7 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
             fail("Planning context ledger does not match the repository configuration")
         checkpoint = str(marker["checkpoint"])
         requested = tuple(str(item) for item in marker["decisions"])
-        source = "marker"
+        source = "stdin" if args.context_stdin else "marker"
     current = validate_checkpoint_commit(repo, checkpoint, effort, ledger_relative, required_phase=args.phase)
     selected = requested or tuple(identifier for identifier, entry in current.items() if entry.status == "active")
     for identifier in selected:
@@ -795,14 +802,33 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     missing = missing_coverage({identifier: current[identifier] for identifier in selected}, required)
     if missing:
         fail(f"coverage incomplete for declared Planning context: {', '.join(missing)}")
+    resolved_checkpoint = run_git(repo, "rev-parse", "--verify", f"{checkpoint}^{{commit}}").stdout.strip()
+    head_sha = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    coverage = {
+        identifier: {
+            obligation: {
+                "status": current[identifier].coverage[obligation],
+                "evidence": current[identifier].evidence[obligation],
+            }
+            for obligation in OBLIGATIONS
+            if obligation in current[identifier].obligations
+        }
+        for identifier in selected
+    }
     return {
         "status": "valid",
-        "context": context_path.as_posix(),
+        "context": context_label,
         "source": source,
         "effort": effort,
-        "checkpoint": run_git(repo, "rev-parse", "--verify", f"{checkpoint}^{{commit}}").stdout.strip(),
+        "checkpoint": resolved_checkpoint,
         "ledger": ledger_relative.as_posix(),
         "decisions": list(selected),
+        "coverage": coverage,
+        "ancestry": {
+            "checkpoint_sha": resolved_checkpoint,
+            "head_sha": head_sha,
+            "is_ancestor": True,
+        },
     }
 
 
@@ -857,8 +883,10 @@ def build_parser() -> argparse.ArgumentParser:
     marker.add_argument("--repository")
     marker.add_argument("--output")
 
-    validate = commands.add_parser("validate", help="validate a local or external consumer")
-    validate.add_argument("--context-file", required=True)
+    validate = commands.add_parser("validate", help="validate a local or stdin consumer")
+    context_input = validate.add_mutually_exclusive_group(required=True)
+    context_input.add_argument("--context-file")
+    context_input.add_argument("--context-stdin", action="store_true")
     validate.add_argument("--effort", help="resolve a local context from the latest Planning checkpoint trailer")
     validate.add_argument("--phase", choices=PHASES)
     validate.add_argument("--require", action="append", default=[])
