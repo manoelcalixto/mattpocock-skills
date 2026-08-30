@@ -100,7 +100,33 @@ For a remote tracker, the publishing skill must obtain the configured repository
 
 ## Validation and compatibility
 
-`validate --context-file <path>` returns `legacy` when the file has no Planning context marker and no effort is supplied. A marker is fail-closed: its format, effort, ledger, checkpoint, decision IDs, trailer, ancestry, immutable meaning, and requested phase coverage must all resolve. A local artifact without a marker can pass `--effort <effort>` to resolve the latest matching checkpoint through its Git trailer. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate.
+`validate` accepts exactly one context source. Use `--context-file <path>` for a local specification or ticket relative to the repository root. Use `--context-stdin` for a marker body already obtained from a configured remote tracker. Stdin is read-only transport and does not create a repository file. Both inputs preserve the same marker validation rules. A markerless input with no effort returns `legacy` with its context identifier, preserving the legacy path. A local markerless artifact can pass `--effort <effort>` to resolve the latest matching checkpoint through its Git trailer.
+
+A marker is fail-closed: its format, effort, ledger, checkpoint, decision IDs, trailer, ancestry, immutable meaning, and requested phase coverage must all resolve. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate.
+
+With `--json`, a valid result identifies its input through `context` and `source`. A local marker uses the repository-relative path and `source: marker`; a marker received through stdin uses `context: <stdin>` and `source: stdin`; a local markerless artifact resolved through a trailer uses `source: trailer`. The result's `coverage` object has one entry for every selected decision and one nested entry for every declared obligation, each carrying the ledger's `status` and `evidence`. Its `ancestry` object has the resolved full `checkpoint_sha`, the current `head_sha`, and `is_ancestor: true`, which is emitted only after the helper proves the branch relationship.
+
+For example, a valid marker may return this deterministic shape:
+
+```json
+{
+  "status": "valid",
+  "context": "spec.md",
+  "source": "marker",
+  "coverage": {
+    "DEC-001": {
+      "specification": {"status": "complete", "evidence": "spec.md"},
+      "tickets": {"status": "complete", "evidence": "issue-7"},
+      "verification": {"status": "pending", "evidence": "none"}
+    }
+  },
+  "ancestry": {
+    "checkpoint_sha": "0123456789abcdef0123456789abcdef01234567",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567",
+    "is_ancestor": true
+  }
+}
+```
 
 The public interface is the CLI:
 
@@ -113,6 +139,7 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file spec.md --phase final
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file local-ticket.md --effort demo --phase final
+gh issue view <number> --repo owner/repository --json body --jq .body | python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-stdin --phase final
 ```
 
 The harness runs each scenario in a temporary Git repository and invokes only this interface. Future producers and consumers extend the same harness rather than adding a parallel planning state store.

@@ -2,7 +2,9 @@
 
 `planning-context` gives multi-session work a durable source for material decisions. It keeps one per-effort Decision ledger, the coverage those decisions need, and the Git checkpoint that makes the plan safe for a fresh [session](https://www.aihero.dev/ai-coding-dictionary/session).
 
-The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds.
+The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds. The public validator accepts a local artifact through `--context-file` or an already-obtained remote tracker body through `--context-stdin`, so remote content does not need to become a repository file.
+
+For a valid marker, JSON output names the input source and exposes the selected decisions' declared coverage as `status` and `evidence`. It also proves ancestry with the resolved checkpoint SHA, current `HEAD` SHA, and `is_ancestor: true`. A local marker reports its repository-relative context and `source: marker`; stdin reports `context: <stdin>` and `source: stdin`.
 
 It is the single owner used by `grill-with-docs`, `to-spec`, and `to-tickets`: producers receive stable IDs, specifications attach actionable consequences to every applicable active ID, and tickets carry only the IDs and consequences relevant to their own criteria. Canonical rationale stays in the ledger or its ADR pointer.
 
@@ -46,6 +48,14 @@ No. `CONTEXT.md` remains the domain glossary, and an ADR remains canonical for a
 
 No. A file without a Planning context marker returns the legacy result. Fail-closed validation applies only after a specification or ticket opts into the marker.
 
+**How do I validate a remote ticket without creating a file?**
+
+Obtain its body from the configured tracker with an explicit target, then pipe it to `validate --context-stdin`. For GitHub, use `gh issue view <number> --repo owner/repository --json body --jq .body`; replace `owner/repository` with the target in `docs/agents/issue-tracker.md`. The helper reads stdin without creating a ticket or Planning artifact in the repository.
+
+**What evidence does valid JSON expose?**
+
+`coverage` contains one entry for each selected decision and each declared obligation, with its `status` and `evidence`. `ancestry` contains `checkpoint_sha`, `head_sha`, and `is_ancestor`, which is true only after the branch relationship was proven.
+
 **Can I update evidence after a checkpoint?**
 
 Yes. Coverage and verification evidence are appendable. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
@@ -68,7 +78,8 @@ The issue-tracker configuration supplies one explicit `owner/repository` target.
 - A ledger allocates `DEC-001`, `DEC-002`, and later IDs within one effort without sharing an allocator across efforts.
 - A final checkpoint fails with a named missing obligation, then succeeds after the evidence is recorded.
 - `git show -s --format=%B <checkpoint>` contains `Planning-Checkpoint`, and an unrelated worktree change remains outside that commit.
-- A valid marker passes only on a branch descended from the exact checkpoint, a local artifact can resolve that checkpoint from its trailer, and a legacy file still returns `legacy`.
+- A valid marker passes only on a branch descended from the exact checkpoint, a local artifact can resolve that checkpoint from its trailer, a remote marker passes through stdin without creating a file, and a legacy file still returns `legacy`.
+- Valid JSON names the input source, selected decision coverage, and proven checkpoint ancestry.
 - The public [harness](https://www.aihero.dev/ai-coding-dictionary/harness) reports all scenarios passed from `npm run test:planning-context`.
 
 ## Where it fits

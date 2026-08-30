@@ -27,8 +27,10 @@ Create an intermediate checkpoint while future specification or ticket coverage 
 
 Before a fresh implementation session, validate the declared ledger, checkpoint trailer, branch ancestry, active decision IDs, and requested coverage. A valid consumer descends from the exact checkpoint commit. A declared but unresolved context fails with the failed invariant and its repair. A legacy input without a marker remains allowed.
 
+The public validator accepts exactly one context input. Use `--context-file <path>` for a local specification or ticket, relative to the repository root. Use `--context-stdin` for the body already obtained from a configured remote tracker, such as a GitHub issue fetched with an explicit `--repo owner/repository`. The stdin path is read-only transport and does not materialize a tracker body or Planning artifact in the consumer repository.
+
 When a specification or ticket is published to GitHub, generate its marker after the relevant checkpoint and use the configured repository target from `docs/agents/issue-tracker.md` for every external operation. The marker's ledger path and full checkpoint SHA must remain resolvable from a clone containing that checkpoint. Refresh external markers after the final checkpoint so consumers point at the final planning state.
 
 ## Deterministic seam
 
-Use `scripts/planning_context.py` for the file and Git operations when a deterministic result matters. Read [the planning contract](references/planning-contract.md) before changing the format or adding a caller. Run `npm run test:planning-context` to exercise the public conformance harness in disposable Git repositories.
+Use `scripts/planning_context.py` for the file, stdin, and Git operations when a deterministic result matters. Its JSON `validate` result identifies the context source and, for a valid marker, returns the selected decisions with each declared obligation's `status` and `evidence`, plus proven `ancestry` containing the resolved `checkpoint_sha`, current `head_sha`, and `is_ancestor: true`. Read [the planning contract](references/planning-contract.md) before changing the format or adding a caller. Run `npm run test:planning-context` to exercise the public conformance harness in disposable Git repositories.

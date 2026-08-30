@@ -40,11 +40,13 @@ def run_helper(
     repo: Path,
     *args: str,
     expected: int = 0,
+    input_text: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         [sys.executable, str(HELPER), "--repo", str(repo), "--json", *args],
         cwd=REPO_ROOT,
         text=True,
+        input=input_text,
         capture_output=True,
         check=False,
     )
@@ -395,6 +397,8 @@ def test_implement_preflight_wiring() -> None:
         raise HarnessFailure("implement does not place Planning preflight before TDD")
     for phrase in (
         "planning_context.py",
+        "--context-file",
+        "--context-stdin",
         "--phase final",
         '"status": "valid"',
         '"status": "legacy"',
@@ -414,6 +418,11 @@ def test_implement_preflight_valid() -> None:
     context, checkpoint = prepare_final_context(repo)
     sentinel = repo / "implementation.txt"
     sentinel.write_text("before preflight\n")
+    before_stdin_files = {
+        path.relative_to(repo).as_posix()
+        for path in repo.rglob("*")
+        if path.is_file() and ".git" not in path.parts
+    }
     result = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "final"))
     expected = {
         "status": "valid",
@@ -422,12 +431,51 @@ def test_implement_preflight_valid() -> None:
         "checkpoint": checkpoint,
         "ledger": "docs/planning/demo/decision-ledger.md",
         "decisions": ["DEC-001"],
+        "coverage": {
+            "DEC-001": {
+                "specification": {"status": "complete", "evidence": "spec.md"},
+                "tickets": {"status": "complete", "evidence": "issue-7"},
+                "verification": {"status": "pending", "evidence": "none"},
+            }
+        },
+        "ancestry": {
+            "checkpoint_sha": checkpoint,
+            "head_sha": checkpoint,
+            "is_ancestor": True,
+        },
     }
     for key, value in expected.items():
         if result.get(key) != value:
             raise HarnessFailure(f"valid implement preflight did not resolve {key}: {result}")
     if sentinel.read_text() != "before preflight\n":
         raise HarnessFailure("valid implement preflight changed implementation state")
+
+    stdin_result = payload(
+        run_helper(
+            repo,
+            "validate",
+            "--context-stdin",
+            "--phase",
+            "final",
+            input_text=context.read_text(),
+        )
+    )
+    stdin_expected = dict(expected)
+    stdin_expected.update({"context": "<stdin>", "source": "stdin"})
+    for key, value in stdin_expected.items():
+        if stdin_result.get(key) != value:
+            raise HarnessFailure(f"stdin implement preflight did not resolve {key}: {stdin_result}")
+    after_stdin_files = {
+        path.relative_to(repo).as_posix()
+        for path in repo.rglob("*")
+        if path.is_file() and ".git" not in path.parts
+    }
+    if after_stdin_files != before_stdin_files:
+        raise HarnessFailure(
+            f"stdin context transport created or removed repository files: {sorted(after_stdin_files ^ before_stdin_files)}"
+        )
+    if sentinel.read_text() != "before preflight\n":
+        raise HarnessFailure("stdin implement preflight changed implementation state")
 
 
 def test_implement_preflight_legacy() -> None:
