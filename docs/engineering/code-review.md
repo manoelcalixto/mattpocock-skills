@@ -1,8 +1,8 @@
 ## What it does
 
-`code-review` reviews the diff between `HEAD` and a fixed point you name (a commit, a branch, a tag, `main`, `HEAD~5`) along two axes. **Standards** asks whether the code follows how this repo writes code. **Spec** asks whether the code does what the originating issue or [spec](https://www.aihero.dev/ai-coding-dictionary/spec) asked for. Each axis runs in its own [sub-agent](https://www.aihero.dev/ai-coding-dictionary/subagent) so neither sees the other's reasoning.
+`code-review` reviews one stable checkpoint between an exact head SHA and a fixed point you name (a commit, a branch, a tag, `main`, `HEAD~5`) along two axes. **Standards** asks whether the code follows how this repo writes code. **Spec** asks whether the code does what the originating issue or [spec](https://www.aihero.dev/ai-coding-dictionary/spec) asked for. Each axis runs in its own [sub-agent](https://www.aihero.dev/ai-coding-dictionary/subagent) so neither sees the other's reasoning.
 
-The two axes are never merged and never re-ranked. The report ends with a worst issue *per axis* and refuses to name a single winner across them, because a change can pass one axis and fail the other: code that follows every convention while implementing the wrong thing passes Standards and fails Spec; code that does exactly what the [ticket](https://www.aihero.dev/ai-coding-dictionary/ticket) asked while breaking the repo's conventions does the reverse. A blended verdict lets the passing axis hide the failing one.
+The two axes are never merged and never re-ranked. The report ends with a worst issue *per axis* and refuses to name a single winner across them, because a change can pass one axis and fail the other: code that follows every convention while implementing the wrong thing passes Standards and fails Spec; code that does exactly what the [ticket](https://www.aihero.dev/ai-coding-dictionary/ticket) asked while breaking the repo's conventions does the reverse. A blended verdict lets the passing axis hide the failing one. One initial pass completes the checkpoint, so fix commits do not turn into an unbounded review loop.
 
 ## When to reach for it
 
@@ -45,6 +45,14 @@ A generic review skill that does not know your standards is the thing this desig
 
 The **smell baseline** is the floor underneath it, twelve Fowler code smells from _Refactoring_ ch.3: Mysterious Name, Duplicated Code, Feature Envy, Data Clumps, Primitive Obsession, Repeated Switches, Shotgun Surgery, Divergent Change, Speculative Generality, Message Chains, Middle Man, Refused Bequest. Each is a labelled heuristic ("possible Feature Envy"), never a hard violation, and each is stated as *what it is* → *how to fix*, so a finding arrives with a move attached rather than a complaint. Anything your linter already enforces is skipped by both axes.
 
+## One checkpoint, bounded follow-up
+
+A **review checkpoint** is one completed implementation batch with one logical review identity. Each pass pins its own exact head SHA. Applicable findings can be collected into one **fix batch**, validated, and committed without creating another checkpoint; that logical batch may span one or more commits.
+
+The default is to stop after that fix batch. One consolidated follow-up per axis is available only when that axis's reviewer explicitly asks for it or when the fixes materially change that axis's inputs or conclusions. Standards follows the documented standards and smell assessment; Spec follows required behaviour and spec criteria. A public-interface, architecture, security, or cross-cutting change can affect either or both, but does not restart both merely by category. Fixing exactly what a cited finding requested is not material by itself.
+
+An eligible follow-up keeps the original fixed point and pins the new head, so it reviews the full checkpoint rather than only the fix commits. If it finds another applicable issue, one final fix batch is validated and the workflow stops. Another review needs a human request.
+
 ## Common questions
 
 **It collides with Claude Code's own `/code-review`. What do I do?**
@@ -53,7 +61,7 @@ This is the most reported problem with the skill, and it is not fixed. Claude Co
 
 **Its sub-agents keep invoking `/code-review` again and spawn more agents.**
 
-Known open bug, reproduced by several people and in more than one harness. The Standards and Spec prompts do not forbid delegation, so a sub-agent can rediscover the skill and fan out again: one report reached 50-plus agents. The fix people have applied on forks is one line appended to both sub-agent briefs: "Do not invoke `/code-review` or spawn additional agents: perform this review directly." Some prefer to handle it at the harness level so every skill inherits the guard. Neither is in the shipped skill yet. If you run this unattended, watch the agent count.
+This was a real recursion bug, reproduced in more than one harness and once reaching 50-plus agents. Both reviewer briefs now require the axis to be performed directly and forbid invoking `code-review` or spawning more agents. One Standards reviewer and one Spec reviewer are the complete initial fan-out.
 
 **Should I run it in the same [session](https://www.aihero.dev/ai-coding-dictionary/session) that wrote the code?**
 
@@ -61,7 +69,7 @@ Prefer a fresh one. As one reader put it: "Same context reviewing itself isn't r
 
 **After every ticket, or once at the end?**
 
-Both work, and the skill does not decide for you. Per-ticket keeps each diff small enough that the Spec axis has one clear spec to check against, which is the mode `implement` uses. Batching to the end of a branch catches interactions between tickets that the per-ticket passes each miss. If you are unsure, review per ticket and run one final pass against the branch point.
+The caller defines the batch. [implement](https://aihero.dev/skills-implement) treats its one invocation as one checkpoint, usually one ticket. The multi-ticket `implement-spec` workflow treats the fully integrated PR branch as its only checkpoint, so ticket commits and merges do not trigger independent passes from that workflow. A direct human invocation always creates the checkpoint they explicitly requested.
 
 **Can I trust the findings?**
 
@@ -69,11 +77,11 @@ Not without checking. Sub-agent output is a hypothesis, not evidence: one team r
 
 **Why does it find new problems every single time I run it?**
 
-Because fixes create new surface, and because the judgement-call half of the Standards axis is not deterministic between runs. One reader described the loop plainly: "/code-review and /improve-code-architecture always find new stuff every time. I implement fixes, rerun these skills, and again and again." There is no convergence guarantee. Treat a pass as a list of leads, act on the ones with a cited rule behind them, and stop: do not run it in a loop until it comes back clean, because it will not.
+Fixes create new surface, and the judgement-call half of the Standards axis is not deterministic between runs. There is no convergence guarantee. That is why the skill treats a pass as a list of cited leads rather than a demand for a clean rerun: apply the valid ones in a fix batch and stop. The single eligible follow-up is a response to a material change or an explicit reviewer request, not a polling mechanism.
 
 **Does it review my uncommitted work?**
 
-No. It diffs `<fixed-point>...HEAD`, three-dot, which is measured from the merge-base and excludes staged and working-tree changes. If `implement` has not made an interim commit, the work about to be committed is invisible to the review. Commit first, then review, then amend or add a fixup.
+No. It resolves an exact head SHA, then diffs `<fixed-point>...<head-sha>`, three-dot, which is measured from the merge-base and excludes staged and working-tree changes. Commit first, then review. [implement](https://aihero.dev/skills-implement) now does this itself.
 
 ## It's working if
 
@@ -82,12 +90,14 @@ No. It diffs `<fixed-point>...HEAD`, three-dot, which is measured from the merge
 - Every Standards finding names either a rule in one of your repo's files or one of the twelve smells, with the hunk quoted; every Spec finding quotes a line of the spec.
 - The closing summary gives a worst issue per axis and declines to pick an overall winner.
 - With no spec available, the Spec block says so instead of listing requirements it inferred from the code.
+- Fix commits remain inside the original checkpoint, and no review restarts merely because the head moved.
+- Each reviewer performs its own axis directly, with no recursive reviewer fan-out.
 
 ## Where it fits
 
 `code-review` is the review step at the tail of the build chain: `grill-with-docs → to-spec → to-tickets → implement → code-review`. It also stands alone on any branch or PR you point it at.
 
-- [implement](https://aihero.dev/skills-implement) is the closest neighbour: it drives the build and calls this skill as its own closing review before committing.
+- [implement](https://aihero.dev/skills-implement) is the closest neighbour: it drives the build, commits a stable checkpoint, then calls this skill once and batches applicable fixes.
 - [to-spec](https://aihero.dev/skills-to-spec) and [to-tickets](https://aihero.dev/skills-to-tickets) produce the document the Spec axis checks against; a vague spec makes that axis vague.
 - [improve-codebase-architecture](https://aihero.dev/skills-improve-codebase-architecture) is the whole-codebase counterpart: this skill only ever looks at one diff.
 
