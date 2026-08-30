@@ -34,6 +34,12 @@ A `wayfinder` unit: a child **Issue** of a `wayfinder:map` holding a *question* 
 **Triage role**:
 A canonical state-machine label applied to an **Issue** during triage (e.g. `needs-triage`, `ready-for-afk`). Each role maps to a real label string in the **Issue tracker** via `docs/agents/triage-labels.md`.
 
+**Review checkpoint**:
+A completed implementation batch with one logical review identity. Each review pass pins its own exact head SHA; commits made while applying findings remain inside the same checkpoint.
+
+**Fix batch**:
+The consolidated set of applicable changes produced from one review pass. It is validated as one logical unit and may span one or more commits before the workflow decides whether an eligible follow-up is needed.
+
 ## Relationships
 
 - An **Issue tracker** holds many **Issues**
@@ -42,6 +48,7 @@ A canonical state-machine label applied to an **Issue** during triage (e.g. `nee
 - A **Planning context** contains the durable pointers required by a fresh implementation session
 - A **Planning checkpoint** makes a **Decision ledger** and the other required planning artifacts durable before a fresh session
 - A **Decision ticket** may produce a resolved entry in the **Decision ledger**
+- A **Review checkpoint** may produce at most two **Fix batches**, bounded by the initial review and one eligible follow-up
 
 ## Flagged ambiguities
 
