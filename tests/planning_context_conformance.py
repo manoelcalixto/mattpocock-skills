@@ -12,6 +12,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HELPER = REPO_ROOT / "skills" / "engineering" / "planning-context" / "scripts" / "planning_context.py"
+IMPLEMENT_SKILL = REPO_ROOT / "skills" / "engineering" / "implement" / "SKILL.md"
+IMPLEMENT_DOCS = REPO_ROOT / "docs" / "engineering" / "implement.md"
 
 
 class HarnessFailure(AssertionError):
@@ -131,6 +133,25 @@ def write_marked_artifact(
     path = repo / output
     path.write_text(f"{path.read_text()}\n{body.strip()}\n")
     return path
+
+
+def prepare_final_context(repo: Path, output: str = "ticket.md") -> tuple[Path, str]:
+    create_effort(repo)
+    for obligation, evidence in (("specification", "spec.md"), ("tickets", "issue-7")):
+        add_coverage(repo, "demo", "DEC-001", obligation, evidence)
+    checkpoint = payload(
+        run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "final", "--message", "final plan")
+    )
+    sha = str(checkpoint["sha"])
+    context = write_marked_artifact(
+        repo,
+        "demo",
+        sha,
+        "DEC-001",
+        output,
+        "## What to build\n\nImplement the ticket as a complete vertical slice.",
+    )
+    return context, sha
 
 
 def test_configuration_and_lazy_migration() -> None:
@@ -363,6 +384,163 @@ def test_validation_and_immutability() -> None:
         "later verification",
     )
     run_helper(repo, "validate", "--context-file", "spec.md", "--phase", "final")
+
+
+def test_implement_preflight_wiring() -> None:
+    skill = IMPLEMENT_SKILL.read_text()
+    docs = IMPLEMENT_DOCS.read_text()
+    preflight = skill.find("## Planning preflight")
+    tdd = skill.find('Call the Skill tool with "tdd"')
+    if preflight < 0 or tdd < 0 or preflight > tdd:
+        raise HarnessFailure("implement does not place Planning preflight before TDD")
+    for phrase in (
+        "planning_context.py",
+        "--phase final",
+        '"status": "valid"',
+        '"status": "legacy"',
+        "exact failed invariant",
+        "A declared marker never falls back to the legacy path",
+    ):
+        if phrase not in skill:
+            raise HarnessFailure(f"implement preflight wiring is missing: {phrase}")
+    if "Call the Skill tool with `planning-context`" not in skill:
+        raise HarnessFailure("implement does not return decision conflicts to planning-context")
+    if "## Planning preflight" not in docs or "Active decision conflicts with the implementation" not in docs:
+        raise HarnessFailure("implement documentation does not describe the Planning preflight")
+
+
+def test_implement_preflight_valid() -> None:
+    repo = init_repo()
+    context, checkpoint = prepare_final_context(repo)
+    sentinel = repo / "implementation.txt"
+    sentinel.write_text("before preflight\n")
+    result = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "final"))
+    expected = {
+        "status": "valid",
+        "source": "marker",
+        "effort": "demo",
+        "checkpoint": checkpoint,
+        "ledger": "docs/planning/demo/decision-ledger.md",
+        "decisions": ["DEC-001"],
+    }
+    for key, value in expected.items():
+        if result.get(key) != value:
+            raise HarnessFailure(f"valid implement preflight did not resolve {key}: {result}")
+    if sentinel.read_text() != "before preflight\n":
+        raise HarnessFailure("valid implement preflight changed implementation state")
+
+
+def test_implement_preflight_legacy() -> None:
+    repo = init_repo()
+    context = repo / "legacy-ticket.md"
+    context.write_text("# Legacy ticket\n")
+    sentinel = repo / "implementation.txt"
+    sentinel.write_text("before legacy\n")
+    result = payload(run_helper(repo, "validate", "--context-file", context.name))
+    if result.get("status") != "legacy":
+        raise HarnessFailure(f"marker-less implement input did not use the legacy path: {result}")
+    if (repo / "docs" / "agents" / "planning.md").exists() or (repo / "docs" / "planning").exists():
+        raise HarnessFailure("legacy implement preflight created Planning artifacts")
+    if sentinel.read_text() != "before legacy\n":
+        raise HarnessFailure("legacy implement preflight changed implementation state")
+
+
+def test_implement_preflight_invalid() -> None:
+    repo = init_repo()
+    context, checkpoint = prepare_final_context(repo)
+    context.write_text(context.read_text().replace(checkpoint, "0" * 40))
+    sentinel = repo / "implementation.txt"
+    sentinel.write_text("before invalid\n")
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "cannot be resolved" not in error:
+        raise HarnessFailure(f"invalid declared context did not expose the failed invariant: {invalid}")
+    if sentinel.read_text() != "before invalid\n":
+        raise HarnessFailure("invalid implement preflight changed implementation state")
+
+
+def test_implement_preflight_wrong_lineage() -> None:
+    repo = init_repo()
+    context, _ = prepare_final_context(repo)
+    marker_text = context.read_text()
+    config_text = (repo / "docs" / "agents" / "planning.md").read_text()
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    ledger_text = ledger.read_text()
+    root_commit = run_git(repo, "rev-list", "--max-parents=0", "HEAD").stdout.strip()
+    run_git(repo, "switch", "-c", "wrong-lineage", root_commit)
+    (repo / "docs" / "agents").mkdir(parents=True, exist_ok=True)
+    (repo / "docs" / "agents" / "planning.md").write_text(config_text)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    ledger.write_text(ledger_text)
+    context = repo / "wrong-lineage-ticket.md"
+    context.write_text(marker_text)
+    run_git(repo, "add", "docs", context.name)
+    run_git(repo, "commit", "-m", "wrong lineage")
+    sentinel = repo / "implementation.txt"
+    sentinel.write_text("before wrong lineage\n")
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "not an ancestor" not in error:
+        raise HarnessFailure(f"wrong-lineage implement preflight did not fail closed: {invalid}")
+    if sentinel.read_text() != "before wrong lineage\n":
+        raise HarnessFailure("wrong-lineage preflight changed implementation state")
+
+
+def test_implement_preflight_decision_conflict() -> None:
+    skill_text = IMPLEMENT_SKILL.read_text()
+    for phrase in (
+        "If an active decision cannot be honored",
+        "Call the Skill tool with `planning-context`",
+        "superseding decision",
+        "new Planning checkpoint",
+        "silent deviation",
+    ):
+        if phrase not in skill_text:
+            raise HarnessFailure(f"implement decision-conflict contract is missing: {phrase}")
+
+    repo = init_repo()
+    old_context, _ = prepare_final_context(repo, "old-ticket.md")
+    sentinel = repo / "implementation.txt"
+    sentinel.write_text("before decision conflict\n")
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        "demo",
+        "--supersedes",
+        "DEC-001",
+        "--decision",
+        "Use the resolved planning seam",
+        "--context",
+        "The active decision cannot be honored as written",
+        "--rationale",
+        "An explicit supersession preserves the decision history",
+    )
+    for obligation, evidence in (("specification", "spec.md"), ("tickets", "issue-7")):
+        add_coverage(repo, "demo", "DEC-002", obligation, evidence)
+    new_checkpoint = payload(
+        run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "final", "--message", "resolved plan")
+    )["sha"]
+
+    stale = run_helper(repo, "validate", "--context-file", old_context.name, "--phase", "final", expected=2)
+    stale_error = stale.stdout.lower() + stale.stderr.lower()
+    if "validity" not in stale_error and "changed after the checkpoint" not in stale_error:
+        raise HarnessFailure(f"decision conflict did not reject the stale Planning marker: {stale}")
+    if sentinel.read_text() != "before decision conflict\n":
+        raise HarnessFailure("decision-conflict preflight changed implementation state")
+
+    new_context = write_marked_artifact(
+        repo,
+        "demo",
+        str(new_checkpoint),
+        "DEC-002",
+        "resolved-ticket.md",
+        "## What to build\n\nImplement the resolved decision.",
+    )
+    resolved = payload(run_helper(repo, "validate", "--context-file", new_context.name, "--phase", "final"))
+    if resolved.get("status") != "valid" or resolved.get("decisions") != ["DEC-002"]:
+        raise HarnessFailure(f"supersession and new checkpoint did not restore a valid context: {resolved}")
 
 
 def test_grill_to_tickets_flow() -> None:
@@ -638,6 +816,7 @@ def test_repository_wiring() -> None:
         "to-tickets": (REPO_ROOT / "docs" / "engineering" / "to-tickets.md").read_text(),
         "ask-matt": (REPO_ROOT / "docs" / "engineering" / "ask-matt.md").read_text(),
         "planning-context": (REPO_ROOT / "docs" / "engineering" / "planning-context.md").read_text(),
+        "implement": IMPLEMENT_DOCS.read_text(),
     }
     for name, text in docs.items():
         for section in ("## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits"):
@@ -690,6 +869,12 @@ def main() -> int:
         test_ledger_ids_and_supersession,
         test_checkpoint_gates_staging_and_trailer,
         test_validation_and_immutability,
+        test_implement_preflight_wiring,
+        test_implement_preflight_valid,
+        test_implement_preflight_legacy,
+        test_implement_preflight_invalid,
+        test_implement_preflight_wrong_lineage,
+        test_implement_preflight_decision_conflict,
         test_grill_to_tickets_flow,
         test_implementation_verification_gate,
     ]
