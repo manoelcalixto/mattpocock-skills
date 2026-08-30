@@ -55,10 +55,11 @@ Not feature work, just upkeep.
 
 ## Vocabulary underneath
 
-Two model-invoked references that run *beneath* the other skills, each the single source of truth for its vocabulary. Reach for them directly when the **words**, not the process, are the problem; or let the skills above pull them in.
+Three model-invoked references that run *beneath* the other skills, each the single source of truth for its vocabulary or cross-session contract. Reach for them directly when the **words**, not the process, are the problem; or let the skills above pull them in.
 
 - **`/domain-modeling`**: sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/grill-with-docs` drives to keep `CONTEXT.md` a clean glossary.
 - **`/codebase-design`** is the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*: a lot of behaviour behind a small interface at a clean seam. `/tdd` and `/improve-codebase-architecture` both speak it.
+- **`/planning-context`** owns the versioned Planning context used when work crosses sessions: the per-effort Decision ledger, phase-aware Planning checkpoints, coverage gates, and consumer validation. Use it when those artifacts or their contract are the problem; small work without a declared Planning context stays on the current-session path.
 
 ## Phase boundaries
 

@@ -29,7 +29,7 @@ The word the skill gives you to think with is **flow**: a path *through* the ski
 - **The main flow**, idea to ship. Grill, spec, tickets, implement, then one bounded review checkpoint, with two branches inside it: a prototype detour when a question needs runnable code to settle, and the spec-and-tickets split, which only earns its cost when the build spans more than one session. After ticketing, an installed beta `implement-spec` can orchestrate the whole graph into one draft PR and one integrated checkpoint; otherwise `/implement` handles one ticket and one checkpoint per invocation.
 - **On-ramps**, for a situation that generates work and then merges onto the main flow: incoming bug reports, something broken, or an effort too foggy and too large to hold in one session.
 - **Standalones**, off every flow, reached for on their own terms: the prototype, the questionnaire, the merge conflict you are already sitting in.
-- **A vocabulary layer underneath**, the two references the other skills pull in when the words rather than the process are the problem.
+- **A vocabulary and context layer underneath**, the three model-invoked references the other skills pull in when the words or the cross-session contract rather than the process are the problem.
 
 ## The phase boundary
 
@@ -88,6 +88,6 @@ Check the changelog for a rename before assuming it is gone. `writing-great-skil
 
 ## Where it fits
 
-`ask-matt` is a **standalone router** that sits over the whole set. It is never a step in a chain; it points into every chain, and it is the node the other docs pages link back to so none of them has to redraw the graph. From here you most often land on [grill-with-docs](https://aihero.dev/skills-grill-with-docs), the head of the main flow, or [triage](https://aihero.dev/skills-triage), the on-ramp for work that arrived rather than work you started.
+`ask-matt` is a **standalone router** that sits over the whole set. It is never a step in a chain; it points into every chain, and it is the node the other docs pages link back to so none of them has to redraw the graph. Its vocabulary layer now also includes [planning-context](https://aihero.dev/skills-planning-context), which keeps the ledger and checkpoint contract coherent when work crosses sessions. From here you most often land on [grill-with-docs](https://aihero.dev/skills-grill-with-docs), the head of the main flow, or [triage](https://aihero.dev/skills-triage), the on-ramp for work that arrived rather than work you started.
 
 It is a [secondary source](https://www.aihero.dev/ai-coding-dictionary/secondary-source) over the skills it describes. Where the router and a `SKILL.md` disagree, the `SKILL.md` is right.
