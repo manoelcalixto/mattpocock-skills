@@ -45,6 +45,17 @@ There is one ledger per effort. Its path is `<ledger directory>/<effort>/decisio
 
 The helper allocates the next numeric ID within the selected effort. `decision add --supersedes DEC-001` changes only the old entry's validity fields and appends a new entry. The old decision and rationale stay byte-for-byte unchanged. A checkpointed ledger may receive coverage and evidence updates, but adding, removing, or changing a decision meaning requires a new checkpoint.
 
+### Wayfinder resolution
+
+A resolved Wayfinder Decision ticket uses the same ledger as every other producer. Inspect the active entries before recording the answer:
+
+- If an active entry already represents the answer, run `decision reference --effort <effort> --decision DEC-NNN`. It returns that stable ID without appending another entry.
+- If no active entry represents the answer, run `decision add` once and use the returned ID. One resolution creates at most one new entry.
+- Carry exactly one active ID in the resolved Decision ticket's Planning context marker. The map remains an index that links to the ticket and gives a short gist; the ledger owns the decision and rationale.
+- When the answer is ADR-worthy, make the ADR the canonical record and pass its path with `decision add --adr`. The ledger and ticket point to that ADR instead of copying its rationale.
+
+After recording a new entry, create an intermediate checkpoint before publishing or handing off the resolution, then refresh the map and ticket markers to that checkpoint and active ID. The map marker must advance with each resolution checkpoint so its selected IDs remain coherent. The same specification, ticket, and final checkpoint coverage rules then apply to the Wayfinder map and its downstream consumers. A fresh build session is permitted only after the final checkpoint gate passes.
+
 ## Producer and consumer propagation
 
 The ledger is the canonical source for decision meaning. A producer records one material choice through the owner and receives one stable ID. A specification or ticket may repeat that ID and the concise consequence needed to act, but it does not repeat the ledger's decision, context, rationale, or ADR prose.
@@ -108,6 +119,7 @@ The public interface is the CLI:
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . init
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . ledger create --effort demo
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision add --effort demo --decision "..." --context "..." --rationale "..."
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision reference --effort demo --decision DEC-001
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-001 --obligation specification --evidence spec.md
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase final
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md

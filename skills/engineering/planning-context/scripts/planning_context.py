@@ -327,6 +327,17 @@ def next_identifier(entries: Mapping[str, Entry]) -> str:
     return f"DEC-{(max(numbers, default=0) + 1):03d}"
 
 
+def active_decision_identifier(entries: Mapping[str, Entry], raw_identifier: str) -> str:
+    identifier = clean_single_line(raw_identifier, "decision")
+    if not ID_PATTERN.fullmatch(identifier):
+        fail("decision must use a DEC-NNN identifier")
+    if identifier not in entries:
+        fail(f"decision {identifier} does not exist")
+    if entries[identifier].status != "active":
+        fail(f"decision {identifier} is superseded; reference an active entry")
+    return identifier
+
+
 def supersede_entry(text: str, identifier: str, successor: str) -> str:
     matches = list(ENTRY_PATTERN.finditer(text))
     for index, match in enumerate(matches):
@@ -399,6 +410,19 @@ def command_decision_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
     path.write_text(text + separator + entry)
     parse_ledger(path.read_text())
     return {"status": "created", "effort": effort, "id": identifier, "path": relative.as_posix()}
+
+
+def command_decision_reference(repo: Path, args: argparse.Namespace) -> dict[str, object]:
+    effort = validate_effort(args.effort)
+    ensure_config(repo)
+    relative, _, entries = read_ledger(repo, effort)
+    identifier = active_decision_identifier(entries, args.decision)
+    return {
+        "status": "referenced",
+        "effort": effort,
+        "id": identifier,
+        "path": relative.as_posix(),
+    }
 
 
 def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, object]:
@@ -714,8 +738,7 @@ def command_marker(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     validate_checkpoint_commit(repo, resolved_sha, effort, ledger_relative)
     decisions = tuple(item.strip() for item in (args.decisions or "").split(",") if item.strip())
     for identifier in decisions:
-        if identifier not in entries:
-            fail(f"decision {identifier} does not exist")
+        active_decision_identifier(entries, identifier)
     block = marker_block(effort, ledger_relative, resolved_sha, decisions, args.repository)
     if args.output:
         output = relative_path(repo, args.output)
@@ -807,6 +830,12 @@ def build_parser() -> argparse.ArgumentParser:
     decision_add.add_argument("--obligations", help="comma-separated obligations or none")
     decision_add.add_argument("--supersedes")
 
+    decision_reference = decision_commands.add_parser(
+        "reference", help="reference one existing active decision without creating a ledger entry"
+    )
+    decision_reference.add_argument("--effort", required=True)
+    decision_reference.add_argument("--decision", required=True)
+
     coverage = commands.add_parser("coverage", help="append coverage and verification evidence")
     coverage_commands = coverage.add_subparsers(dest="coverage_command", required=True)
     coverage_add = coverage_commands.add_parser("add")
@@ -844,6 +873,8 @@ def dispatch(repo: Path, args: argparse.Namespace) -> dict[str, object]:
         return command_ledger_create(repo, args.effort)
     if args.command == "decision" and args.decision_command == "add":
         return command_decision_add(repo, args)
+    if args.command == "decision" and args.decision_command == "reference":
+        return command_decision_reference(repo, args)
     if args.command == "coverage" and args.coverage_command == "add":
         return command_coverage_add(repo, args)
     if args.command == "checkpoint":

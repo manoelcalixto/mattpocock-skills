@@ -106,6 +106,20 @@ def add_coverage(repo: Path, effort: str, decision: str, obligation: str, eviden
     )
 
 
+def reference_decision(repo: Path, effort: str, decision: str) -> dict[str, object]:
+    return payload(
+        run_helper(
+            repo,
+            "decision",
+            "reference",
+            "--effort",
+            effort,
+            "--decision",
+            decision,
+        )
+    )
+
+
 def write_marked_artifact(
     repo: Path,
     effort: str,
@@ -201,6 +215,12 @@ def test_ledger_ids_and_supersession() -> None:
         raise HarnessFailure("supersession did not preserve an auditable old entry")
     if "- Obligations: none" not in ledger:
         raise HarnessFailure("non-ticket obligation was not preserved")
+    referenced = reference_decision(repo, "demo", "DEC-002")
+    if referenced.get("status") != "referenced" or referenced.get("id") != "DEC-002":
+        raise HarnessFailure(f"active decision reference did not preserve its stable ID: {referenced}")
+    rejected = run_helper(repo, "decision", "reference", "--effort", "demo", "--decision", "DEC-001", expected=2)
+    if "superseded" not in (rejected.stdout + rejected.stderr).lower():
+        raise HarnessFailure("superseded decisions were still referenceable")
 
 
 def test_checkpoint_gates_staging_and_trailer() -> str:
@@ -541,6 +561,234 @@ Keep the implementation ticket independently verifiable.
         raise HarnessFailure("non-ticket coverage evidence was not retained in the ledger")
 
 
+def test_wayfinder_decision_to_build_flow() -> None:
+    """Exercise Wayfinder resolution, canonical ADR ownership, and the final gate."""
+
+    repo = init_repo()
+    effort = "wayfinder-to-build"
+    run_helper(repo, "init")
+    run_helper(repo, "ledger", "create", "--effort", effort)
+
+    initial = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "intermediate",
+            "--message",
+            "Wayfinder map checkpoint",
+        )
+    )
+    initial_sha = str(initial["sha"])
+    map_path = repo / "wayfinder-map.md"
+    map_path.write_text(
+        "## Destination\n\nA specification and implementation ticket for the shared planning contract.\n\n"
+        "## Decisions so far\n\n"
+    )
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        effort,
+        "--checkpoint",
+        initial_sha,
+        "--repository",
+        "https://github.com/manoelcalixto/mattpocock-skills",
+        "--output",
+        map_path.name,
+    )
+    initial_map = map_path.read_text()
+    if f"Planning checkpoint: {initial_sha}" not in initial_map or "Decisions:" in initial_map:
+        raise HarnessFailure("the initial Wayfinder map did not point to its empty planning checkpoint")
+
+    adr = repo / "docs" / "adr" / "0004-wayfinder-decision.md"
+    adr.parent.mkdir(parents=True)
+    canonical_rationale = "The ADR records the canonical rationale for preserving the shared planning contract."
+    adr.write_text(f"# Wayfinder planning contract\n\n{canonical_rationale}\n")
+    created = payload(
+        run_helper(
+            repo,
+            "decision",
+            "add",
+            "--effort",
+            effort,
+            "--decision",
+            "Carry the shared planning contract into the build",
+            "--context",
+            "A resolved Wayfinder choice must cross fresh sessions",
+            "--rationale",
+            "See the ADR for the canonical architectural rationale",
+            "--adr",
+            "docs/adr/0004-wayfinder-decision.md",
+            "--obligations",
+            "specification,tickets",
+        )
+    )
+    decision_id = str(created["id"])
+    if decision_id != "DEC-001":
+        raise HarnessFailure(f"Wayfinder resolution did not create the first stable ID: {created}")
+
+    ledger_path = repo / "docs" / "planning" / effort / "decision-ledger.md"
+    before_reference = ledger_path.read_text()
+    referenced = reference_decision(repo, effort, decision_id)
+    if referenced.get("status") != "referenced" or referenced.get("id") != decision_id:
+        raise HarnessFailure(f"Wayfinder reference did not return the active stable ID: {referenced}")
+    after_reference = ledger_path.read_text()
+    if after_reference != before_reference or after_reference.count("## DEC-") != 1:
+        raise HarnessFailure("referencing a Wayfinder decision created duplicate ledger state")
+    if "- ADR: docs/adr/0004-wayfinder-decision.md" not in after_reference:
+        raise HarnessFailure("the ledger does not point to the canonical ADR")
+
+    resolution_checkpoint = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "intermediate",
+            "--message",
+            "Wayfinder decision checkpoint",
+            "--path",
+            "docs/adr/0004-wayfinder-decision.md",
+        )
+    )
+    resolution_sha = str(resolution_checkpoint["sha"])
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        effort,
+        "--checkpoint",
+        resolution_sha,
+        "--decisions",
+        decision_id,
+        "--repository",
+        "https://github.com/manoelcalixto/mattpocock-skills",
+        "--output",
+        map_path.name,
+    )
+    resolved_map = map_path.read_text()
+    if resolution_sha == initial_sha or f"Planning checkpoint: {resolution_sha}" not in resolved_map:
+        raise HarnessFailure("the Wayfinder map marker did not advance with the resolved decision checkpoint")
+    if f"Decisions: {decision_id}" not in resolved_map:
+        raise HarnessFailure("the Wayfinder map marker did not represent its resolved decision ID")
+    marker_heading = "## Planning context"
+    marker_index = resolved_map.index(marker_heading)
+    map_path.write_text(
+        f"{resolved_map[:marker_index]}"
+        "- [Carry the shared planning contract into the build](wayfinder-decision.md): "
+        "link to the resolved Decision ticket\n\n"
+        f"{resolved_map[marker_index:]}"
+    )
+
+    decision_ticket = write_marked_artifact(
+        repo,
+        effort,
+        resolution_sha,
+        decision_id,
+        "wayfinder-decision.md",
+        """## Resolution
+
+The ADR-backed planning contract is the selected answer.
+
+- ADR: [0004-wayfinder-decision.md](docs/adr/0004-wayfinder-decision.md)
+- Specification handoff: wayfinder-spec.md
+""",
+    )
+    spec = write_marked_artifact(
+        repo,
+        effort,
+        resolution_sha,
+        decision_id,
+        "wayfinder-spec.md",
+        """## Implementation Decisions
+
+- DEC-001: carry the shared planning contract through the build
+- Implementation ticket: wayfinder-implementation-ticket.md
+""",
+    )
+    add_coverage(repo, effort, decision_id, "specification", "wayfinder-spec.md#implementation-decisions")
+
+    missing = run_helper(repo, "checkpoint", "--effort", effort, "--phase", "final", expected=2)
+    if "dec-001:tickets" not in (missing.stdout + missing.stderr).lower():
+        raise HarnessFailure(f"Wayfinder resolution crossed the final gate without ticket coverage: {missing}")
+
+    implementation_ticket = write_marked_artifact(
+        repo,
+        effort,
+        resolution_sha,
+        decision_id,
+        "wayfinder-implementation-ticket.md",
+        """## Decision consequences
+
+- DEC-001: keep the shared planning contract observable in implementation
+- Source specification: wayfinder-spec.md
+
+## Acceptance criteria
+
+- [ ] A fresh implementation session can verify the complete path.
+""",
+    )
+    add_coverage(repo, effort, decision_id, "tickets", "wayfinder-implementation-ticket.md")
+
+    final = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "final",
+            "--message",
+            "Wayfinder to build planning checkpoint",
+        )
+    )
+    final_sha = str(final["sha"])
+    if final_sha == resolution_sha or len(final_sha) != 40:
+        raise HarnessFailure(f"Wayfinder final checkpoint did not advance: {final}")
+
+    for output in (map_path, decision_ticket, spec, implementation_ticket):
+        run_helper(
+            repo,
+            "marker",
+            "--effort",
+            effort,
+            "--checkpoint",
+            final_sha,
+            "--decisions",
+            decision_id,
+            "--repository",
+            "https://github.com/manoelcalixto/mattpocock-skills",
+            "--output",
+            output.name,
+        )
+
+    for output in (map_path, decision_ticket, spec, implementation_ticket):
+        run_helper(repo, "validate", "--context-file", output.name, "--phase", "final")
+
+    map_text = map_path.read_text()
+    decision_text = decision_ticket.read_text()
+    spec_text = spec.read_text()
+    implementation_text = implementation_ticket.read_text()
+    downstream = map_text + decision_text + spec_text + implementation_text
+    if canonical_rationale in downstream:
+        raise HarnessFailure("canonical ADR rationale leaked into the Wayfinder or build artifacts")
+    if "wayfinder-decision.md" not in map_text or "wayfinder-spec.md" not in implementation_text:
+        raise HarnessFailure("Wayfinder resolution did not retain the Decision to spec to ticket chain")
+    if f"Planning checkpoint: {final_sha}" not in map_text:
+        raise HarnessFailure("the Wayfinder map marker was not refreshed for the final checkpoint")
+    adr_text = adr.read_text()
+    if (
+        canonical_rationale not in adr_text
+        or "- ADR: docs/adr/0004-wayfinder-decision.md" not in ledger_path.read_text()
+        or "docs/adr/0004-wayfinder-decision.md" not in decision_text
+    ):
+        raise HarnessFailure("ADR canonical rationale and ledger pointer are not both present")
+
+
 def test_repository_wiring() -> None:
     skill = REPO_ROOT / "skills" / "engineering" / "planning-context"
     skill_text = (skill / "SKILL.md").read_text()
@@ -691,6 +939,7 @@ def main() -> int:
         test_checkpoint_gates_staging_and_trailer,
         test_validation_and_immutability,
         test_grill_to_tickets_flow,
+        test_wayfinder_decision_to_build_flow,
         test_implementation_verification_gate,
     ]
     for test in tests:
