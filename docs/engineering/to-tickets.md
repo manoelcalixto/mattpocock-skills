@@ -6,6 +6,8 @@ Every ticket is a **tracer bullet**: a narrow but complete path through every la
 
 When the source has an active Planning context, each ticket carries only the decision IDs that affect it, one actionable consequence per ID, and acceptance criteria that make those consequences observable. The ledger remains the source for rationale. Every active entry with a ticket obligation is covered by at least one ticket, while a process or out-of-scope entry gets a written non-ticket justification instead of an artificial slice.
 
+A cleared Wayfinder map uses this same contract. Preserve each resolved Decision ticket's active ID and consequence when slicing the implementation work, and read the map and its tickets as pointers to the ledger rather than as another rationale source.
+
 ## When to reach for it
 
 You invoke this by typing `/to-tickets`. The [agent](https://www.aihero.dev/ai-coding-dictionary/agent) won't reach for it on its own.

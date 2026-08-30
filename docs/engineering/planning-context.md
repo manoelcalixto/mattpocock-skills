@@ -4,7 +4,7 @@
 
 The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds.
 
-It is the single owner used by `grill-with-docs`, `to-spec`, and `to-tickets`: producers receive stable IDs, specifications attach actionable consequences to every applicable active ID, and tickets carry only the IDs and consequences relevant to their own criteria. Canonical rationale stays in the ledger or its ADR pointer.
+It is the single owner used by `grill-with-docs`, `wayfinder`, `to-spec`, and `to-tickets`: producers receive stable IDs, specifications attach actionable consequences to every applicable active ID, and tickets carry only the IDs and consequences relevant to their own criteria. Canonical rationale stays in the ledger or its ADR pointer.
 
 ## When to reach for it
 
@@ -50,6 +50,10 @@ No. A file without a Planning context marker returns the legacy result. Fail-clo
 
 Yes. Coverage and verification evidence are appendable. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
 
+**How does Wayfinder reuse a decision that is already in the ledger?**
+
+The resolver inspects active entries and calls `decision reference` for an existing answer, or `decision add` once for a new one. The resolved Decision ticket carries exactly one active ID. Its map entry stays a short pointer, while the ledger or its ADR keeps the canonical rationale. After a new entry's intermediate checkpoint, regenerate the map and ticket markers so they point to the same checkpoint and active ID.
+
 **How does the grill-to-tickets path avoid losing decisions?**
 
 `grill-with-docs` records each confirmed material choice once and exposes its ID in the round summary. `to-spec` accounts for every applicable active ID with a consequence, then `to-tickets` maps ticket obligations to one or more children or records a non-ticket justification. The final phase gate reports any pending coverage before implementation can begin.
@@ -67,6 +71,8 @@ The issue-tracker configuration supplies one explicit `owner/repository` target.
 - A first use creates `docs/agents/planning.md`, while rerunning it preserves an initialized file byte for byte.
 - A ledger allocates `DEC-001`, `DEC-002`, and later IDs within one effort without sharing an allocator across efforts.
 - A final checkpoint fails with a named missing obligation, then succeeds after the evidence is recorded.
+- A resolved Wayfinder Decision ticket references or creates exactly one active ID, and that ID remains traceable through its spec, implementation ticket, and final checkpoint coverage.
+- A Wayfinder map marker is refreshed after each resolution checkpoint and after the final coverage checkpoint.
 - `git show -s --format=%B <checkpoint>` contains `Planning-Checkpoint`, and an unrelated worktree change remains outside that commit.
 - A valid marker passes only on a branch descended from the exact checkpoint, a local artifact can resolve that checkpoint from its trailer, and a legacy file still returns `legacy`.
 - The public [harness](https://www.aihero.dev/ai-coding-dictionary/harness) reports all scenarios passed from `npm run test:planning-context`.

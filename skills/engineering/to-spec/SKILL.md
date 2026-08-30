@@ -10,6 +10,8 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 When the source conversation has an active Planning context, call the Skill tool with `planning-context` before drafting. It is the owner of the ledger, checkpoint, coverage, and marker contract. A source without a Planning context marker follows the legacy path and does not need a ledger.
 
+A cleared Wayfinder map is an active Planning context source just like a grilled conversation. Use the map's marker to resolve the same effort ledger, then account for every active entry through this contract. The map and its Decision tickets are pointers to the decision, not alternate rationale stores.
+
 ## Process
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Read `CONTEXT.md`, applicable ADRs, and the Planning context when it is active. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.

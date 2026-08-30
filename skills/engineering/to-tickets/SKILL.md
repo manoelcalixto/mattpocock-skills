@@ -12,6 +12,8 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 When the source conversation or specification has an active Planning context, call the Skill tool with `planning-context` before drafting. It is the sole owner of the ledger, checkpoint, coverage, and marker contract. A source without a Planning context marker follows the legacy ticket path.
 
+A cleared Wayfinder map is consumed through this same path. Resolve its marker and ledger, preserve each active Decision ticket ID, and map its actionable consequence to implementation tickets. Read the map and Decision tickets as pointers; their prose does not replace the ledger's canonical rationale.
+
 ## Process
 
 ### 1. Gather context

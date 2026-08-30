@@ -37,6 +37,8 @@ Those agreed seams then travel. [tdd](https://aihero.dev/skills-tdd) works only 
 
 For an active Planning context, the spec carries the checkpoint marker and a short `DEC-NNN: consequence` line for every applicable active ledger entry. It does not copy the entry's decision, context, rationale, or ADR. Entries without a specification obligation receive an explicit not-applicable note so the accounting is complete without manufacturing a consequence. After publication, the specification obligation is marked complete with the issue URL, issue number, or local path as evidence.
 
+A cleared Wayfinder map enters this same path through its Planning context marker. Its Decision ticket IDs are treated like grilled decision IDs, and the map remains a pointer rather than a second source of rationale.
+
 The intermediate checkpoint is the bridge into this step. The final checkpoint belongs after `to-tickets` has recorded ticket coverage, so the spec marker is refreshed then with the final SHA through the configured tracker target.
 
 ## Common questions

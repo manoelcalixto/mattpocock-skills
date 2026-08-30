@@ -47,6 +47,8 @@ A starting situation that generates work, then merges onto the main flow.
 
   When the map clears, **it hands off, it doesn't build**: merge onto the main flow at **`/to-spec`**, which collapses the map's linked decisions into a buildable plan, then `/to-tickets` and `/implement` as usual. Looping the map straight into `/implement` skips that collapse and throws the linked detail away, so go straight to `/implement` only when the effort turned out genuinely small.
 
+  With an active Planning context, a resolved material Decision ticket references one active ledger ID or creates exactly one new entry. The map keeps a linked gist, while the ledger or its ADR owns the rationale. The ID travels through `to-spec` and `to-tickets`, and a fresh build session waits for the final Planning checkpoint coverage gate.
+
 ## Codebase health
 
 Not feature work, just upkeep.
