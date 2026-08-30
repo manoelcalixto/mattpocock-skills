@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker).
+description: Break a plan, spec, or the current conversation into tracer-bullet tickets with Planning decision coverage, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker).
 disable-model-invocation: true
 ---
 
@@ -10,11 +10,15 @@ Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet ver
 
 The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
 
+When the source conversation or specification has an active Planning context, call the Skill tool with `planning-context` before drafting. It is the sole owner of the ledger, checkpoint, coverage, and marker contract. A source without a Planning context marker follows the legacy ticket path.
+
 ## Process
 
 ### 1. Gather context
 
 Work from whatever is already in the conversation context. If the user passes a reference (a spec path, an issue number or URL) as an argument, fetch it and read its full body and comments.
+
+For an active Planning context, validate the declared marker against the exact checkpoint and current branch, then read every active ledger entry. Build a coverage table before drafting: each entry with a `tickets` obligation must map to one or more tickets, while an entry without that obligation must have a written non-ticket or not-applicable justification. Keep the ledger's rationale in the ledger. Tickets receive only the relevant decision IDs, actionable consequences, and acceptance criteria.
 
 ### 2. Explore the codebase (optional)
 
@@ -36,6 +40,14 @@ Break the work into **tracer bullet** tickets.
 </vertical-slice-rules>
 
 Give each ticket its **blocking edges**: the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
+
+For an active Planning context, each proposed ticket also declares its decision coverage:
+
+- `Decisions: DEC-NNN, DEC-NNN` names only the active entries that affect that ticket.
+- `Consequences:` gives one concise, actionable consequence for each named ID. Do not copy canonical rationale, context, or ADR text.
+- Acceptance criteria make the consequence observable. A decision covered by several tickets may appear in each one when each ticket owns a different part of the consequence.
+
+Every active decision with a `tickets` obligation must appear in at least one ticket. A process, out-of-scope, or otherwise non-ticket decision is recorded as a justified non-ticket obligation in the planning coverage instead of receiving an artificial implementation ticket.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
@@ -61,6 +73,14 @@ Publish the approved tickets. **How** depends on the tracker `/setup-matt-pocock
 
 - **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below: one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise; the tickets are agent-grabbable by construction.
+
+When Planning context is active, include a marker from `planning-context` in every published ticket. The marker's decision list and the ticket's decision coverage must match exactly. After each publication, record ticket coverage through `planning-context` using the published issue number, URL, or local ticket path as evidence. This is append-only coverage, not a second decision record.
+
+Read `docs/agents/issue-tracker.md` before any tracker operation. For GitHub, copy its configured `owner/repository` into every command's explicit `--repo owner/repository` option, including issue creation, reads, edits, labels, comments, and relationship wiring. Use the same fully qualified target for any `gh api repos/owner/repository/...` call. Never infer the target from the checkout, a remote, or the current `gh` context. If the target is absent or ambiguous, stop before publication and ask for setup repair.
+
+A GitHub child publication therefore looks like `gh issue create --repo owner/repository --title "..." --body "..."`; relationship calls use `gh api repos/owner/repository/...` with no inferred repository. After the final checkpoint, update a child body with `gh issue edit <child> --repo owner/repository --body "<body with the regenerated marker>"`.
+
+After all approved tickets and justified non-ticket obligations have coverage evidence, call `planning-context` for the final Planning checkpoint with phase `final`. Let its gate fail while any required specification or ticket coverage is pending. Only after the checkpoint returns its full SHA, regenerate the marker for the parent specification and every child ticket with that SHA and update the external bodies through the configured tracker target. The final checkpoint stages only planning-owned configuration, ledger, and explicitly owned artifacts; it does not absorb unrelated worktree changes.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
@@ -95,6 +115,19 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 
 - [ ] Criterion 1
 - [ ] Criterion 2
+
+## Planning context
+
+- Format: v1
+- Repository: <configured owner/repository>
+- Effort: <effort>
+- Decision ledger: `<ledger path>`
+- Planning checkpoint: <checkpoint SHA>
+- Decisions: <relevant decision IDs only>
+
+### Decision consequences
+
+- `DEC-NNN`: <actionable consequence for this ticket>
 
 ## Blocked by
 

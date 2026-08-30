@@ -90,6 +90,49 @@ def create_effort(repo: Path, effort: str = "demo") -> None:
     )
 
 
+def add_coverage(repo: Path, effort: str, decision: str, obligation: str, evidence: str) -> None:
+    run_helper(
+        repo,
+        "coverage",
+        "add",
+        "--effort",
+        effort,
+        "--decision",
+        decision,
+        "--obligation",
+        obligation,
+        "--evidence",
+        evidence,
+    )
+
+
+def write_marked_artifact(
+    repo: Path,
+    effort: str,
+    checkpoint: str,
+    decisions: str,
+    output: str,
+    body: str,
+) -> Path:
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        effort,
+        "--checkpoint",
+        checkpoint,
+        "--decisions",
+        decisions,
+        "--repository",
+        "https://github.com/manoelcalixto/mattpocock-skills",
+        "--output",
+        output,
+    )
+    path = repo / output
+    path.write_text(f"{path.read_text()}\n{body.strip()}\n")
+    return path
+
+
 def test_configuration_and_lazy_migration() -> None:
     repo = init_repo()
     first = payload(run_helper(repo, "init"))
@@ -322,6 +365,182 @@ def test_validation_and_immutability() -> None:
     run_helper(repo, "validate", "--context-file", "spec.md", "--phase", "final")
 
 
+def test_grill_to_tickets_flow() -> None:
+    """Exercise the public producer, propagation, gate, and marker path."""
+
+    repo = init_repo()
+    effort = "grill-to-tickets"
+    create_effort(repo, effort)
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        effort,
+        "--decision",
+        "Keep each ticket independently verifiable",
+        "--context",
+        "Fresh sessions need a narrow complete slice",
+        "--rationale",
+        "Focused ownership limits integration drift",
+    )
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        effort,
+        "--decision",
+        "Track the process choice as non-ticket coverage",
+        "--context",
+        "The process rule does not change product behavior",
+        "--rationale",
+        "An implementation issue would be artificial",
+        "--obligations",
+        "tickets",
+    )
+
+    intermediate = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "intermediate",
+            "--message",
+            "grill decisions",
+        )
+    )
+    intermediate_sha = str(intermediate["sha"])
+
+    spec = write_marked_artifact(
+        repo,
+        effort,
+        intermediate_sha,
+        "DEC-001, DEC-002, DEC-003",
+        "spec.md",
+        """## Implementation Decisions
+
+- DEC-001: use the shared planning seam for cross-session work
+- DEC-002: make each implementation ticket independently verifiable
+- DEC-003: no specification consequence, process-only coverage is recorded in the ledger
+""",
+    )
+    add_coverage(repo, effort, "DEC-001", "specification", "spec.md#implementation-decisions")
+    add_coverage(repo, effort, "DEC-002", "specification", "spec.md#implementation-decisions")
+
+    missing = run_helper(repo, "checkpoint", "--effort", effort, "--phase", "final", expected=2)
+    missing_text = missing.stdout.lower() + missing.stderr.lower()
+    for pending in ("dec-001:tickets", "dec-002:tickets", "dec-003:tickets"):
+        if pending not in missing_text:
+            raise HarnessFailure(f"final gate did not expose pending ticket coverage {pending}: {missing}")
+
+    ticket_one = write_marked_artifact(
+        repo,
+        effort,
+        intermediate_sha,
+        "DEC-001",
+        "ticket-one.md",
+        """## What to build
+
+Make the shared planning seam observable from one complete ticket.
+
+## Decision consequences
+
+- DEC-001: preserve the shared seam in this ticket's acceptance path
+
+## Acceptance criteria
+
+- [ ] A fresh session can verify the complete path.
+""",
+    )
+    ticket_two = write_marked_artifact(
+        repo,
+        effort,
+        intermediate_sha,
+        "DEC-002",
+        "ticket-two.md",
+        """## What to build
+
+Keep the implementation ticket independently verifiable.
+
+## Decision consequences
+
+- DEC-002: include a narrow complete slice with observable criteria
+
+## Acceptance criteria
+
+- [ ] The ticket has an independent verification path.
+""",
+    )
+    add_coverage(repo, effort, "DEC-001", "tickets", "ticket-one.md")
+    add_coverage(repo, effort, "DEC-002", "tickets", "ticket-two.md")
+    add_coverage(repo, effort, "DEC-003", "tickets", "non-ticket: process-only decision")
+
+    final = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "final",
+            "--message",
+            "grill to tickets planning checkpoint",
+        )
+    )
+    final_sha = str(final["sha"])
+    if final_sha == intermediate_sha or len(final_sha) != 40:
+        raise HarnessFailure(f"final checkpoint did not advance to a full SHA: {final}")
+
+    expected_owned = {
+        "docs/agents/planning.md",
+        "docs/planning/grill-to-tickets/decision-ledger.md",
+    }
+    owned = set(run_git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", final_sha).stdout.splitlines())
+    if not owned or not owned.issubset(expected_owned):
+        raise HarnessFailure(f"final checkpoint staged non-owned artifacts: {sorted(owned)}")
+
+    for output, decisions in (
+        ("spec.md", "DEC-001,DEC-002,DEC-003"),
+        ("ticket-one.md", "DEC-001"),
+        ("ticket-two.md", "DEC-002"),
+    ):
+        run_helper(
+            repo,
+            "marker",
+            "--effort",
+            effort,
+            "--checkpoint",
+            final_sha,
+            "--decisions",
+            decisions,
+            "--repository",
+            "https://github.com/manoelcalixto/mattpocock-skills",
+            "--output",
+            output,
+        )
+
+    run_helper(repo, "validate", "--context-file", "spec.md", "--phase", "final")
+    run_helper(repo, "validate", "--context-file", "ticket-one.md", "--phase", "final")
+    run_helper(repo, "validate", "--context-file", "ticket-two.md", "--phase", "final")
+
+    spec_text = spec.read_text()
+    ticket_one_text = ticket_one.read_text()
+    ticket_two_text = ticket_two.read_text()
+    if "A versioned contract prevents drift" in spec_text + ticket_one_text + ticket_two_text:
+        raise HarnessFailure("canonical ledger rationale leaked into a planning artifact")
+    if "DEC-002" in ticket_one_text or "DEC-001" in ticket_two_text:
+        raise HarnessFailure("a ticket received an irrelevant decision ID")
+    if f"Planning checkpoint: {final_sha}" not in spec_text + ticket_one_text + ticket_two_text:
+        raise HarnessFailure("final marker SHA was not propagated to every artifact")
+    if "Repository: https://github.com/manoelcalixto/mattpocock-skills" not in spec_text:
+        raise HarnessFailure("external repository metadata was not retained in the marker")
+    if "non-ticket" not in (repo / "docs" / "planning" / effort / "decision-ledger.md").read_text():
+        raise HarnessFailure("non-ticket coverage evidence was not retained in the ledger")
+
+
 def test_repository_wiring() -> None:
     skill = REPO_ROOT / "skills" / "engineering" / "planning-context"
     skill_text = (skill / "SKILL.md").read_text()
@@ -359,6 +578,73 @@ def test_repository_wiring() -> None:
         raise HarnessFailure("setup does not delegate Planning initialization to planning-context")
     if "`/planning-context`" not in router:
         raise HarnessFailure("ask-matt does not route to planning-context")
+
+    grill = (REPO_ROOT / "skills" / "engineering" / "grill-with-docs" / "SKILL.md").read_text()
+    to_spec = (REPO_ROOT / "skills" / "engineering" / "to-spec" / "SKILL.md").read_text()
+    to_tickets = (REPO_ROOT / "skills" / "engineering" / "to-tickets" / "SKILL.md").read_text()
+    if "planning-context" not in grill or "domain-modeling" not in grill or "grilling" not in grill:
+        raise HarnessFailure("grill-with-docs does not wire all three owned skills")
+    for phrase in (
+        "Call the Skill tool once with `planning-context`",
+        "call the Skill tool once with `grilling`",
+        "call the Skill tool once with `domain-modeling`",
+        "Each call is separate",
+    ):
+        if phrase not in grill:
+            raise HarnessFailure(f"grill-with-docs does not preserve separate Skill calls: {phrase}")
+    for phrase in ("material", "round summary", "CONTEXT.md", "ADR"):
+        if phrase not in grill:
+            raise HarnessFailure(f"grill-with-docs is missing decision ownership guidance: {phrase}")
+    for phrase in ("every active ledger entry", "actionable consequence", "canonical rationale", "coverage add", "--repo owner/repository"):
+        if phrase not in to_spec:
+            raise HarnessFailure(f"to-spec is missing Planning propagation guidance: {phrase}")
+    for phrase in ("every active ledger entry", "ticket obligation", "Decision consequences", "final Planning checkpoint", "--repo owner/repository"):
+        if phrase not in to_tickets:
+            raise HarnessFailure(f"to-tickets is missing Planning propagation guidance: {phrase}")
+    tracker_template = (
+        REPO_ROOT / "skills" / "engineering" / "setup-matt-pocock-skills" / "issue-tracker-github.md"
+    ).read_text()
+    if "--repo <owner>/<repo>" not in tracker_template or "Infer the repo" in tracker_template:
+        raise HarnessFailure("GitHub tracker template permits repository inference")
+    for phrase in (
+        "replace every literal `<owner>/<repo>`",
+        "generated `docs/agents/issue-tracker.md` contains no `<owner>/<repo>` placeholder",
+        "Never copy the seed verbatim",
+    ):
+        if phrase not in setup:
+            raise HarnessFailure(f"setup does not require deterministic GitHub target resolution: {phrase}")
+    configured_target = "manoelcalixto/mattpocock-skills"
+    rendered_tracker = tracker_template.replace("<owner>/<repo>", configured_target)
+    if "<owner>/<repo>" in rendered_tracker:
+        raise HarnessFailure("rendered GitHub tracker still contains the seed placeholder")
+    for line in rendered_tracker.splitlines():
+        if any(f"`gh issue {verb}" in line for verb in ("create", "view", "list", "comment", "edit", "close")):
+            if f"--repo {configured_target}" not in line:
+                raise HarnessFailure(f"rendered GitHub issue command lost its configured target: {line}")
+        if any(f"`gh pr {verb}" in line for verb in ("create", "view", "list", "diff", "comment", "edit", "close")):
+            if f"--repo {configured_target}" not in line:
+                raise HarnessFailure(f"rendered GitHub pull request command lost its configured target: {line}")
+        if "`gh api " in line and f"repos/{configured_target}/" not in line:
+            raise HarnessFailure(f"rendered GitHub API command lost its configured target: {line}")
+    for document in (setup, to_spec, to_tickets, tracker_template):
+        for line in document.splitlines():
+            if any(f"`gh issue {verb}" in line for verb in ("create", "view", "list", "comment", "edit", "close")) and "--repo" not in line:
+                raise HarnessFailure(f"ambiguous GitHub issue command remains: {line}")
+            if any(f"`gh pr {verb}" in line for verb in ("create", "view", "list", "diff", "comment", "edit", "close")) and "--repo" not in line:
+                raise HarnessFailure(f"ambiguous GitHub pull request command remains: {line}")
+    docs = {
+        "grill-with-docs": (REPO_ROOT / "docs" / "engineering" / "grill-with-docs.md").read_text(),
+        "to-spec": (REPO_ROOT / "docs" / "engineering" / "to-spec.md").read_text(),
+        "to-tickets": (REPO_ROOT / "docs" / "engineering" / "to-tickets.md").read_text(),
+        "ask-matt": (REPO_ROOT / "docs" / "engineering" / "ask-matt.md").read_text(),
+        "planning-context": (REPO_ROOT / "docs" / "engineering" / "planning-context.md").read_text(),
+    }
+    for name, text in docs.items():
+        for section in ("## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits"):
+            if section not in text:
+                raise HarnessFailure(f"{name} documentation is missing {section}")
+        if "\u2014" in text:
+            raise HarnessFailure(f"{name} documentation contains an em dash")
 
 
 def test_implementation_verification_gate() -> None:
@@ -404,6 +690,7 @@ def main() -> int:
         test_ledger_ids_and_supersession,
         test_checkpoint_gates_staging_and_trailer,
         test_validation_and_immutability,
+        test_grill_to_tickets_flow,
         test_implementation_verification_gate,
     ]
     for test in tests:

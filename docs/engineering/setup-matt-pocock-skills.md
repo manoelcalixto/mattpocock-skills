@@ -51,6 +51,8 @@ The first three ship as templates in the skill and work out of the box. Local ma
 
 "Other" is not a stub either. It is the reason Jira, Linear, Azure DevOps and Beads all work: you describe the workflow, the skill records your prose in `docs/agents/issue-tracker.md`, and the downstream skills follow the prose. The community has already done this: a Jira-over-[MCP](https://www.aihero.dev/ai-coding-dictionary/mcp) variant, a Gitea CLI shaped like `gh`, a hand-built local dashboard.
 
+For GitHub, setup replaces the seed template's `<owner>/<repo>` placeholder with the confirmed fully qualified `owner/repository` target before writing the tracker file. It verifies that the generated file has no placeholder and that downstream skills can pass the configured target explicitly to every `gh` operation. A checkout's remotes never choose the publication target.
+
 ## Common questions
 
 **Do I have to use GitHub?**
