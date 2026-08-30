@@ -78,6 +78,28 @@ The marker's `Decisions` list is the consumer's selected set. It must contain on
 
 The helper requires complete coverage and non-empty evidence for every active entry and applicable obligation. Superseded entries do not block a gate. This is a delivery gate, separate from entry validity.
 
+## Implementation evidence aggregation
+
+An implementer records observable evidence on its own implementation surface, preferably as one or more repeatable commit trailers:
+
+```text
+Planning-Verification: DEC-001 | npm run test:planning-context
+Planning-Verification: DEC-002 | rendered smoke test at /settings
+```
+
+When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker.
+
+The coordinator must wait until every relevant worker tip is merged into the integration branch, then call the owner with the canonical `coverage aggregate` command:
+
+```bash
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
+  --effort demo --checkpoint <final-checkpoint-sha> --head <integration-head-sha> \
+  --decisions DEC-001,DEC-002 --commit <worker-tip-one> --commit <worker-tip-two> \
+  --ticket-evidence "DEC-002 | issue #8 | remote acceptance evidence"
+```
+
+The command resolves every supplied tip, proves that each descends from the final checkpoint and is an ancestor of the current integration head, and rejects any commit that edits the shared ledger. It reads all repeatable trailers from the supplied tips' checkpoint-to-tip history and the already-read ticket records, sorts their provenance deterministically, and checks the complete selected verification set before writing. A missing or invalid record fails without changing the ledger. On success it stores evidence as a compact JSON array of strings and marks the selected verification coverage complete, after which an `implementation` checkpoint can commit the ledger. A repeated successful call is idempotent, even when an evidence string contains `; `.
+
 ## Checkpoint contract
 
 `checkpoint` always includes `docs/agents/planning.md` and the effort ledger. Extra paths must be passed explicitly with `--path`. It stages those exact paths and commits them with:
@@ -149,6 +171,8 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision add --effort demo --decision "..." --context "..." --rationale "..."
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision reference --effort demo --decision DEC-001
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-001 --obligation specification --evidence spec.md
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --commit <worker-tip>
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --ticket-evidence "DEC-001 | issue #8 | remote ticket evidence"
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase final
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file spec.md --phase final

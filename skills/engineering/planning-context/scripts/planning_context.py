@@ -26,6 +26,7 @@ PHASE_REQUIREMENTS = {
 }
 ID_PATTERN = re.compile(r"^DEC-(\d{3,})$")
 EFFORT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
+VERIFICATION_PATTERN = re.compile(r"^Planning-Verification:\s*(DEC-\d{3,})\s*\|\s*(\S.*)$")
 FIELD_PATTERN = re.compile(
     r"^- (Status|Decision|Context|Rationale|ADR|Obligations|Superseded by|Supersedes):\s*(.*)$"
 )
@@ -72,6 +73,15 @@ class Entry:
             self.adr,
             self.obligations,
         )
+
+
+@dataclass(frozen=True)
+class Verification:
+    """One observable verification record found on an implementation surface."""
+
+    decision: str
+    evidence: str
+    origin: str | None = None
 
 
 def fail(message: str) -> None:
@@ -575,6 +585,265 @@ def parse_trailers(message: str) -> dict[str, str]:
     return trailers
 
 
+def parse_verification_trailers(message: str) -> tuple[Verification, ...]:
+    """Read repeatable Planning-Verification trailers without collapsing them."""
+
+    records: list[Verification] = []
+    for line in message.splitlines():
+        match = VERIFICATION_PATTERN.fullmatch(line.strip())
+        if match:
+            records.append(Verification(match.group(1), match.group(2).strip()))
+    return tuple(records)
+
+
+def parse_ticket_evidence(raw_evidence: str) -> Verification:
+    """Parse one already-read ticket record without accepting an implicit source."""
+
+    value = clean_single_line(raw_evidence, "ticket evidence")
+    parts = [part.strip() for part in value.split("|", 2)]
+    if len(parts) != 3 or any(not part for part in parts):
+        fail("ticket evidence must use DEC-NNN | origin | observable evidence")
+    identifier, origin, evidence = parts
+    if not ID_PATTERN.fullmatch(identifier):
+        fail("ticket evidence must name a DEC-NNN identifier")
+    return Verification(identifier, evidence, origin)
+
+
+def resolve_commit(repo: Path, raw_commit: str, field: str) -> str:
+    commit = clean_single_line(raw_commit, field)
+    resolved = run_git(repo, "rev-parse", "--verify", f"{commit}^{{commit}}", check=False)
+    if resolved.returncode != 0:
+        fail(f"{field} {commit} cannot be resolved")
+    return resolved.stdout.strip()
+
+
+def require_ancestor(repo: Path, ancestor: str, descendant: str, message: str) -> None:
+    result = run_git(repo, "merge-base", "--is-ancestor", ancestor, descendant, check=False)
+    if result.returncode != 0:
+        fail(message)
+
+
+def commits_since(repo: Path, checkpoint: str, tip: str) -> tuple[str, ...]:
+    result = run_git(repo, "rev-list", "--reverse", f"{checkpoint}..{tip}")
+    return tuple(commit for commit in result.stdout.split() if commit)
+
+
+def changed_paths(repo: Path, commit: str) -> tuple[str, ...]:
+    result = run_git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", "--root", commit)
+    return tuple(path for path in result.stdout.splitlines() if path)
+
+
+def selected_verification_decisions(
+    entries: Mapping[str, Entry], raw_decisions: str | None
+) -> tuple[str, ...]:
+    if raw_decisions is None:
+        return tuple(
+            identifier
+            for identifier, entry in entries.items()
+            if entry.status == "active" and "verification" in entry.obligations
+        )
+    values = [item.strip() for item in raw_decisions.split(",") if item.strip()]
+    if not values:
+        fail("decisions must name at least one active decision")
+    selected: list[str] = []
+    for raw_identifier in values:
+        identifier = active_decision_identifier(entries, raw_identifier)
+        if identifier not in selected:
+            selected.append(identifier)
+    for identifier in selected:
+        if "verification" not in entries[identifier].obligations:
+            fail(f"{identifier} does not declare verification as an obligation")
+    return tuple(selected)
+
+
+def evidence_values(raw: str | None) -> list[str]:
+    """Decode new JSON evidence and preserve older opaque evidence verbatim."""
+
+    if raw in {None, "", "none"}:
+        return []
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        return [str(raw)]
+    if isinstance(decoded, list) and all(isinstance(item, str) for item in decoded):
+        return list(decoded)
+    return [str(raw)]
+
+
+def append_verification_evidence(
+    text: str, updates: Mapping[str, Sequence[str]]
+) -> str:
+    """Apply all verified coverage updates to one ledger text in memory."""
+
+    matches = list(ENTRY_PATTERN.finditer(text))
+    replacements: list[tuple[int, int, str]] = []
+    for index, match in enumerate(matches):
+        identifier = match.group(1)
+        evidence = updates.get(identifier)
+        if not evidence:
+            continue
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        block = text[match.start() : end]
+        lines = block.rstrip("\n").splitlines()
+        section: str | None = None
+        existing_evidence: str | None = None
+        evidence_line_index: int | None = None
+        for line_index, line in enumerate(lines):
+            if line.strip() == "- Coverage:":
+                section = "coverage"
+            elif line.strip() == "- Evidence:":
+                section = "evidence"
+            elif line.startswith("  - verification:"):
+                if section == "coverage":
+                    lines[line_index] = "  - verification: complete"
+                elif section == "evidence":
+                    existing_evidence = line.split(":", 1)[1].strip()
+                    evidence_line_index = line_index
+        if existing_evidence is None:
+            fail(f"{identifier} has no verification evidence line")
+        current_values = evidence_values(existing_evidence)
+        for item in evidence:
+            if item not in current_values:
+                current_values.append(item)
+        if evidence_line_index is not None:
+            lines[evidence_line_index] = (
+                "  - verification: " + json.dumps(current_values, ensure_ascii=False, separators=(",", ":"))
+            )
+        replacements.append((match.start(), end, "\n".join(lines) + "\n"))
+
+    for start, end, replacement in reversed(replacements):
+        text = text[:start] + replacement + text[end:]
+    return text
+
+
+def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
+    """Aggregate worker evidence only after every supplied tip is merged."""
+
+    effort = validate_effort(args.effort)
+    load_config(repo)
+    ledger_relative, ledger_text, entries = read_ledger(repo, effort)
+    checkpoint_raw = args.checkpoint or find_checkpoint(repo, effort, ledger_relative)
+    checkpoint = resolve_commit(repo, checkpoint_raw, "checkpoint")
+    validate_checkpoint_commit(
+        repo,
+        checkpoint,
+        effort,
+        ledger_relative,
+        required_phase="final",
+    )
+    head = resolve_commit(repo, args.head or "HEAD", "integration head")
+    current_head = resolve_commit(repo, "HEAD", "current HEAD")
+    if head != current_head:
+        fail(
+            f"integration head {head} is not the current HEAD {current_head}; "
+            "run aggregation on the integration branch without advancing it"
+        )
+    require_ancestor(
+        repo,
+        checkpoint,
+        head,
+        f"Planning checkpoint {checkpoint} is not an ancestor of integration head {head}",
+    )
+    selected = selected_verification_decisions(entries, args.decisions)
+
+    supplied_commits = [resolve_commit(repo, raw, "verification commit") for raw in (args.commits or [])]
+    all_commits: set[str] = set()
+    for commit in supplied_commits:
+        require_ancestor(
+            repo,
+            checkpoint,
+            commit,
+            f"verification commit {commit} does not descend from checkpoint {checkpoint}",
+        )
+        require_ancestor(
+            repo,
+            commit,
+            head,
+            f"verification commit {commit} is not an ancestor of integration head {head}",
+        )
+        all_commits.update(commits_since(repo, checkpoint, commit))
+
+    records: list[tuple[str, Verification]] = []
+    for commit in sorted(all_commits):
+        if ledger_relative.as_posix() in changed_paths(repo, commit):
+            fail(
+                f"verification commit {commit} edits the shared Decision ledger; "
+                "workers must record evidence on their own ticket or commit surface"
+            )
+        message = run_git(repo, "show", "-s", "--format=%B", commit).stdout
+        records.extend((commit, record) for record in parse_verification_trailers(message))
+    records.extend(
+        (f"ticket:{record.origin}", record)
+        for raw_evidence in (args.ticket_evidence or [])
+        for record in (parse_ticket_evidence(raw_evidence),)
+    )
+    if not records and not supplied_commits:
+        fail("at least one verification commit or ticket evidence record is required")
+
+    updates: dict[str, list[str]] = {identifier: [] for identifier in selected}
+    for commit, record in sorted(records, key=lambda item: (item[0], item[1].decision, item[1].evidence)):
+        if record.decision not in entries:
+            fail(f"verification trailer names missing decision {record.decision}")
+        if entries[record.decision].status != "active":
+            fail(f"verification trailer names superseded decision {record.decision}")
+        if record.decision not in selected:
+            fail(
+                f"verification trailer for {record.decision} is outside the selected implementation decisions"
+            )
+        evidence = (
+            f"ticket {record.origin}: {record.evidence}"
+            if record.origin is not None
+            else f"commit {commit}: {record.evidence}"
+        )
+        if evidence not in updates[record.decision]:
+            updates[record.decision].append(evidence)
+
+    missing: list[str] = []
+    for identifier in selected:
+        entry = entries[identifier]
+        existing = entry.coverage.get("verification") == "complete" and entry.evidence.get("verification") not in {
+            None,
+            "",
+            "none",
+        }
+        if not existing and not updates[identifier]:
+            missing.append(f"{identifier}:verification")
+    if missing:
+        fail(
+            "verification coverage incomplete for implementation aggregation: "
+            + ", ".join(missing)
+            + "; record evidence on every relevant ticket or commit surface before retrying"
+        )
+
+    updated_text = append_verification_evidence(ledger_text, updates)
+    path = repo / ledger_relative
+    if updated_text == ledger_text:
+        return {
+            "status": "unchanged",
+            "effort": effort,
+            "checkpoint": checkpoint,
+            "head": head,
+            "ledger": ledger_relative.as_posix(),
+            "decisions": list(selected),
+            "commits": sorted(set(supplied_commits)),
+            "ticket_evidence": list(args.ticket_evidence or []),
+            "evidence": updates,
+        }
+    path.write_text(updated_text)
+    parse_ledger(path.read_text())
+    return {
+        "status": "aggregated",
+        "effort": effort,
+        "checkpoint": checkpoint,
+        "head": head,
+        "ledger": ledger_relative.as_posix(),
+        "decisions": list(selected),
+        "commits": sorted(set(supplied_commits)),
+        "ticket_evidence": list(args.ticket_evidence or []),
+        "evidence": updates,
+    }
+
+
 def validate_checkpoint_commit(
     repo: Path,
     sha: str,
@@ -870,6 +1139,34 @@ def build_parser() -> argparse.ArgumentParser:
     coverage_add.add_argument("--obligation", required=True)
     coverage_add.add_argument("--evidence", required=True)
 
+    def add_aggregate_arguments(command: argparse.ArgumentParser) -> None:
+        command.add_argument("--effort", required=True)
+        command.add_argument("--checkpoint", help="validated final Planning checkpoint SHA")
+        command.add_argument("--head", default="HEAD", help="current integration branch head")
+        command.add_argument(
+            "--commit",
+            "--commits",
+            dest="commits",
+            action="append",
+            required=True,
+            help="merged worker commit or branch tip, repeat for each ticket",
+        )
+        command.add_argument(
+            "--decisions",
+            help="comma-separated active decision IDs applicable to this implementation",
+        )
+        command.add_argument(
+            "--ticket-evidence",
+            action="append",
+            default=[],
+            help="already-read ticket record: DEC-NNN | origin | observable evidence",
+        )
+
+    coverage_aggregate = coverage_commands.add_parser(
+        "aggregate", help="atomically aggregate merged worker verification trailers"
+    )
+    add_aggregate_arguments(coverage_aggregate)
+
     checkpoint = commands.add_parser("checkpoint", help="create a phase-aware Git Planning checkpoint")
     checkpoint.add_argument("--effort", required=True)
     checkpoint.add_argument("--phase", required=True, choices=PHASES)
@@ -905,6 +1202,8 @@ def dispatch(repo: Path, args: argparse.Namespace) -> dict[str, object]:
         return command_decision_reference(repo, args)
     if args.command == "coverage" and args.coverage_command == "add":
         return command_coverage_add(repo, args)
+    if args.command == "coverage" and args.coverage_command == "aggregate":
+        return command_coverage_aggregate(repo, args)
     if args.command == "checkpoint":
         return command_checkpoint(repo, args)
     if args.command == "marker":
