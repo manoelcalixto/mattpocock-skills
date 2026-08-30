@@ -4,6 +4,8 @@
 
 The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds.
 
+It is the single owner used by `grill-with-docs`, `to-spec`, and `to-tickets`: producers receive stable IDs, specifications attach actionable consequences to every applicable active ID, and tickets carry only the IDs and consequences relevant to their own criteria. Canonical rationale stays in the ledger or its ADR pointer.
+
 ## When to reach for it
 
 Type `/planning-context`, or the [agent](https://www.aihero.dev/ai-coding-dictionary/agent) reaches for it automatically when a task needs a Planning context, a Decision ledger, a Git Planning checkpoint, setup migration, or consumer validation.
@@ -21,6 +23,8 @@ Reach for it when work crosses a session boundary or when a [spec](https://www.a
 The leading word is **checkpoint**. An intermediate checkpoint can leave future coverage pending. A final checkpoint requires applicable specification and ticket coverage, while implementation completion also requires verification evidence. The commit stages only named planning artifacts, writes a machine-readable trailer, and leaves unrelated worktree changes in place.
 
 Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning; a changed choice receives a new ID and a new checkpoint, while coverage and evidence can be appended.
+
+For a remote tracker, the `Repository` value in a marker is metadata for the reader, not a target-selection mechanism. Publishing skills read `docs/agents/issue-tracker.md` and pass its fully qualified `owner/repository` to every GitHub command. The final checkpoint is created only after the specification and all ticket or justified non-ticket coverage is recorded, then the parent and children receive fresh markers with its exact SHA.
 
 ## Prerequisites
 
@@ -45,6 +49,18 @@ No. A file without a Planning context marker returns the legacy result. Fail-clo
 **Can I update evidence after a checkpoint?**
 
 Yes. Coverage and verification evidence are appendable. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
+
+**How does the grill-to-tickets path avoid losing decisions?**
+
+`grill-with-docs` records each confirmed material choice once and exposes its ID in the round summary. `to-spec` accounts for every applicable active ID with a consequence, then `to-tickets` maps ticket obligations to one or more children or records a non-ticket justification. The final phase gate reports any pending coverage before implementation can begin.
+
+**Why do external markers need a final refresh?**
+
+The intermediate checkpoint makes the ledger resolvable while the spec and tickets are drafted. The final checkpoint adds their coverage evidence, so each external child is updated afterward with the final SHA and remains resolvable from a clone descended from that commit.
+
+**What prevents a GitHub command from reaching upstream?**
+
+The issue-tracker configuration supplies one explicit `owner/repository` target. Every `gh issue`, `gh pr`, and `gh api repos/...` operation must use it, including `gh issue edit <child> --repo owner/repository --body "<body with the regenerated marker>"`, regardless of the checkout's remotes or `gh` defaults.
 
 ## It's working if
 

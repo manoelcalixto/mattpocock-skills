@@ -45,6 +45,18 @@ There is one ledger per effort. Its path is `<ledger directory>/<effort>/decisio
 
 The helper allocates the next numeric ID within the selected effort. `decision add --supersedes DEC-001` changes only the old entry's validity fields and appends a new entry. The old decision and rationale stay byte-for-byte unchanged. A checkpointed ledger may receive coverage and evidence updates, but adding, removing, or changing a decision meaning requires a new checkpoint.
 
+## Producer and consumer propagation
+
+The ledger is the canonical source for decision meaning. A producer records one material choice through the owner and receives one stable ID. A specification or ticket may repeat that ID and the concise consequence needed to act, but it does not repeat the ledger's decision, context, rationale, or ADR prose.
+
+| Consumer | Required account | Coverage evidence |
+| --- | --- | --- |
+| Specification | Every active entry that declares `specification`, with one actionable consequence per applicable ID | Published spec issue, URL, or local path |
+| Ticket | Every active entry that declares `tickets`, mapped to one or more relevant tickets with criteria; entries without that obligation get a written non-ticket or not-applicable reason | Published child issue, URL, or local ticket path |
+| Implementation | Applicable verification evidence after ticket work is integrated | Test command, observable result, or other verification artifact |
+
+The marker's `Decisions` list is the consumer's selected set. It must contain only active IDs represented by that artifact. A final checkpoint fails until every active entry's declared specification and ticket obligations have complete, non-empty evidence. A non-ticket obligation is complete only when its justification is recorded as the corresponding coverage evidence.
+
 ## Phase gates
 
 | Phase | Required coverage |
@@ -83,6 +95,8 @@ Specifications and tickets that opt into the contract carry this block after a c
 ```
 
 `marker --output <path>` writes or replaces this block. `Repository` is informative. The validator resolves the ledger and checkpoint in the current clone, proves that the current branch descends from the checkpoint, and checks that checkpointed decision meaning is unchanged. Local artifacts may instead discover the checkpoint through the Git trailer when no external marker is needed.
+
+For a remote tracker, the publishing skill must obtain the configured repository target from `docs/agents/issue-tracker.md` and pass it explicitly to every GitHub operation. A marker's `Repository` field is informative metadata; resolution still depends on the ledger, checkpoint, and ancestry in the consumer clone. After the final checkpoint, regenerate the marker so external children point to that exact final SHA.
 
 ## Validation and compatibility
 

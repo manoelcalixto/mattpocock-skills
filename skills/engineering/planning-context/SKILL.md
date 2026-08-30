@@ -19,11 +19,15 @@ Record a decision when changing it would alter behavior, constraints, scope, a c
 
 After a Planning checkpoint, keep decision and rationale meaning immutable. If a choice changes, append a new entry that supersedes the old one and create a new checkpoint. If implementation cannot honor an active entry, stop and return to planning for that supersession instead of recording a silent deviation.
 
+Decision producers call this owner rather than writing a second ledger. `grill-with-docs` records each confirmed material choice once and reports the returned ID in its round summary. `to-spec` accounts for every active applicable entry with an actionable consequence, and `to-tickets` maps every entry with a ticket obligation to one or more focused tickets. Neither downstream artifact copies the ledger's canonical rationale. Entries whose obligation is `none` or excludes a phase receive a recorded applicability or non-ticket justification instead of an artificial consequence or ticket.
+
 ## Cross the Git seam
 
 Create an intermediate checkpoint while future specification or ticket coverage is still pending. Create a final checkpoint only after every active applicable entry is covered by the specification and tickets. Implementation completion also requires applicable verification evidence. Stage the configuration, ledger, and explicitly owned planning artifacts only; the checkpoint writes a machine-readable `Planning-Checkpoint` trailer and leaves unrelated worktree changes alone.
 
 Before a fresh implementation session, validate the declared ledger, checkpoint trailer, branch ancestry, active decision IDs, and requested coverage. A valid consumer descends from the exact checkpoint commit. A declared but unresolved context fails with the failed invariant and its repair. A legacy input without a marker remains allowed.
+
+When a specification or ticket is published to GitHub, generate its marker after the relevant checkpoint and use the configured repository target from `docs/agents/issue-tracker.md` for every external operation. The marker's ledger path and full checkpoint SHA must remain resolvable from a clone containing that checkpoint. Refresh external markers after the final checkpoint so consumers point at the final planning state.
 
 ## Deterministic seam
 
