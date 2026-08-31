@@ -519,7 +519,7 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
     if obligation == APPLICABILITY_OBLIGATION:
         if entry.obligations:
             fail(f"{args.decision} declares delivery obligations; applicability is only for Obligations: none")
-        if not re.match(r"^(?:non-ticket|not-applicable):\s*\S", evidence, re.IGNORECASE):
+        if not APPLICABILITY_EVIDENCE_PATTERN.fullmatch(evidence):
             fail("applicability evidence must explain the decision with non-ticket: or not-applicable:")
     elif obligation not in entry.obligations:
         fail(f"{args.decision} does not declare {obligation} as an obligation")
@@ -560,14 +560,16 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
                 changed_coverage = True
             elif section == "evidence":
                 old = line.split(":", 1)[1].strip()
-                combined = evidence if old in {"", "none"} else f"{old}; {evidence}"
+                combined = evidence if not old or old.lower() == "none" else f"{old}; {evidence}"
                 lines[index] = f"  - {obligation}: {combined}"
                 changed_evidence = True
     if not changed_coverage or not changed_evidence:
         fail(f"{args.decision} has no {obligation} coverage and evidence lines")
     updated = "\n".join(lines) + "\n"
+    updated_text = text[: match.start()] + updated + text[end:]
+    parse_ledger(updated_text)
     path = repo / relative
-    path.write_text(text[: match.start()] + updated + text[end:])
+    path.write_text(updated_text)
     parse_ledger(path.read_text())
     return {
         "status": "recorded",

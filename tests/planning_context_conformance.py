@@ -844,6 +844,73 @@ def test_none_obligation_requires_applicability_evidence() -> None:
         raise HarnessFailure(f"non-ticket evidence on a tickets obligation was rejected: {valid}")
 
 
+def test_case_insensitive_none_applicability_coverage_is_atomic() -> None:
+    for sentinel in ("None", "NONE"):
+        repo = init_repo()
+        create_effort(repo)
+        run_helper(
+            repo,
+            "decision",
+            "add",
+            "--effort",
+            "demo",
+            "--decision",
+            "Keep this process choice out of delivery tickets",
+            "--context",
+            "The decision changes workflow accounting only",
+            "--rationale",
+            "An artificial ticket would misrepresent the work",
+            "--obligations",
+            "none",
+        )
+        ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+        sentinel_ledger = ledger.read_text().replace(
+            "  - applicability: none\n",
+            f"  - applicability: {sentinel}\n",
+            1,
+        )
+        ledger.write_text(sentinel_ledger)
+
+        invalid = run_helper(
+            repo,
+            "coverage",
+            "add",
+            "--effort",
+            "demo",
+            "--decision",
+            "DEC-002",
+            "--obligation",
+            "applicability",
+            "--evidence",
+            "bogus",
+            expected=2,
+        )
+        if "non-ticket:" not in (invalid.stdout + invalid.stderr) or ledger.read_text() != sentinel_ledger:
+            raise HarnessFailure(f"invalid applicability evidence changed a {sentinel} ledger: {invalid}")
+
+        evidence = "not-applicable: process-only decision"
+        add_coverage(repo, "demo", "DEC-002", "applicability", evidence)
+        for obligation, item in (("specification", "spec.md"), ("tickets", "issue-7")):
+            add_coverage(repo, "demo", "DEC-001", obligation, item)
+        final = payload(
+            run_helper(
+                repo,
+                "checkpoint",
+                "--effort",
+                "demo",
+                "--phase",
+                "final",
+                "--message",
+                f"case-insensitive {sentinel} applicability",
+            )
+        )
+        if final.get("status") != "created" or len(str(final.get("sha"))) != 40:
+            raise HarnessFailure(f"case-insensitive {sentinel} applicability did not checkpoint: {final}")
+        final_ledger = ledger.read_text()
+        if f"  - applicability: {evidence}" not in final_ledger or f"{sentinel};" in final_ledger:
+            raise HarnessFailure(f"case-insensitive {sentinel} applicability evidence was not replaced cleanly")
+
+
 def test_checkpoint_gates_staging_and_trailer() -> str:
     repo = init_repo()
     create_effort(repo)
@@ -3332,6 +3399,7 @@ def main() -> int:
         test_invalid_marked_configuration_fails_closed,
         test_ledger_ids_and_supersession,
         test_none_obligation_requires_applicability_evidence,
+        test_case_insensitive_none_applicability_coverage_is_atomic,
         test_optional_decision_fields_are_supported_and_immutable,
         test_validate_ledger_override_validates_configuration_and_is_atomic,
         test_checkpoint_gates_staging_and_trailer,
