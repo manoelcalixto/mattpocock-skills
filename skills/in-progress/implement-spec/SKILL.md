@@ -46,7 +46,7 @@ After the graph gate passes, create the integration branch from the recorded che
 
 Use the task graph, not a flat ticket list. Start implementers only for the current frontier, then recalculate the frontier after each merge. Each implementer works in its own branch and worktree descended from the common checkpoint lineage. Give it only pointers to the specification, its ticket, the effort ledger, the checkpoint SHA, and the relevant decision consequences.
 
-An implementer owns its ticket or commit surface. It leaves the shared Decision ledger and its coverage unchanged. Record observable verification with repeatable commit trailers, one per decision and evidence:
+An implementer owns its ticket or commit surface. It leaves the shared Decision ledger and its coverage unchanged. For a marked path, each implementation or fix commit carries one repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailer for each decision whose behavior that commit verifies or changes. A worker records only decisions relevant to its ticket; the union of the final history and validated ticket evidence must cover every applicable preflight decision before aggregation:
 
 ```text
 Planning-Verification: DEC-001 | npm run test:planning-context
@@ -55,20 +55,27 @@ Planning-Verification: DEC-002 | rendered smoke test at /settings
 
 When evidence was read from the implementer's own remote ticket instead, pass it to the coordinator only after the ticket read succeeded, using the deterministic form `DEC-NNN | origin | observable evidence`. The implementer never appends shared ledger coverage.
 
-## Merge and completion aggregation
+## Merge and review checkpoint
 
-When an implementer completes, merge its branch through the merger into the integration branch, preserve its commit evidence, and then refresh the frontier. Ticket commits and merges remain inside one implementation batch, not separate review checkpoints. After every relevant ticket branch has merged, verify each worker tip is an ancestor of the integration head. Only then call the `planning-context` owner to aggregate verification:
+When an implementer completes, merge its branch through the merger into the integration branch, preserve its commit evidence, and then refresh the frontier. Ticket commits and merges remain inside one implementation batch, not separate review checkpoints. After every relevant ticket branch has merged, verify each worker tip is an ancestor of the integration head, then preserve the final integration head for the review checkpoint.
+
+The review checkpoint is the integrated implementation batch's exact head. Do not aggregate verification or create the implementation checkpoint before the bounded `code-review` pass and its fix batches finish.
+
+The integrated implementation batch is the workflow's only review checkpoint. Clean up all implementer worktrees only after the workflow reaches its terminal state.
+
+## Planning implementation closeout
+
+After the initial `code-review` pass, any eligible bounded follow-up, and the final fix-batch validation, close a declared Planning context through the owner. Use the final reviewed integration head as a supplied tip so evidence from implementation, merge, and review-fix commits is in the checkpoint-to-tip history:
 
 ```bash
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
-  --effort <effort> --checkpoint <final-checkpoint-sha> --head <integration-head-sha> \
+  --effort <effort> --checkpoint <final-checkpoint-sha> --head <final-reviewed-head-sha> \
   --decisions <comma-separated-applicable-IDs> --commit <worker-tip-one> --commit <worker-tip-two> \
+  --commit <final-reviewed-head-sha> \
   --ticket-evidence "DEC-NNN | issue #<number> | observable ticket evidence"
 ```
 
-The owner scans the supplied checkpoint-to-tip histories for repeatable `Planning-Verification` trailers, accepts already-read ticket evidence with an explicit origin, rejects unmerged or wrong-lineage tips and worker ledger edits, and checks all applicable active decisions in memory before writing. It must fail without modifying the ledger when any verification is absent. Do not create the implementation checkpoint while that completion gate is incomplete. After aggregation succeeds, run the owner `checkpoint --phase implementation`; its exact commit is the implementation evidence boundary.
-
-The integrated implementation batch is the workflow's only review checkpoint. Clean up all implementer worktrees only after the workflow reaches its terminal state.
+The owner scans the supplied history for repeatable `Planning-Verification` trailers, accepts already-read ticket evidence with an explicit origin, rejects unmerged or wrong-lineage tips and worker ledger edits, and checks every applicable active decision in memory before writing. It must fail without modifying the ledger when any verification is absent. Every implementation and fix commit on the marked path must carry trailers only for decisions whose behavior it verifies or changes, and the union of the final history and validated ticket evidence must cover every applicable selected decision before aggregation. Only after aggregation succeeds, run the owner `checkpoint --phase implementation`; its exact commit is the final evidence boundary for the reviewed code. For an entirely markerless graph, preserve the legacy closeout and do not infer a ledger, coverage aggregation, or Planning checkpoint.
 
 ## Steps
 
@@ -82,7 +89,7 @@ The integrated implementation batch is the workflow's only review checkpoint. Cl
 
 5. Once an **implementer subagent** completes, merge its work to the PR branch with a **merger subagent**, preserving its ticket and commit evidence.
 
-6. If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency. After all relevant branches are merged, aggregate verification through the `planning-context` owner and create the implementation checkpoint.
+6. If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency. After all relevant branches are merged, preserve the final integration head for the review checkpoint. Do not aggregate verification or create the implementation checkpoint yet.
 
 Ticket commits and merges are part of one implementation batch. They are not review checkpoints and do not trigger `code-review` from this workflow.
 
@@ -90,6 +97,8 @@ Ticket commits and merges are part of one implementation batch. They are not rev
 
    Follow `code-review`'s bounded follow-up and terminal rule. If an eligible follow-up produces applicable findings, use one final **implementer subagent** for the final fix batch. Report rejected, deferred, or residual findings before stopping.
 
-8. Mark the PR as ready for human review once validation passes and the review outcome, including any rejected, deferred, or residual findings, is recorded.
+8. After the bounded review and all applicable fix batches are validated, ensure the union of final-history trailers and validated ticket evidence covers every decision ID returned by preflight. Then close a declared Planning context with `coverage aggregate` against the final reviewed head and those decision IDs, followed by `checkpoint --phase implementation`. Skip this closeout for an entirely markerless graph so its legacy path remains unchanged.
 
-9. Clean up all **implementer subagent** worktrees.
+9. Mark the PR as ready for human review once validation passes and the review outcome, including any rejected, deferred, or residual findings, is recorded.
+
+10. Clean up all **implementer subagent** worktrees.

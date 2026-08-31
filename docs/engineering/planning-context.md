@@ -2,7 +2,7 @@
 
 `planning-context` gives multi-session work a durable source for material decisions. It keeps one per-effort Decision ledger, the coverage those decisions need, and the Git checkpoint that makes the plan safe for a fresh [session](https://www.aihero.dev/ai-coding-dictionary/session).
 
-The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds. The public validator accepts a local artifact through `--context-file` or an already-obtained remote tracker body through `--context-stdin`, so remote content does not need to become a repository file.
+The ledger is concise and append-oriented: routine implementation choices stay out, while changed decisions become new entries that supersede old ones. Coverage advances from pending to complete, and checkpointed evidence can only stay unchanged or be extended while preserving its prior values. A declared context is validated against its ledger, checkpoint trailer, branch ancestry, active decision IDs, and phase gate before a consumer proceeds. The public validator accepts a local artifact through `--context-file` or an already-obtained remote tracker body through `--context-stdin`, so remote content does not need to become a repository file.
 
 For a valid marker, JSON output names the input source and exposes the selected decisions' declared coverage as `status` and `evidence`. It also proves ancestry with the resolved checkpoint SHA, current `HEAD` SHA, and `is_ancestor: true`. A local marker reports its repository-relative context and `source: marker`; stdin reports `context: <stdin>` and `source: stdin`.
 
@@ -26,9 +26,9 @@ The leading word is **checkpoint**. An intermediate checkpoint can leave future 
 
 Before `/compact`, `/handoff`, or `/clear` crosses an active Planning context into a fresh session, create the checkpoint for the next phase. The lightweight path remains available for markerless small work and for work that stays in the current session.
 
-Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning; a changed choice receives a new ID and a new checkpoint, while coverage and evidence can be appended.
+Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning, complete coverage cannot regress, and existing evidence cannot be removed or replaced. A changed choice receives a new ID and a new checkpoint, while pending coverage may complete and evidence may be appended in order.
 
-For a whole ticket graph, implementers keep the shared ledger unchanged and put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers. Evidence already read from a remote ticket can use the deterministic `DEC-NNN | origin | observable evidence` record. After all relevant branches are merged, the coordinator calls the owner with `coverage aggregate`, which proves the common final checkpoint, merged worker tips, and complete verification set before one ledger write. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early.
+For a whole ticket graph, implementers keep the shared ledger unchanged and put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers. Evidence already read from a remote ticket can use the deterministic `DEC-NNN | origin | observable evidence` record. After all relevant branches are merged and any required bounded review or fix batches are complete, the coordinator calls the owner with `coverage aggregate`, which proves the common final checkpoint, merged or final reviewed tips, and complete verification set before one ledger write. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early.
 
 For a remote tracker, the `Repository` value in a marker is metadata for the reader, not a target-selection mechanism. Publishing skills read `docs/agents/issue-tracker.md` and pass its fully qualified `owner/repository` to every GitHub command. The final checkpoint is created only after the specification and all ticket or justified non-ticket coverage is recorded, then the parent and children receive fresh markers with its exact SHA.
 
@@ -69,11 +69,11 @@ If the tracker read returns an error, `&&` prevents the helper from running. The
 
 **Can I update evidence after a checkpoint?**
 
-Yes. Coverage and verification evidence are appendable. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
+Yes, only monotonically. Pending coverage may become complete, and existing evidence may stay unchanged or gain appended values that preserve the previous order. Removing or replacing checkpointed evidence, or regressing complete coverage, fails validation. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
 
 **How does a parallel implementation avoid ledger conflicts?**
 
-Each worker branch starts from the same validated checkpoint and records evidence on its own ticket or commit surface. The coordinator waits for every relevant branch to merge, then runs `coverage aggregate` with the final checkpoint, integration head, worker tips, and applicable decision IDs. The owner rejects an unmerged tip or a worker ledger edit and fails atomically if any selected verification is absent.
+Each worker branch starts from the same validated checkpoint and records evidence on its own ticket or commit surface. The coordinator waits for every relevant branch to merge and any required bounded review or fix batches to finish, then runs `coverage aggregate` with the final checkpoint, integration head, merged or final reviewed tips, and applicable decision IDs. The owner rejects an unmerged tip or a worker ledger edit and fails atomically if any selected verification is absent.
 
 **Can verification evidence live only in a remote ticket?**
 

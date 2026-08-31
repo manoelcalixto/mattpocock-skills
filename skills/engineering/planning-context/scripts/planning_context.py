@@ -26,6 +26,7 @@ PHASE_REQUIREMENTS = {
 }
 ID_PATTERN = re.compile(r"^DEC-(\d{3,})$")
 EFFORT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
+FULL_CHECKPOINT_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 VERIFICATION_PATTERN = re.compile(r"^Planning-Verification:\s*(DEC-\d{3,})\s*\|\s*(\S.*)$")
 FIELD_PATTERN = re.compile(
     r"^- (Status|Decision|Context|Rationale|ADR|Obligations|Superseded by|Supersedes):\s*(.*)$"
@@ -192,7 +193,7 @@ def ledger_header(effort: str) -> str:
         "# Decision ledger\n\n"
         f"- Format: v1\n- Effort: {effort}\n\n"
         "Decision meanings are immutable after a Planning checkpoint. "
-        "Coverage and evidence may be appended.\n"
+        "Coverage advances from pending to complete, and evidence may be appended without replacing prior values.\n"
     )
 
 
@@ -670,6 +671,32 @@ def evidence_values(raw: str | None) -> list[str]:
     return [str(raw)]
 
 
+def structured_evidence_values(raw: str | None) -> list[str] | None:
+    """Decode only the canonical JSON evidence list representation."""
+
+    if raw in {None, "", "none"}:
+        return None
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if isinstance(decoded, list) and all(isinstance(item, str) for item in decoded):
+        return list(decoded)
+    return None
+
+
+def preserves_checkpointed_evidence(before: str, after: str) -> bool:
+    """Allow an unchanged value or a deterministic append that keeps its prefix."""
+
+    if before == after:
+        return True
+    before_values = structured_evidence_values(before)
+    after_values = structured_evidence_values(after)
+    if before_values is not None and after_values is not None:
+        return after_values[: len(before_values)] == before_values
+    return after.startswith(f"{before}; ") and bool(after[len(before) + 2 :].strip())
+
+
 def append_verification_evidence(
     text: str, updates: Mapping[str, Sequence[str]]
 ) -> str:
@@ -909,6 +936,24 @@ def validate_checkpoint_commit(
             or before.supersedes != after.supersedes
         ):
             fail(f"validity for {identifier} changed after the checkpoint; create a new Planning checkpoint")
+        for obligation in before.obligations:
+            before_status = before.coverage[obligation]
+            after_status = after.coverage[obligation]
+            if before_status == "complete" and after_status != "complete":
+                fail(
+                    f"checkpointed coverage for {identifier}:{obligation} is not monotonic; "
+                    f"cannot regress from complete to {after_status}"
+                )
+            before_evidence = before.evidence[obligation]
+            after_evidence = after.evidence[obligation]
+            if before_evidence not in {"", "none"} and not preserves_checkpointed_evidence(
+                before_evidence,
+                after_evidence,
+            ):
+                fail(
+                    f"checkpointed evidence for {identifier}:{obligation} is not append-only; "
+                    "preserve the existing evidence and append new values"
+                )
     return current
 
 
@@ -971,6 +1016,8 @@ def parse_marker(text: str) -> dict[str, object] | None:
         fail("Planning context marker must declare Format: v1")
     if not effort or not ledger or not checkpoint:
         fail("Planning context marker needs Effort, Decision ledger, and Planning checkpoint")
+    if not FULL_CHECKPOINT_SHA_PATTERN.fullmatch(checkpoint):
+        fail("Planning context marker checkpoint must be an exact 40-character hexadecimal commit SHA")
     decisions_raw = values.get("Decisions", "")
     decisions = tuple(item.strip() for item in decisions_raw.split(",") if item.strip())
     return {

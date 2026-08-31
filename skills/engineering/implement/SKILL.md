@@ -31,8 +31,22 @@ Call the Skill tool with "tdd" where possible, at pre-agreed seams.
 
 Run typechecking regularly, single test files regularly, and the full test suite once at the end.
 
-Commit the completed implementation to the current branch. This exact commit is the **review checkpoint** for the invocation.
+Commit the completed implementation to the current branch. This exact commit is the **review checkpoint** for the invocation. When the preflight returned a valid Planning context, add repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers to the implementation commit, one for each applicable decision returned by preflight.
 
-Call the Skill tool with "code-review" once, using the starting SHA as its fixed point. Check each finding's citation, then apply the applicable findings in one **fix batch**. Documented-standard violations and spec gaps can require a fix; baseline smells are judgement calls. Re-run the relevant validation and commit the fix batch if it changed the code.
+Call the Skill tool with "code-review" once, using the starting SHA as its fixed point. Check each finding's citation, then apply the applicable findings in one **fix batch**. Documented-standard violations and spec gaps can require a fix; baseline smells are judgement calls. For a marked path, put one observable `Planning-Verification: DEC-NNN | <evidence>` trailer on an implementation or fix commit for each decision whose behavior that commit verifies or changes. Re-run the relevant validation and commit the fix batch if it changed the code.
 
 Follow `code-review`'s bounded follow-up and terminal rule. Report rejected, deferred, or residual findings before stopping.
+
+## Planning implementation closeout
+
+Only for a declared Planning context that passed preflight, after the bounded `code-review` pass, any eligible follow-up, and the final fix-batch validation, inspect the final history and validated ticket evidence to ensure the union of the final history and validated ticket evidence covers every applicable preflight decision and represents the final reviewed code. Then call the `planning-context` owner with the final planning checkpoint, final reviewed `HEAD`, and that final tip:
+
+For `/implement`, the initial implementation commit covers every decision returned by preflight. A fix commit adds trailers only for decisions whose behavior it verifies or changes. If the final union is missing a required decision, add the corresponding trailer to the implementation or fix commit that verifies or changes it, then rerun final validation before aggregation.
+
+```bash
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
+  --effort <effort> --checkpoint <final-planning-checkpoint-sha> --head <final-reviewed-head-sha> \
+  --decisions <comma-separated-preflight-decision-IDs> --commit <final-reviewed-head-sha>
+```
+
+The owner must pass its merged-tip, lineage, and complete verification gates before writing the ledger. Only after aggregation succeeds, run `checkpoint --phase implementation`; this checkpoint records the final reviewed code's Planning verification. If preflight returned "status": "legacy", keep the existing implementation, review, fix, and terminal sequence byte-for-byte behaviorally unchanged: skip this closeout and never infer a ledger, checkpoint, or coverage aggregation.
