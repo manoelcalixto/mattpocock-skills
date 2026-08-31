@@ -20,12 +20,14 @@ The route most work travels. You have an idea and want it built.
    - **`/prototype`** to answer the question with throwaway code,
    - **`/handoff`** back what you learned, and reference it from the original idea thread.
 3. **Branch: is this a multi-session build?**
-   - **Yes** → **`/to-spec`** (turn the thread and its active Planning decisions into a spec), then **`/to-tickets`** to split it into tracer-bullet tickets, each declaring its **blocking edges** and relevant decision consequences. On a local tracker that's one file per ticket under `.scratch/<feature>/issues/`; on a real tracker the edges become native blocking links. The flow creates an intermediate checkpoint before the spec and a final checkpoint after ticket coverage. Then choose the executor:
-     - If the beta **`/implement-spec`** skill is installed and you want one draft PR with concurrent worktrees and one final integrated review checkpoint, invoke it against the whole spec and its ticket graph.
-     - Otherwise, work the frontier blockers-first with **`/implement`** per ticket, **`/clear`ing context between each one**. Each ticket is self-contained, so the last one's context is disposable.
-   - **No** → **`/implement`** right here, in the same context window.
+   - **Yes** → **`/to-spec`** (turn the thread and its active Planning decisions into a spec), then **`/to-tickets`** to split it into tracer-bullet tickets, each declaring its **blocking edges** and relevant decision consequences. On a local tracker that's one file per ticket under `.scratch/<feature>/issues/`; on a real tracker the edges become native blocking links. The flow creates an intermediate checkpoint before the spec and a final Planning checkpoint after ticket coverage. Only after that final checkpoint passes may a fresh implementation session start from its exact SHA. Then choose the executor:
+     - If the beta **`/implement-spec`** skill is installed and you want one draft PR with concurrent worktrees and one final integrated review checkpoint, invoke it in the fresh session against the whole spec and its ticket graph.
+     - Otherwise, in a fresh session, work the frontier blockers-first with **`/implement`** per ticket, **`/clear`ing context between each one**. Each ticket is self-contained, so the last one's context is disposable.
+   - **No** → **`/implement`** right here, in the same context window. This is the lightweight path for small work without a formal Planning context; do not create a spec, ticket graph, or checkpoint just to change phases.
 
    Either way, **`/implement`** builds each issue by driving **`/tdd`** internally (one red-green slice at a time), commits one stable review checkpoint, then runs **`/code-review`** once across its two axes (Standards + Spec) and batches the applicable fixes. Commits made while applying those findings stay inside the same checkpoint. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
+
+   The multi-session route is therefore: `grill-with-docs → intermediate Planning checkpoint → to-spec → to-tickets → final Planning checkpoint → fresh implementation session → implement-spec or implement → code-review`.
 
 ### Context hygiene
 
@@ -45,7 +47,7 @@ A starting situation that generates work, then merges onto the main flow.
 
 - **A huge, foggy effort: a greenfield project or a huge feature build, too big for one session** → **`/wayfinder`**, the most cognitively demanding flow here. When the way from here to the destination isn't visible yet, it charts a **shared map** of **decision tickets** on the issue tracker and resolves them one at a time, producing **decisions, not deliverables**, until the fog is pushed back and the way is clear. Where **`/grill-with-docs`** sharpens an idea you can hold in one session, wayfinder is for the idea you can't, and it's slower and denser, so save it for exactly that, never a well-scoped feature.
 
-  When the map clears, **it hands off, it doesn't build**: merge onto the main flow at **`/to-spec`**, which collapses the map's linked decisions into a buildable plan, then `/to-tickets` and `/implement` as usual. Looping the map straight into `/implement` skips that collapse and throws the linked detail away, so go straight to `/implement` only when the effort turned out genuinely small.
+  When the map clears, **it hands off, it doesn't build**: merge onto the main flow at **`/to-spec`**, which collapses the map's linked decisions into a buildable plan, then `/to-tickets`, the final Planning checkpoint, and a fresh implementation session. Looping the map straight into `/implement` skips that collapse and throws the linked detail away, so go straight to `/implement` only when the effort turned out genuinely small and has no formal Planning context.
 
   With an active Planning context, a resolved material Decision ticket references one active ledger ID or creates exactly one new entry. The map keeps a linked gist, while the ledger or its ADR owns the rationale. The ID travels through `to-spec` and `to-tickets`, and a fresh build session waits for the final Planning checkpoint coverage gate.
 
@@ -61,15 +63,15 @@ Three model-invoked references that run *beneath* the other skills, each the sin
 
 - **`/domain-modeling`**: sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/grill-with-docs` drives to keep `CONTEXT.md` a clean glossary.
 - **`/codebase-design`** is the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*: a lot of behaviour behind a small interface at a clean seam. `/tdd` and `/improve-codebase-architecture` both speak it.
-- **`/planning-context`** owns the versioned Planning context used when work crosses sessions: the per-effort Decision ledger, phase-aware Planning checkpoints, coverage gates, and consumer validation. Use it when those artifacts or their contract are the problem; small work without a declared Planning context stays on the current-session path.
+- **`/planning-context`** owns the versioned Planning context used when work crosses sessions: the per-effort Decision ledger, phase-aware Planning checkpoints, coverage gates, and consumer validation. Use it to checkpoint an active context before a fresh session; small work without a declared Planning context stays on the current-session path.
 
 ## Phase boundaries
 
-A **phase** is a chunk of work inside a session: the grilling, the implementation, the QA. At the **boundary** between two of them you have five options, and picking between them is the fuzziest decision in this whole map:
+A **phase** is a chunk of work inside a session: the grilling, the implementation, the QA. At the **boundary** between two of them you have five options, and picking between them is the fuzziest decision in this whole map. When an active Planning context would cross into a fresh session, checkpoint it before choosing `/clear`, `/handoff`, or `/compact`; the tree in [PHASE-BOUNDARIES.md](PHASE-BOUNDARIES.md) defines that gate.
 
 - **Continue**: stay put. Costs nothing, loses nothing.
 - **`/clear`**: empty the window, when nothing here matters to what's next.
-- **`/handoff`** writes a portable markdown file. Narrow: only for a **new harness**, a **new directory**, a **colleague**, or forking a side task **mid-phase**. What it buys is portability.
+- **`/handoff`** writes a portable markdown file. Narrow: only for a **new harness**, a **new directory**, a **colleague**, or forking a side task **mid-phase**. When it crosses an active Planning context into a fresh session, checkpoint first and carry pointers to the versioned artifacts. What it buys is portability.
 - **Subagent**: send a tightly-scoped task to its own window and get a report back.
 - **`/compact`** compresses this context and seeds a fresh session with it. The **default**, at the bottom of the tree rather than the first reach.
 

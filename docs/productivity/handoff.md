@@ -33,10 +33,15 @@ The document carries the live thread (what's in flight, why, and what's next) pl
 
 What it deliberately does not carry is anything already written down. Specs, plans, ADRs, issues, commits and diffs are referenced by path or URL, never copied. That keeps the file small, and it keeps the settled detail in one place instead of two that drift.
 
+When the work has an active Planning context and the destination is a fresh session, checkpoint before writing the handoff. The file carries the exact full checkpoint SHA, effort, ledger path, current branch, and resolvable map, specification, and ticket pointers. Verify that each local target is present in or resolvable from that checkpoint commit. Use the final checkpoint before a fresh implementation session. The handoff is a pointer bridge, not a second ledger or specification.
+
 ## Common questions
 
 **Handoff or compact?**
 `/compact` unless something is travelling. Staying on the same task is a compact, not a handoff: same harness, same directory, and you need to stay in the loop is where the phase-boundary tree lands most days. `/handoff`'s advantage is not that it summarises better; it's that the result is a file you can carry somewhere `/compact` can't reach.
+
+**How does handoff preserve an active Planning context?**
+Before a fresh session, create the checkpoint for the next phase through [planning-context](https://aihero.dev/skills-planning-context). Put its full SHA beside the effort, ledger, branch, and map, specification, or ticket pointers. A fresh implementation session receives the final checkpoint and validates its marker; the handoff does not repeat any artifact's content.
 
 **So what's the actual difference between compact, clear and handoff?**
 Three different things being preserved. `/compact` compresses this context and keeps you going in a fresh window: intent survives. `/clear` empties the window and starts from nothing: correct when everything behind you is disposable, and one-way if it isn't. `/handoff` writes a portable file: the work survives the move to somewhere else. Note that all three turn a **[primary source](https://www.aihero.dev/ai-coding-dictionary/primary-source)** (the conversation as it happened) into a **[secondary source](https://www.aihero.dev/ai-coding-dictionary/secondary-source)** (a summary of it). Continuing is the only move that doesn't, which is why it's the first one to rule out.

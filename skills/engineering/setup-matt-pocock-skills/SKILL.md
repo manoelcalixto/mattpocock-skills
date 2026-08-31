@@ -118,6 +118,11 @@ For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch us
 
 After the repository choices are confirmed, call the Skill tool with `planning-context` to initialize the default Planning context discovery. It creates `docs/agents/planning.md` for a new repository and lazily appends the versioned block to an existing file without replacing its content.
 
+### Planning discovery modes
+
+- **New repository**: `planning-context` creates the default `docs/agents/planning.md`, which tells later sessions where to resolve per-effort ledgers and Planning checkpoints.
+- **Existing repository**: the first Planning context use performs lazy migration. An initialized `planning.md` stays byte-for-byte unchanged; an older file keeps its notes and receives the default versioned block once. Setup does not replace existing planning content.
+
 ### 5. Done
 
 Tell the user the setup is complete and which engineering skills will now read from these files. Mention that `planning-context` now owns versioned ledgers and checkpoints, and that existing repositories can receive its default block on first use. They can edit `docs/agents/*.md` directly later; re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.

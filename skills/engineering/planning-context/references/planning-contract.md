@@ -78,6 +78,10 @@ The marker's `Decisions` list is the consumer's selected set. It must contain on
 
 The helper requires complete coverage and non-empty evidence for every active entry and applicable obligation. Superseded entries do not block a gate. This is a delivery gate, separate from entry validity.
 
+## Fresh-session boundary
+
+When an active Planning context moves into a fresh session, create the checkpoint before the transition and pass its exact full SHA to the consumer. This includes `/compact`, `/handoff`, and `/clear`; select `intermediate` while planning continues, `final` before implementation, or `implementation` after verification. A markerless small task and work that stays in the current session do not require this gate.
+
 ## Implementation evidence aggregation
 
 An implementer records observable evidence on its own implementation surface, preferably as one or more repeatable commit trailers:
