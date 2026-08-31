@@ -6,15 +6,15 @@ The **phase boundary** is the gap between two phases, and it is the only place t
 
 ## Planning context gate
 
-First decide whether the next step starts a fresh session. A Planning context is active when the current map, specification, or ticket declares its `## Planning context` marker, or when a local artifact resolves a Planning checkpoint through its Git trailer.
+First decide whether the next step starts a fresh session. A Planning context is active when the current map, specification, or ticket declares its `## Planning context` marker, or when a local artifact resolves a Planning checkpoint through its Git trailer. Dispatching a `Subagent` or any other fresh context counts as a fresh session boundary.
 
-When that context is active and the next step is a fresh session, call the Skill tool with `planning-context` and create the checkpoint before `/compact`, `/handoff`, or `/clear`. The checkpoint phase follows the destination:
+When that context is active and the next step is a fresh session, call the Skill tool with `planning-context` and create the checkpoint before `/compact`, `/handoff`, `/clear`, dispatching a `Subagent`, or starting any other fresh context. The checkpoint phase follows the destination:
 
 - **Planning continues**: create an `intermediate` checkpoint, which may leave specification or ticket coverage pending.
 - **Implementation starts**: create a `final` checkpoint, after specification and ticket coverage pass.
 - **Implementation has finished**: create an `implementation` checkpoint, after verification evidence is complete.
 
-Give the fresh session the exact full checkpoint SHA, the effort and ledger pointers, and the relevant map, specification, or ticket references. A handoff carries those pointers instead of copying their contents. The gate does not add a checkpoint to **Continue**, same-session implementation, or small markerless work.
+Give the fresh session or subagent the exact full checkpoint SHA, the effort and ledger pointers, and the relevant map, specification, or ticket references. Parallel subagents that consume unchanged Planning artifacts may reuse that exact checkpoint. If a subagent changes Planning artifacts before another fresh context, create the next checkpoint first. A handoff carries pointers instead of copying their contents. The gate does not add a checkpoint to **Continue**, same-session implementation, or small markerless work.
 
 ## The five options
 
@@ -23,7 +23,7 @@ Give the fresh session the exact full checkpoint SHA, the effort and ledger poin
 | **Continue** | Stay in the session. No context switch at all.                    |
 | **`/clear`** | Empty the context window and start from nothing.                  |
 | **`/handoff`** | Write a portable markdown file and seed a session anywhere with it. Checkpoint first when an active Planning context crosses into that session. |
-| **Subagent** | Send the task to its own context window and get a report back.     |
+| **Subagent** | Send the task to its own context window and get a report back. Checkpoint first when an active Planning context crosses into it. |
 | **`/compact`** | Compress this context and seed a fresh session with the summary.  |
 
 ## The tree
@@ -45,7 +45,7 @@ The cost of getting this wrong is one-way. Clear a *relevant* context and you lo
 
 That list is the whole clause. What `/handoff` buys is **portability**: a file that travels. If nothing is travelling, you don't need it. When an active Planning context travels, the file contains its checkpoint and artifact pointers, not copied planning content.
 
-**4. Can the task be done AFK?** Is it scoped tightly enough to run with you away from the keyboard, no steering? Then send it to a **subagent** and leave this session untouched. Automated review is the standard case: the agent reads the diff and reports, and you aren't needed while it does.
+**4. Can the task be done AFK?** Is it scoped tightly enough to run with you away from the keyboard, no steering? Then send it to a **subagent** and leave this session untouched. The Planning context gate above must already have checkpointed the exact artifacts, and parallel subagents may reuse that SHA when the artifacts are unchanged. Automated review is the standard case: the agent reads the diff and reports, and you aren't needed while it does.
 
 **5. Otherwise, `/compact`.** Relevant context, same harness, same directory, and you need to stay in the loop: this is where the tree lands, and it lands here often. If an active Planning context crosses into the fresh session, create its checkpoint first. Pass `/compact` an instruction (`/compact we're going to QA this area`) so the summary keeps what the next phase needs.
 

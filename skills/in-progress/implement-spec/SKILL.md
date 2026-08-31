@@ -25,10 +25,10 @@ When the specification or any ticket declares `## Planning context`, validate th
    python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-file <spec-or-ticket> --phase final
    ```
 
-   For a remote GitHub item, read its body successfully before invoking the validator:
+   For a remote GitHub item, read `docs/agents/issue-tracker.md` first. Use the fully qualified tracker target configured there in every command; never infer it from the checkout, a remote, or `gh` defaults. Read the body successfully before invoking the validator:
 
    ```bash
-   issue_body="$(gh issue view <number> --repo manoelcalixto/mattpocock-skills --json body --jq .body)" && \
+   issue_body="$(gh issue view <number> --repo owner/repository --json body --jq .body)" && \
    python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-stdin --phase final <<<"$issue_body"
    ```
 
@@ -40,7 +40,7 @@ The preflight is a graph gate, not background reading. Do not create a branch or
 
 ## Checkpoint and publication
 
-After the graph gate passes, create the integration branch from the recorded checkpoint SHA, or from an integration head that already descends from it. Prove the ancestry before creating each worker branch or worktree. The checkpoint is local first. Push it only when a draft PR, a remote consumer, or a separate clone needs to resolve it, and make the draft PR after the preflight has passed. Keep the validated effort, ledger path, checkpoint SHA, decision IDs, and ticket references as context pointers for every downstream task. Do not copy canonical rationale into prompts or worktrees.
+After the graph gate passes, create the integration branch from the recorded checkpoint SHA, or from an integration head that already descends from it. Prove the ancestry before creating each worker branch or worktree. The checkpoint is local first. When a draft PR, a remote consumer, or a separate clone needs to resolve it, read the repository or workflow configuration for the remote and branch, push with `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there before publishing or refreshing any remote marker. Do not invent `origin`, a branch, or a fallback target. Make the draft PR after the preflight has passed. Keep the validated effort, ledger path, checkpoint SHA, decision IDs, and ticket references as context pointers for every downstream task. Do not copy canonical rationale into prompts or worktrees.
 
 ## Implementer evidence
 
@@ -75,7 +75,7 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
   --ticket-evidence "DEC-NNN | issue #<number> | observable ticket evidence"
 ```
 
-The owner scans the supplied history for repeatable `Planning-Verification` trailers, accepts already-read ticket evidence with an explicit origin, rejects unmerged or wrong-lineage tips and worker ledger edits, and checks every applicable active decision in memory before writing. It must fail without modifying the ledger when any verification is absent. Every implementation and fix commit on the marked path must carry trailers only for decisions whose behavior it verifies or changes, and the union of the final history and validated ticket evidence must cover every applicable selected decision before aggregation. Only after aggregation succeeds, run the owner `checkpoint --phase implementation`; its exact commit is the final evidence boundary for the reviewed code. For an entirely markerless graph, preserve the legacy closeout and do not infer a ledger, coverage aggregation, or Planning checkpoint.
+The owner scans the supplied history for repeatable `Planning-Verification` trailers, accepts already-read ticket evidence with an explicit origin, rejects unmerged or wrong-lineage tips and worker ledger edits, and checks every applicable active decision in memory before writing. It must fail without modifying the ledger when any verification is absent. Every implementation and fix commit on the marked path must carry trailers only for decisions whose behavior it verifies or changes, and the union of the final history and validated ticket evidence must cover every applicable selected decision before aggregation. Only after aggregation succeeds, run the owner `checkpoint --phase implementation`. When this invocation owns only the applicable preflight decisions, pass those IDs with `--decisions <comma-separated-applicable-IDs>`; omission keeps the default fail-closed gate over every active decision. Its exact commit is the final evidence boundary for the reviewed code. A final planning checkpoint does not accept a subset. For an entirely markerless graph, preserve the legacy closeout and do not infer a ledger, coverage aggregation, or Planning checkpoint.
 
 ## Steps
 
