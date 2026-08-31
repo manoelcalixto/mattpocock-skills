@@ -19,7 +19,7 @@ Every `gh` issue and pull request command must pass `--repo manoelcalixto/mattpo
 
 When changed to `yes`, PRs use the equivalent `gh pr` commands with the same explicit `--repo manoelcalixto/mattpocock-skills` target.
 
-GitHub shares one number space across issues and pull requests. Resolve a bare number with `gh pr view <number> --repo manoelcalixto/mattpocock-skills`, then fall back to `gh issue view`.
+GitHub shares one number space across issues and pull requests. Resolve a bare number with `gh pr view <number> --repo manoelcalixto/mattpocock-skills`, then fall back to `gh issue view <number> --repo manoelcalixto/mattpocock-skills`.
 
 ## When a skill says "publish to the issue tracker"
 

@@ -26,7 +26,16 @@ It writes into the repo you run it in:
 
 All of it is committed markdown. There is no user-level or global mode: the config lives in the repo, so every repo gets its own copy.
 
-Planning discovery is additive. A new repository receives the default `docs/agents/planning.md`; an existing file keeps its content and receives the default block only when it has not been configured yet.
+## Planning discovery
+
+Planning discovery is additive and has two paths:
+
+| Repository state | What happens |
+| --- | --- |
+| New repository | `planning-context` creates the default `docs/agents/planning.md` after setup confirmation. |
+| Existing repository | The first Planning context use performs lazy migration. An initialized file stays byte-for-byte unchanged; an older file keeps its notes and receives the versioned default block once. |
+
+Setup never replaces existing planning content. The resulting file tells later sessions where to resolve per-effort ledgers and Planning checkpoints.
 
 ## The three decisions
 
@@ -76,7 +85,7 @@ Known gap, still open. The file-selection rule is "edit `CLAUDE.md` if it exists
 It doesn't. `docs/agents/triage-labels.md` is a *mapping*: it tells `/triage` which strings in your tracker correspond to the five canonical roles. It does not run `gh label create`. On a fresh GitHub repo the labels genuinely do not exist yet, and this has been filed as a bug more than once. Two follow-ons:
 
 - If your tracker already uses the canonical names, the mapping is an identity table and there is nothing to configure. That is the intended common case, not a missing step.
-- [wayfinder](https://aihero.dev/skills-wayfinder)'s `wayfinder:map` and `wayfinder:<type>` labels are not created here either, and `gh issue create --label <missing>` fails outright rather than creating the label. Create them by hand before the first wayfinder run on a GitHub repo.
+- [wayfinder](https://aihero.dev/skills-wayfinder)'s `wayfinder:map` and `wayfinder:<type>` labels are not created here either, and `gh issue create --repo manoelcalixto/mattpocock-skills --label <missing>` fails outright rather than creating the label. Create them by hand before the first wayfinder run on a GitHub repo.
 
 **Can I configure the other skills' behaviour here ([grilling](https://www.aihero.dev/ai-coding-dictionary/grilling) cadence, question format, tone)?**
 

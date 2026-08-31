@@ -24,6 +24,8 @@ Reach for it when work crosses a session boundary or when a [spec](https://www.a
 
 The leading word is **checkpoint**. An intermediate checkpoint can leave future coverage pending. A final checkpoint requires applicable specification and ticket coverage, while implementation completion also requires verification evidence. The commit stages only named planning artifacts, writes a machine-readable trailer, and leaves unrelated worktree changes in place.
 
+Before `/compact`, `/handoff`, or `/clear` crosses an active Planning context into a fresh session, create the checkpoint for the next phase. The lightweight path remains available for markerless small work and for work that stays in the current session.
+
 Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning; a changed choice receives a new ID and a new checkpoint, while coverage and evidence can be appended.
 
 For a whole ticket graph, implementers keep the shared ledger unchanged and put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers. Evidence already read from a remote ticket can use the deterministic `DEC-NNN | origin | observable evidence` record. After all relevant branches are merged, the coordinator calls the owner with `coverage aggregate`, which proves the common final checkpoint, merged worker tips, and complete verification set before one ledger write. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early.

@@ -19,10 +19,36 @@ PLANNING_CONTRACT = REPO_ROOT / "skills" / "engineering" / "planning-context" / 
 IMPLEMENT_SPEC_SKILL = REPO_ROOT / "skills" / "in-progress" / "implement-spec" / "SKILL.md"
 IMPLEMENT_SPEC_METADATA = REPO_ROOT / "skills" / "in-progress" / "implement-spec" / "agents" / "openai.yaml"
 IN_PROGRESS_README = REPO_ROOT / "skills" / "in-progress" / "README.md"
+BOUNDARY_SKILLS = {
+    "ask-matt": REPO_ROOT / "skills" / "engineering" / "ask-matt" / "SKILL.md",
+    "handoff": REPO_ROOT / "skills" / "productivity" / "handoff" / "SKILL.md",
+    "setup-matt-pocock-skills": REPO_ROOT / "skills" / "engineering" / "setup-matt-pocock-skills" / "SKILL.md",
+    "planning-context": REPO_ROOT / "skills" / "engineering" / "planning-context" / "SKILL.md",
+}
+BOUNDARY_METADATA = {
+    name: path.parent / "agents" / "openai.yaml" for name, path in BOUNDARY_SKILLS.items()
+}
+BOUNDARY_DOCS = {
+    "ask-matt": REPO_ROOT / "docs" / "engineering" / "ask-matt.md",
+    "handoff": REPO_ROOT / "docs" / "productivity" / "handoff.md",
+    "setup-matt-pocock-skills": REPO_ROOT / "docs" / "engineering" / "setup-matt-pocock-skills.md",
+    "planning-context": REPO_ROOT / "docs" / "engineering" / "planning-context.md",
+}
 
 
 class HarnessFailure(AssertionError):
     """Raised when a public planning-context behavior is not observable."""
+
+
+def assert_ordered(text: str, label: str, *phrases: str) -> None:
+    """Require a contract's milestones to appear in the stated order."""
+
+    cursor = -1
+    for phrase in phrases:
+        position = text.find(phrase, cursor + 1)
+        if position < 0:
+            raise HarnessFailure(f"{label} is missing ordered milestone: {phrase}")
+        cursor = position
 
 
 def run_git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -241,12 +267,20 @@ def test_configuration_and_lazy_migration() -> None:
     legacy_config = init_repo()
     agents = legacy_config / "docs" / "agents"
     agents.mkdir(parents=True)
-    (agents / "planning.md").write_text("# Existing local planning notes\n")
+    legacy_path = agents / "planning.md"
+    legacy_before = "# Existing local planning notes\n"
+    legacy_path.write_text(legacy_before)
     migrated = payload(run_helper(legacy_config, "init"))
     if migrated["status"] != "migrated":
         raise HarnessFailure(f"existing configuration did not receive lazy migration: {migrated}")
-    if "planning-context:v1" not in (agents / "planning.md").read_text():
+    migrated_text = legacy_path.read_text()
+    if not migrated_text.startswith(legacy_before) or migrated_text.count("planning-context:v1") != 1:
+        raise HarnessFailure("lazy migration replaced existing planning notes or duplicated its marker")
+    if "planning-context:v1" not in migrated_text:
         raise HarnessFailure("lazy migration marker is missing")
+    repeated = payload(run_helper(legacy_config, "init"))
+    if repeated["status"] != "existing" or legacy_path.read_text() != migrated_text:
+        raise HarnessFailure("lazy migration rewrote the initialized planning configuration")
 
 
 def test_ledger_ids_and_supersession() -> None:
@@ -1487,6 +1521,328 @@ The ADR-backed planning contract is the selected answer.
         raise HarnessFailure("ADR canonical rationale and ledger pointer are not both present")
 
 
+def test_session_boundary_router_and_catalogs() -> None:
+    """Check the routed boundary contract and every promoted distribution surface."""
+
+    ask = BOUNDARY_SKILLS["ask-matt"].read_text()
+    phase_boundaries = BOUNDARY_SKILLS["ask-matt"].parent.joinpath("PHASE-BOUNDARIES.md").read_text()
+    handoff = BOUNDARY_SKILLS["handoff"].read_text()
+    handoff_docs = BOUNDARY_DOCS["handoff"].read_text()
+    setup = BOUNDARY_SKILLS["setup-matt-pocock-skills"].read_text()
+    setup_docs = BOUNDARY_DOCS["setup-matt-pocock-skills"].read_text()
+    planning = BOUNDARY_SKILLS["planning-context"].read_text()
+    planning_contract = PLANNING_CONTRACT.read_text()
+
+    route_start = ask.find("The multi-session route is therefore:")
+    if route_start < 0:
+        raise HarnessFailure("ask-matt is missing its explicit multi-session route")
+    route_end = ask.find("\n", route_start)
+    route = ask[route_start:] if route_end < 0 else ask[route_start:route_end]
+    assert_ordered(
+        route,
+        "ask-matt multi-session route",
+        "grill-with-docs",
+        "intermediate Planning checkpoint",
+        "to-spec",
+        "to-tickets",
+        "final Planning checkpoint",
+        "fresh implementation session",
+        "implement-spec or implement",
+        "code-review",
+    )
+    wayfinder_start = ask.find("When the map clears")
+    if wayfinder_start < 0:
+        raise HarnessFailure("ask-matt is missing the Wayfinder build handoff")
+    wayfinder_end = ask.find("\n\n", wayfinder_start)
+    wayfinder = ask[wayfinder_start:] if wayfinder_end < 0 else ask[wayfinder_start:wayfinder_end]
+    assert_ordered(
+        wayfinder,
+        "ask-matt Wayfinder handoff",
+        "/to-spec",
+        "/to-tickets",
+        "final Planning checkpoint",
+        "fresh implementation session",
+    )
+    for phrase in (
+        "lightweight path for small work without a formal Planning context",
+        "right here, in the same context window",
+        "genuinely small and has no formal Planning context",
+    ):
+        if phrase not in ask:
+            raise HarnessFailure(f"ask-matt lightweight route is missing: {phrase}")
+    ask_docs = BOUNDARY_DOCS["ask-matt"].read_text()
+    for phrase in ("intermediate Planning checkpoint", "final checkpoint", "fresh session", "Small work without a formal Planning context"):
+        if phrase not in ask_docs:
+            raise HarnessFailure(f"ask-matt documentation is missing routed boundary behavior: {phrase}")
+
+    assert_ordered(
+        phase_boundaries,
+        "phase-boundaries structure",
+        "## Planning context gate",
+        "## The five options",
+        "## The tree",
+    )
+    for phrase in (
+        "current map, specification, or ticket declares its `## Planning context` marker",
+        "create the checkpoint before `/compact`, `/handoff`, or `/clear`",
+        "`intermediate` checkpoint",
+        "`final` checkpoint",
+        "`implementation` checkpoint",
+        "exact full checkpoint SHA",
+        "A handoff carries those pointers instead of copying their contents",
+        "small markerless work",
+    ):
+        if phrase not in phase_boundaries:
+            raise HarnessFailure(f"phase-boundaries gate is missing: {phrase}")
+
+    for name, text in (("handoff skill", handoff), ("planning skill", planning), ("planning contract", planning_contract)):
+        for phrase in ("fresh session", "active Planning context", "checkpoint"):
+            if phrase not in text:
+                raise HarnessFailure(f"{name} does not describe the fresh-session gate: {phrase}")
+    for phrase in (
+        "call the Skill tool with `planning-context` first",
+        "exact full checkpoint SHA",
+        "effort",
+        "ledger path",
+        "current branch",
+        "resolvable paths or URLs",
+        "present in or resolvable from that checkpoint commit",
+        "final checkpoint",
+        "marker validation path",
+        "do not copy their ledger, specification, ticket, ADR, or decision content",
+    ):
+        if phrase not in handoff:
+            raise HarnessFailure(f"handoff pointer bridge is missing: {phrase}")
+    for phrase in ("pointer bridge", "exact full checkpoint SHA", "does not repeat any artifact's content"):
+        if phrase not in handoff_docs:
+            raise HarnessFailure(f"handoff documentation is missing the pointer bridge: {phrase}")
+
+    for phrase in ("New repository", "Existing repository", "lazy migration", "byte-for-byte", "docs/agents/planning.md"):
+        if phrase not in setup:
+            raise HarnessFailure(f"setup Planning discovery is missing: {phrase}")
+    if "does not replace existing planning content" not in setup:
+        raise HarnessFailure("setup does not preserve existing Planning content")
+    for phrase in ("New repository", "Existing repository", "lazy migration", "byte-for-byte", "never replaces existing planning content"):
+        if phrase not in setup_docs:
+            raise HarnessFailure(f"setup documentation is missing Planning discovery behavior: {phrase}")
+
+    docs_sections = ("## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits")
+    for name, path in BOUNDARY_DOCS.items():
+        text = path.read_text()
+        positions = [text.find(section) for section in docs_sections]
+        if any(position < 0 for position in positions) or positions != sorted(positions):
+            raise HarnessFailure(f"{name} documentation sections are incomplete or out of order")
+        if "\u2014" in text:
+            raise HarnessFailure(f"{name} documentation contains an em dash")
+
+    plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
+    plugin_skills = plugin.get("skills", [])
+    for name, skill_path in BOUNDARY_SKILLS.items():
+        relative_skill = "./" + skill_path.parent.relative_to(REPO_ROOT).as_posix()
+        if relative_skill not in plugin_skills:
+            raise HarnessFailure(f"{name} is missing from the Claude plugin manifest")
+        metadata = BOUNDARY_METADATA[name].read_text()
+        if not metadata.startswith("interface:\n  display_name:") or "\n  short_description:" not in metadata:
+            raise HarnessFailure(f"{name} metadata is not nested under interface")
+        if "policy:" in metadata or "allow_implicit_invocation" in metadata:
+            raise HarnessFailure(f"{name} metadata reintroduced an implicit-invocation policy")
+        if name == "planning-context":
+            if "disable-model-invocation:" in skill_path.read_text():
+                raise HarnessFailure("planning-context must remain model-invoked")
+        elif "disable-model-invocation: true" not in skill_path.read_text():
+            raise HarnessFailure(f"{name} invocation metadata changed unexpectedly")
+    for metadata_path in (REPO_ROOT / "skills").rglob("openai.yaml"):
+        metadata = metadata_path.read_text()
+        if "policy:" in metadata or "allow_implicit_invocation" in metadata:
+            raise HarnessFailure(f"OpenAI metadata reintroduced an implicit-invocation policy: {metadata_path}")
+
+    expected_promoted = {
+        "./" + skill_path.parent.relative_to(REPO_ROOT).as_posix()
+        for bucket in ("engineering", "productivity")
+        for skill_path in (REPO_ROOT / "skills" / bucket).glob("*/SKILL.md")
+    }
+    if set(plugin_skills) != expected_promoted:
+        missing = sorted(expected_promoted - set(plugin_skills))
+        unexpected = sorted(set(plugin_skills) - expected_promoted)
+        raise HarnessFailure(f"Claude plugin membership is out of parity: missing={missing}, unexpected={unexpected}")
+    top_readme = (REPO_ROOT / "README.md").read_text()
+    for bucket in ("engineering", "productivity"):
+        bucket_readme = (REPO_ROOT / "skills" / bucket / "README.md").read_text()
+        for skill_path in sorted((REPO_ROOT / "skills" / bucket).glob("*/SKILL.md")):
+            name = skill_path.parent.name
+            top_link = f"[{name}](./skills/{bucket}/{name}/SKILL.md)"
+            bucket_link = f"[{name}](./{name}/SKILL.md)"
+            if top_link not in top_readme or bucket_link not in bucket_readme:
+                raise HarnessFailure(f"{name} catalog links are out of parity")
+            docs_path = REPO_ROOT / "docs" / bucket / f"{name}.md"
+            if not docs_path.exists():
+                raise HarnessFailure(f"promoted skill docs are missing: {docs_path.relative_to(REPO_ROOT)}")
+            metadata_path = skill_path.parent / "agents" / "openai.yaml"
+            metadata = metadata_path.read_text()
+            if not metadata.startswith("interface:\n  display_name:") or "\n  short_description:" not in metadata:
+                raise HarnessFailure(f"promoted skill metadata is not nested under interface: {metadata_path}")
+            docs_text = docs_path.read_text()
+            if "\u2014" in docs_text or "\u2014" in skill_path.read_text():
+                raise HarnessFailure(f"promoted skill contains an em dash: {skill_path}")
+
+    catalogs = {
+        REPO_ROOT / "README.md": {
+            "ask-matt": "[ask-matt](./skills/engineering/ask-matt/SKILL.md)",
+            "handoff": "[handoff](./skills/productivity/handoff/SKILL.md)",
+            "setup-matt-pocock-skills": "[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)",
+            "planning-context": "[planning-context](./skills/engineering/planning-context/SKILL.md)",
+        },
+        REPO_ROOT / "skills" / "engineering" / "README.md": {
+            "ask-matt": "[ask-matt](./ask-matt/SKILL.md)",
+            "setup-matt-pocock-skills": "[setup-matt-pocock-skills](./setup-matt-pocock-skills/SKILL.md)",
+            "planning-context": "[planning-context](./planning-context/SKILL.md)",
+        },
+        REPO_ROOT / "skills" / "productivity" / "README.md": {
+            "handoff": "[handoff](./handoff/SKILL.md)",
+        },
+    }
+    for catalog, links in catalogs.items():
+        text = catalog.read_text()
+        for name, link in links.items():
+            if link not in text:
+                raise HarnessFailure(f"{name} is missing from {catalog.relative_to(REPO_ROOT)}")
+
+
+def test_fresh_session_pointer_bridge() -> None:
+    """Prove that a handoff can validate checkpoint pointers without copying decisions."""
+
+    repo = init_repo()
+    effort = "session-boundary"
+    create_effort(repo, effort)
+    (repo / "map.md").write_text("# Planning map\n\nResolve the implementation route.\n")
+    intermediate = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "intermediate",
+            "--message",
+            "boundary planning checkpoint",
+            "--path",
+            "map.md",
+        )
+    )
+    intermediate_sha = str(intermediate["sha"])
+    planning_handoff = write_marked_artifact(
+        repo,
+        effort,
+        intermediate_sha,
+        "DEC-001",
+        "planning-handoff.md",
+        f"""## Next session
+
+- Checkpoint SHA: {intermediate_sha}
+- Effort: {effort}
+- Ledger: docs/planning/{effort}/decision-ledger.md
+- Branch: feature/session-boundary
+- Map: map.md
+- Specification: spec.md (to be created)
+- Tickets: issue-9 (to be created)
+""",
+    )
+    planning_result = payload(
+        run_helper(repo, "validate", "--context-file", planning_handoff.name, "--phase", "intermediate")
+    )
+    if planning_result.get("status") != "valid" or planning_result.get("checkpoint") != intermediate_sha:
+        raise HarnessFailure(f"intermediate handoff pointer did not validate: {planning_result}")
+    planning_text = planning_handoff.read_text()
+    if "A versioned contract prevents drift" in planning_text or "Use the shared planning seam" in planning_text:
+        raise HarnessFailure("intermediate handoff copied canonical Decision content")
+    if run_git(repo, "cat-file", "-e", f"{intermediate_sha}:map.md", check=False).returncode != 0:
+        raise HarnessFailure("intermediate handoff map pointer is not versioned by its checkpoint")
+
+    (repo / "spec.md").write_text("# Session boundary specification\n")
+    (repo / "ticket.md").write_text("# Session boundary ticket\n")
+    add_coverage(repo, effort, "DEC-001", "specification", "spec.md")
+    add_coverage(repo, effort, "DEC-001", "tickets", "ticket.md")
+    final = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            effort,
+            "--phase",
+            "final",
+            "--message",
+            "boundary final checkpoint",
+            "--path",
+            "map.md",
+            "--path",
+            "spec.md",
+            "--path",
+            "ticket.md",
+        )
+    )
+    final_sha = str(final["sha"])
+    for versioned in (
+        "docs/agents/planning.md",
+        f"docs/planning/{effort}/decision-ledger.md",
+        "map.md",
+        "spec.md",
+        "ticket.md",
+    ):
+        if run_git(repo, "cat-file", "-e", f"{final_sha}:{versioned}", check=False).returncode != 0:
+            raise HarnessFailure(f"final checkpoint does not contain pointer target {versioned}")
+    implementation_handoff = write_marked_artifact(
+        repo,
+        effort,
+        final_sha,
+        "DEC-001",
+        "implementation-handoff.md",
+        f"""## Fresh implementation session
+
+- Checkpoint SHA: {final_sha}
+- Effort: {effort}
+- Ledger: docs/planning/{effort}/decision-ledger.md
+- Branch: feature/session-boundary
+- Map: map.md
+- Specification: spec.md
+- Tickets: ticket.md
+- Marker validation: planning_context.py validate --context-file implementation-handoff.md --phase final
+""",
+    )
+    implementation_result = payload(
+        run_helper(repo, "validate", "--context-file", implementation_handoff.name, "--phase", "final")
+    )
+    if implementation_result.get("status") != "valid" or implementation_result.get("checkpoint") != final_sha:
+        raise HarnessFailure(f"final implementation handoff pointer did not validate: {implementation_result}")
+    implementation_text = implementation_handoff.read_text()
+    if "A versioned contract prevents drift" in implementation_text or "Use the shared planning seam" in implementation_text:
+        raise HarnessFailure("implementation handoff copied canonical Decision content")
+
+
+def test_fork_targeting_operations() -> None:
+    """Ensure operational examples target this fork while generic templates stay generic."""
+
+    target = "manoelcalixto/mattpocock-skills"
+    operational_files = (
+        REPO_ROOT / "skills" / "engineering" / "triage" / "AGENT-BRIEF.md",
+        REPO_ROOT / "docs" / "engineering" / "setup-matt-pocock-skills.md",
+        REPO_ROOT / "docs" / "engineering" / "triage.md",
+        REPO_ROOT / "docs" / "agents" / "issue-tracker.md",
+        REPO_ROOT / ".agents" / "writing-docs.md",
+    )
+    for path in operational_files:
+        for line in path.read_text().splitlines():
+            if re.search(r"\bgh (?:issue|pr)\s+", line) and f"--repo {target}" not in line:
+                raise HarnessFailure(f"operational GitHub command does not target the fork: {path}:{line}")
+            if re.search(r"\bgh api\s+", line) and f"repos/{target}/" not in line:
+                raise HarnessFailure(f"operational GitHub API command does not target the fork: {path}:{line}")
+    if "gh issue list --label needs-triage" in (operational_files[0]).read_text():
+        raise HarnessFailure("triage brief retained an inferred issue target")
+    if "gh issue create --label <missing>" in (operational_files[1]).read_text():
+        raise HarnessFailure("setup docs retained an inferred issue target")
+    if "gh pr list`" in (operational_files[2]).read_text():
+        raise HarnessFailure("triage docs retained an inferred pull request target")
+
+
 def test_repository_wiring() -> None:
     skill = REPO_ROOT / "skills" / "engineering" / "planning-context"
     skill_text = (skill / "SKILL.md").read_text()
@@ -1652,6 +2008,9 @@ def main() -> int:
         test_ticket_only_evidence_surface,
         test_grill_to_tickets_flow,
         test_wayfinder_decision_to_build_flow,
+        test_session_boundary_router_and_catalogs,
+        test_fresh_session_pointer_bridge,
+        test_fork_targeting_operations,
         test_implementation_verification_gate,
     ]
     for test in tests:

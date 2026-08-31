@@ -27,6 +27,8 @@ For a Wayfinder resolution, inspect the effort ledger before writing. Run `decis
 
 Create an intermediate checkpoint while future specification or ticket coverage is still pending. Create a final checkpoint only after every active applicable entry is covered by the specification and tickets. Implementation completion also requires applicable verification evidence. Stage the configuration, ledger, and explicitly owned planning artifacts only; the checkpoint writes a machine-readable `Planning-Checkpoint` trailer and leaves unrelated worktree changes alone.
 
+Before an active Planning context crosses into a fresh session, create the checkpoint for the next phase. This gate applies before `/compact`, `/handoff`, or `/clear`: use `intermediate` while planning continues, `final` before implementation, and `implementation` after verification. A markerless small task and work that stays in the current session remain on the lightweight path.
+
 Before a fresh implementation session, validate the declared ledger, checkpoint trailer, branch ancestry, active decision IDs, and requested coverage. A valid consumer descends from the exact checkpoint commit. A declared but unresolved context fails with the failed invariant and its repair. A legacy input without a marker remains allowed.
 
 Wayfinder may hand off to the build flow only after the final Planning checkpoint passes its applicable specification and ticket coverage gate. The intermediate checkpoint makes a resolved ticket durable; `to-spec` and `to-tickets` carry its ID through their shared contract before the final checkpoint authorizes a fresh build session.
