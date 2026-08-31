@@ -41,7 +41,7 @@ Follow `code-review`'s bounded follow-up and terminal rule. Report rejected, def
 
 Only for a declared Planning context that passed preflight, after the bounded `code-review` pass, any eligible follow-up, and the final fix-batch validation, inspect the final history and validated ticket evidence to ensure the union of the final history and validated ticket evidence covers every applicable preflight decision and represents the final reviewed code. Then call the `planning-context` owner with the final planning checkpoint, final reviewed `HEAD`, and that final tip:
 
-For `/implement`, the initial implementation commit covers every decision returned by preflight. A fix commit adds trailers only for decisions whose behavior it verifies or changes. If the final union is missing a required decision, add the corresponding trailer to the implementation or fix commit that verifies or changes it, then rerun final validation before aggregation.
+For `/implement`, the initial implementation commit covers every applicable decision returned by preflight. A fix commit adds trailers only for decisions whose behavior it verifies or changes. If the final union is missing a required decision, add the corresponding trailer to the implementation or fix commit that verifies or changes it, then rerun final validation before aggregation.
 
 ```bash
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \

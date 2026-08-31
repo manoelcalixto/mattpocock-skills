@@ -36,7 +36,7 @@ FIELD_PATTERN = re.compile(
     r"^- (Status|Decision|Context|Rationale|ADR|Constraints|Rejected alternatives|Obligations|Superseded by|Supersedes):\s*(.*)$"
 )
 SUBFIELD_PATTERN = re.compile(
-    r"^\s{2,}- (specification|tickets|verification|applicability):\s*(.*)$"
+    r"^(?P<indent>\s{2,})- (?P<field>specification|tickets|verification|applicability):\s*(?P<value>.*)$"
 )
 ENTRY_PATTERN = re.compile(r"^## (DEC-\d{3,})\s*$", re.MULTILINE)
 PLANNING_PATHS_TRAILER = "Planning-Paths"
@@ -177,6 +177,7 @@ def ensure_config(repo: Path) -> tuple[str, str]:
 
     suffix = "" if text.endswith("\n") else "\n"
     migrated = f"{text}{suffix}\n{DEFAULT_CONFIG}"
+    ledger_directory(repo, migrated)
     path.write_text(migrated)
     return "migrated", migrated
 
@@ -242,7 +243,7 @@ def parse_entry(block: str, identifier: str) -> Entry:
         subfield_match = SUBFIELD_PATTERN.match(line)
         if subfield_match and section in {"Coverage", "Evidence"}:
             target = coverage if section == "Coverage" else evidence
-            target[subfield_match.group(1)] = subfield_match.group(2).strip()
+            target[subfield_match.group("field")] = subfield_match.group("value").strip()
             continue
         if line.strip() == "- Coverage:":
             section = "Coverage"
@@ -430,6 +431,23 @@ def supersede_entry(text: str, identifier: str, successor: str) -> str:
     return text
 
 
+def section_subfield_indent(lines: Sequence[str], section_name: str) -> str:
+    """Reuse the first valid subfield indentation in a ledger section."""
+
+    in_section = False
+    for line in lines:
+        if line.strip() == f"- {section_name}:":
+            in_section = True
+            continue
+        if line.startswith("-") and line.strip().endswith(":"):
+            in_section = False
+        if in_section:
+            match = SUBFIELD_PATTERN.fullmatch(line)
+            if match:
+                return match.group("indent")
+    return "  "
+
+
 def command_init(repo: Path) -> dict[str, object]:
     status, config = ensure_config(repo)
     ledger_directory(repo, config)
@@ -528,9 +546,12 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
     end = next((item.start() for item in matches if item.start() > match.start()), len(text))
     block = text[match.start() : end]
     lines = block.splitlines()
-    coverage_prefix = f"  - {obligation}:"
+    coverage_indent = section_subfield_indent(lines, "Coverage")
+    evidence_indent = section_subfield_indent(lines, "Evidence")
     if obligation == APPLICABILITY_OBLIGATION and not any(
-        line.startswith(coverage_prefix) for line in lines
+        (subfield := SUBFIELD_PATTERN.fullmatch(line)) is not None
+        and subfield.group("field") == obligation
+        for line in lines
     ):
         coverage_index = next(
             (index for index, line in enumerate(lines) if line.strip() == "- Coverage:"),
@@ -542,10 +563,10 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
         )
         if coverage_index is None or evidence_index is None:
             fail(f"{args.decision} has no applicability coverage and evidence sections")
-        lines.insert(coverage_index + 1, f"  - {APPLICABILITY_OBLIGATION}: pending")
+        lines.insert(coverage_index + 1, f"{coverage_indent}- {APPLICABILITY_OBLIGATION}: pending")
         if evidence_index > coverage_index:
             evidence_index += 1
-        lines.insert(evidence_index + 1, f"  - {APPLICABILITY_OBLIGATION}: none")
+        lines.insert(evidence_index + 1, f"{evidence_indent}- {APPLICABILITY_OBLIGATION}: none")
     section = None
     changed_coverage = False
     changed_evidence = False
@@ -554,14 +575,17 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
             section = "coverage"
         elif line.strip() == "- Evidence:":
             section = "evidence"
-        elif line.startswith(coverage_prefix):
+        else:
+            subfield = SUBFIELD_PATTERN.fullmatch(line)
+            if subfield is None or subfield.group("field") != obligation:
+                continue
             if section == "coverage":
-                lines[index] = f"  - {obligation}: complete"
+                lines[index] = f"{subfield.group('indent')}- {obligation}: complete"
                 changed_coverage = True
             elif section == "evidence":
                 old = line.split(":", 1)[1].strip()
                 combined = evidence if not old or old.lower() == "none" else f"{old}; {evidence}"
-                lines[index] = f"  - {obligation}: {combined}"
+                lines[index] = f"{subfield.group('indent')}- {obligation}: {combined}"
                 changed_evidence = True
     if not changed_coverage or not changed_evidence:
         fail(f"{args.decision} has no {obligation} coverage and evidence lines")
@@ -647,10 +671,40 @@ def ensure_stage_path(repo: Path, raw_path: str) -> Path:
     return relative
 
 
+def has_effective_path_change(repo: Path, relative: Path) -> bool:
+    """Check for a content or deletion change without modifying the index."""
+
+    comparison = run_git(repo, "diff", "--quiet", "HEAD", "--", relative.as_posix(), check=False)
+    if comparison.returncode == 1:
+        return True
+    if comparison.returncode != 0:
+        detail = comparison.stderr.strip() or comparison.stdout.strip() or "git diff failed"
+        fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
+    absolute = repo / relative
+    if not absolute.exists():
+        return False
+    tracked = run_git(
+        repo,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        relative.as_posix(),
+        check=False,
+    )
+    if tracked.returncode == 0:
+        return False
+    if tracked.returncode == 1:
+        return True
+    detail = tracked.stderr.strip() or tracked.stdout.strip() or "git ls-files failed"
+    fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
+    return False
+
+
 def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     effort = validate_effort(args.effort)
     phase = clean_single_line(args.phase.lower(), "phase")
     required = required_for_phase(phase)
+    subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
     ensure_config(repo)
     ledger_relative, _, entries = read_ledger(repo, effort)
     selected_entries = selected_checkpoint_entries(entries, phase, args.decisions)
@@ -677,6 +731,18 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
         if relative.as_posix() not in seen:
             paths.append(relative)
             seen.add(relative.as_posix())
+    base_paths = (Path(CONFIG_REL), ledger_relative)
+    unchanged = [
+        path.as_posix()
+        for path in base_paths
+        if not has_effective_path_change(repo, path)
+    ]
+    if len(unchanged) == len(base_paths):
+        fail(
+            "checkpoint must change the planning configuration or declared ledger; "
+            "extra-only checkpoints are not durable; "
+            f"unchanged: {', '.join(unchanged)}"
+        )
     run_git(repo, "add", "--", *(path.as_posix() for path in paths))
     staged = run_git(
         repo,
@@ -689,7 +755,6 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
     )
     if staged.returncode == 0:
         fail("checkpoint has no changes in its owned planning artifacts")
-    subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
     trailer_message = (
         f"{subject}\n\n"
         f"Planning-Checkpoint: {effort}\n"
@@ -751,6 +816,11 @@ def parse_verification_trailers(message: str) -> tuple[Verification, ...]:
 
     records: list[Verification] = []
     for line in parse_trailers_lines(message):
+        if line.startswith("Planning-Verification:") and not VERIFICATION_PATTERN.fullmatch(line):
+            fail(
+                "malformed Planning-Verification trailer; use "
+                "Planning-Verification: DEC-NNN | observable evidence"
+            )
         match = VERIFICATION_PATTERN.fullmatch(line)
         if match:
             evidence = match.group(2).strip()
@@ -806,6 +876,13 @@ def checkpoint_path_text(repo: Path, checkpoint: str, relative: Path) -> str | N
     return result.stdout
 
 
+def checkpoint_parent_shas(repo: Path, checkpoint: str) -> tuple[str, ...]:
+    """Return every parent so merge checkpoints can prove inherited ownership."""
+
+    message = run_git(repo, "show", "-s", "--format=%P", checkpoint).stdout
+    return tuple(parent for parent in message.split() if parent)
+
+
 def is_planning_artifact(
     repo: Path, checkpoint: str, relative: Path
 ) -> bool:
@@ -817,9 +894,16 @@ def is_planning_artifact(
         text = checkpoint_path_text(repo, checkpoint, relative)
     except UnicodeDecodeError:
         return False
-    if text is None:
-        return False
-    return has_planning_artifact_markers(text)
+    if text is not None:
+        return has_planning_artifact_markers(text)
+    for parent in checkpoint_parent_shas(repo, checkpoint):
+        try:
+            parent_text = checkpoint_path_text(repo, parent, relative)
+        except UnicodeDecodeError:
+            continue
+        if parent_text is not None and has_planning_artifact_markers(parent_text):
+            return True
+    return False
 
 
 def is_planning_artifact_name(relative: Path) -> bool:
@@ -963,10 +1047,7 @@ def selected_verification_decisions(
         identifier = active_decision_identifier(entries, raw_identifier)
         if identifier not in selected:
             selected.append(identifier)
-    for identifier in selected:
-        if "verification" not in entries[identifier].obligations:
-            fail(f"{identifier} does not declare verification as an obligation")
-    return tuple(selected)
+    return tuple(identifier for identifier in selected if "verification" in entries[identifier].obligations)
 
 
 def evidence_values(raw: str | None) -> list[str]:
@@ -1052,17 +1133,22 @@ def append_verification_evidence(
         section: str | None = None
         existing_evidence: str | None = None
         evidence_line_index: int | None = None
+        evidence_indent: str | None = None
         for line_index, line in enumerate(lines):
             if line.strip() == "- Coverage:":
                 section = "coverage"
             elif line.strip() == "- Evidence:":
                 section = "evidence"
-            elif line.startswith("  - verification:"):
+            else:
+                subfield = SUBFIELD_PATTERN.fullmatch(line)
+                if subfield is None or subfield.group("field") != "verification":
+                    continue
                 if section == "coverage":
-                    lines[line_index] = "  - verification: complete"
+                    lines[line_index] = f"{subfield.group('indent')}- verification: complete"
                 elif section == "evidence":
                     existing_evidence = line.split(":", 1)[1].strip()
                     evidence_line_index = line_index
+                    evidence_indent = subfield.group("indent")
         if existing_evidence is None:
             fail(f"{identifier} has no verification evidence line")
         current_values = evidence_values(existing_evidence)
@@ -1071,9 +1157,10 @@ def append_verification_evidence(
         for item in evidence:
             if item not in current_values:
                 current_values.append(item)
-        if evidence_line_index is not None:
+        if evidence_line_index is not None and evidence_indent is not None:
             lines[evidence_line_index] = (
-                "  - verification: " + json.dumps(current_values, ensure_ascii=False, separators=(",", ":"))
+                f"{evidence_indent}- verification: "
+                + json.dumps(current_values, ensure_ascii=False, separators=(",", ":"))
             )
         replacements.append((match.start(), end, "\n".join(lines) + "\n"))
 
@@ -1143,7 +1230,7 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
         for raw_evidence in (args.ticket_evidence or [])
         for record in (parse_ticket_evidence(raw_evidence),)
     )
-    if not records:
+    if selected and not records:
         fail("at least one verification commit or ticket evidence record is required")
 
     updates: dict[str, list[str]] = {identifier: [] for identifier in selected}
@@ -1152,6 +1239,8 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
             fail(f"verification trailer names missing decision {record.decision}")
         if entries[record.decision].status != "active":
             fail(f"verification trailer names superseded decision {record.decision}")
+        if "verification" not in entries[record.decision].obligations:
+            fail(f"{record.decision} does not declare verification as an obligation")
         if record.decision not in selected:
             fail(
                 f"verification trailer for {record.decision} is outside the selected implementation decisions"
@@ -1215,7 +1304,9 @@ def validate_checkpoint_commit(
     ledger_relative: Path,
     *,
     required_phase: str | None = None,
+    selected_decisions: Sequence[str] | None = None,
 ) -> dict[str, Entry]:
+    required = required_for_phase(required_phase) if required_phase is not None else ()
     resolved = run_git(repo, "rev-parse", "--verify", f"{sha}^{{commit}}", check=False)
     if resolved.returncode != 0:
         fail(f"Planning checkpoint {sha} cannot be resolved")
@@ -1248,6 +1339,24 @@ def validate_checkpoint_commit(
         fail("Planning checkpoint does not contain the declared Decision ledger")
     snapshot_text = run_git(repo, "show", object_path).stdout
     snapshot = parse_ledger(snapshot_text)
+    snapshot_entries = snapshot
+    if selected_decisions:
+        missing_decisions = sorted(set(selected_decisions) - set(snapshot))
+        if missing_decisions:
+            fail(
+                "declared decision(s) are missing from the Planning checkpoint snapshot: "
+                + ", ".join(missing_decisions)
+            )
+        snapshot_entries = {
+            identifier: snapshot[identifier]
+            for identifier in selected_decisions
+        }
+    snapshot_missing = missing_coverage(snapshot_entries, required)
+    if snapshot_missing:
+        fail(
+            f"coverage incomplete for {required_phase} checkpoint snapshot: "
+            f"{', '.join(snapshot_missing)}; create a newer checkpoint"
+        )
     current_path = repo / ledger_relative
     if not current_path.exists():
         fail("declared Decision ledger is missing from the current branch")
@@ -1389,8 +1498,14 @@ def command_marker(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     if resolved.returncode != 0:
         fail(f"Planning checkpoint {checkpoint} cannot be resolved")
     resolved_sha = resolved.stdout.strip()
-    validate_checkpoint_commit(repo, resolved_sha, effort, ledger_relative)
     decisions = tuple(item.strip() for item in (args.decisions or "").split(",") if item.strip())
+    validate_checkpoint_commit(
+        repo,
+        resolved_sha,
+        effort,
+        ledger_relative,
+        selected_decisions=decisions or None,
+    )
     for identifier in decisions:
         active_decision_identifier(entries, identifier)
     block = marker_block(effort, ledger_relative, resolved_sha, decisions, args.repository)
@@ -1443,7 +1558,14 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
         checkpoint = str(marker["checkpoint"])
         requested = tuple(str(item) for item in marker["decisions"])
         source = "stdin" if args.context_stdin else "marker"
-    current = validate_checkpoint_commit(repo, checkpoint, effort, ledger_relative, required_phase=args.phase)
+    current = validate_checkpoint_commit(
+        repo,
+        checkpoint,
+        effort,
+        ledger_relative,
+        required_phase=args.phase,
+        selected_decisions=requested or None,
+    )
     selected = requested or tuple(identifier for identifier, entry in current.items() if entry.status == "active")
     for identifier in selected:
         if identifier not in current:
