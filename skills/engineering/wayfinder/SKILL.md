@@ -16,6 +16,8 @@ When a Decision ticket resolves a material choice, inspect the active entries fi
 
 After creating a new entry, create an intermediate checkpoint before publishing the resolution or crossing into another session, then refresh both the map and resolved ticket markers to that checkpoint and active ID. The map's **Decisions so far** keeps only a linked ticket and short gist, while the ledger or its ADR remains the canonical rationale. When the map clears, hand off through `to-spec` and `to-tickets`; a fresh build session waits for their final Planning checkpoint gate to pass.
 
+Before publishing or refreshing an external Planning marker, read `docs/agents/issue-tracker.md` and resolve the configured Git remote and branch from repository or workflow configuration. Require one unambiguous remote and branch, then run `git push <configured-remote> HEAD:<configured-branch>` and verify that the checkpoint is reachable there before any tracker write. If the remote or branch is absent, ambiguous, or cannot be verified, stop and repair the configuration. Use the configured tracker target for every tracker operation. Do not invent `origin`, a branch, or a fallback target. This is the same publication gate used by `planning-context`, `to-spec`, and `to-tickets`.
+
 ## Plan, don't do
 
 Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear, with nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. An effort can override this in its **Notes**, carrying execution into the map itself, but absent that, produce decisions, not deliverables.

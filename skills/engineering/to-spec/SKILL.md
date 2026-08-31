@@ -26,11 +26,11 @@ Check with the user that these seams match their expectations.
 
    For an active Planning context, create or resolve an intermediate checkpoint through `planning-context` before generating the marker. Include that marker in the published spec. In the implementation-decisions section, add one concise line per applicable active decision in the form `DEC-NNN: consequence`. Keep the consequence actionable and do not copy the ledger's canonical rationale, context, or ADR prose. The marker's decision list must contain only the IDs represented by the spec.
 
-   After publication, call `planning-context` with `coverage add --obligation specification` to mark the specification obligation complete with evidence naming the published spec. This is coverage bookkeeping, not a new decision.
+   Before publishing a Planning marker to a remote tracker, resolve the configured Git remote and branch from repository or workflow configuration, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. Do not invent `origin`, a branch, or a fallback target. After publication, call `planning-context` with `coverage add --obligation specification` to mark the specification obligation complete with evidence naming the published spec. This is coverage bookkeeping, not a new decision.
 
    Read `docs/agents/issue-tracker.md` before any tracker operation. For GitHub, use the configured `owner/repository` from that file in every command's explicit `--repo owner/repository` option. Never infer the target from the checkout, a remote, or the current `gh` context. If the configured target is missing or ambiguous, stop before publication and ask for setup repair.
 
-   A GitHub publication therefore looks like `gh issue create --repo owner/repository --title "..." --body "..."`, with the configured target substituted literally. If the marker must be refreshed in a published body, use `gh issue edit <spec> --repo owner/repository --body "<body with the marker>"`.
+   A GitHub publication therefore looks like `gh issue create --repo owner/repository --title "..." --body "..."`, with the configured target substituted literally. If the marker must be refreshed in a published body, push and verify the configured remote and branch first, then use `gh issue edit <spec> --repo owner/repository --body "<body with the marker>"`.
 
 <spec-template>
 

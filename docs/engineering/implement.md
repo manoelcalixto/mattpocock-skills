@@ -50,7 +50,7 @@ A run is eight beats, in order:
 5. Run the full test suite once, at the end.
 6. Commit the implementation to the current branch, pinning the exact review checkpoint. For a valid Planning context, include one repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailer per applicable preflight decision.
 7. Run [code-review](https://aihero.dev/skills-code-review) once against the starting SHA, check each citation, apply applicable findings in one fix batch, rerun validation, and commit that batch if needed. For a marked path, put one observable verification trailer on an implementation or fix commit for each decision whose behavior that commit verifies or changes. Follow the bounded follow-up rule below.
-8. For a valid Planning context only, ensure the union of final-history trailers and validated ticket evidence covers every preflight decision, pass the final reviewed `HEAD` and decision IDs to `coverage aggregate`, then run `checkpoint --phase implementation`. For `/implement`, the initial commit covers every preflight decision and a fix adds trailers only for decisions whose behavior it verifies or changes. Use the final reviewed tip as the supplied `--commit` so review-fix evidence is included. A markerless input skips this closeout and keeps the legacy sequence without inferring Planning state.
+8. For a valid Planning context only, ensure the union of final-history trailers and validated ticket evidence covers every preflight decision, pass the final reviewed `HEAD` and decision IDs to `coverage aggregate`, then run `checkpoint --phase implementation`. If this invocation owns only a subset of the applicable preflight decisions, pass those IDs to the implementation checkpoint with `--decisions <comma-separated-preflight-decision-IDs>`; omit it for the default fail-closed gate over every active applicable decision. The final planning checkpoint does not accept a subset. For `/implement`, the initial commit covers every preflight decision and a fix adds trailers only for decisions whose behavior it verifies or changes. Use the final reviewed tip as the supplied `--commit` so review-fix evidence is included. A markerless input skips this closeout and keeps the legacy sequence without inferring Planning state.
 
 The marked closeout uses the final planning checkpoint and the final reviewed tip:
 
@@ -59,7 +59,7 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
   --effort <effort> --checkpoint <final-planning-checkpoint-sha> --head <final-reviewed-head-sha> \
   --decisions <comma-separated-preflight-decision-IDs> --commit <final-reviewed-head-sha>
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint \
-  --effort <effort> --phase implementation
+  --effort <effort> --phase implementation --decisions <comma-separated-preflight-decision-IDs>
 ```
 
 One run covers one ticket. The tickets [to-tickets](https://aihero.dev/skills-to-tickets) produces are tracer-bullet vertical slices sized to fit a single fresh [context window](https://www.aihero.dev/ai-coding-dictionary/context-window), so the intended rhythm is: clear context, implement one ticket, commit, clear again. Each ticket is self-contained, which is what makes the previous ticket's context disposable.

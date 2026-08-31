@@ -39,7 +39,7 @@ For an active Planning context, the spec carries the checkpoint marker and a sho
 
 A cleared Wayfinder map enters this same path through its Planning context marker. Its Decision ticket IDs are treated like grilled decision IDs, and the map remains a pointer rather than a second source of rationale.
 
-The intermediate checkpoint is the bridge into this step. The final checkpoint belongs after `to-tickets` has recorded ticket coverage, so the spec marker is refreshed then with the final SHA through the configured tracker target.
+The intermediate checkpoint is the bridge into this step. Before publishing or refreshing a marker for a remote consumer, resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. The final checkpoint belongs after `to-tickets` has recorded ticket coverage, so the spec marker is refreshed then with the final SHA through the configured tracker target.
 
 ## Common questions
 
@@ -72,6 +72,10 @@ With an active Planning context, compare the spec's `DEC-NNN: consequence` lines
 
 **Why does every GitHub command need `--repo`?**
 The configured issue tracker is authoritative. Copy its fully qualified `owner/repository` target into every `gh` operation, including reads and marker updates, because a checkout can have an upstream remote and `gh`'s inference can publish to the wrong repository.
+
+**Why must I push before publishing a Planning marker?**
+
+The marker contains a commit that the consumer must resolve. Before publication or refresh, use the remote and branch configured by the repository or workflow, verify the checkpoint is reachable there, and stop if no unambiguous target exists. Never invent `origin` or a branch name.
 
 **`/to-tickets` couldn't read my spec: it kept truncating.**
 Very large specs can outgrow what a tracker issue will serve back cleanly, and there is no local copy to fall back on. The fix is context hygiene: don't [clear](https://www.aihero.dev/ai-coding-dictionary/clearing) or [compact](https://www.aihero.dev/ai-coding-dictionary/compaction) between `/to-spec` and `/to-tickets`. Run them in the same window and the spec never has to be re-fetched at all.

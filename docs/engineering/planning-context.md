@@ -20,18 +20,6 @@ Reach for it when work crosses a session boundary or when a [spec](https://www.a
 | The domain term or architectural rationale itself needs work | [domain-modeling](https://aihero.dev/skills-domain-modeling) |
 | A complete specification or ticket already needs implementation | [implement](https://aihero.dev/skills-implement) |
 
-## The ledger and checkpoint
-
-The leading word is **checkpoint**. An intermediate checkpoint can leave future coverage pending. A final checkpoint requires applicable specification and ticket coverage, while implementation completion also requires verification evidence. The commit stages only named planning artifacts, writes a machine-readable trailer, and leaves unrelated worktree changes in place.
-
-Before `/compact`, `/handoff`, or `/clear` crosses an active Planning context into a fresh session, create the checkpoint for the next phase. The lightweight path remains available for markerless small work and for work that stays in the current session.
-
-Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning, complete coverage cannot regress, and existing evidence cannot be removed or replaced. A changed choice receives a new ID and a new checkpoint, while pending coverage may complete and evidence may be appended in order.
-
-For a whole ticket graph, implementers keep the shared ledger unchanged and put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers. Evidence already read from a remote ticket can use the deterministic `DEC-NNN | origin | observable evidence` record. After all relevant branches are merged and any required bounded review or fix batches are complete, the coordinator calls the owner with `coverage aggregate`, which proves the common final checkpoint, merged or final reviewed tips, and complete verification set before one ledger write. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early.
-
-For a remote tracker, the `Repository` value in a marker is metadata for the reader, not a target-selection mechanism. Publishing skills read `docs/agents/issue-tracker.md` and pass its fully qualified `owner/repository` to every GitHub command. The final checkpoint is created only after the specification and all ticket or justified non-ticket coverage is recorded, then the parent and children receive fresh markers with its exact SHA.
-
 ## Prerequisites
 
 The skill writes planning discovery and ledger files in the repository:
@@ -41,6 +29,20 @@ The skill writes planning discovery and ledger files in the repository:
 | Planning discovery | `docs/agents/planning.md` |
 | Decision ledger | `docs/planning/<effort>/decision-ledger.md` |
 | Planning context marker | the selected specification or ticket, when requested |
+
+## The ledger and checkpoint
+
+The leading word is **checkpoint**. An intermediate checkpoint can leave future coverage pending. A final checkpoint requires applicable specification and ticket coverage, while implementation completion also requires verification evidence. A decision with `Obligations: none` must carry complete, non-empty `applicability` evidence explaining `non-ticket: ...` or `not-applicable: ...`. The checkpoint command rejects unidentifiable extra paths before staging, writes machine-readable trailers including the exact `Planning-Paths` ownership list, and leaves unrelated worktree changes in place.
+
+Before `/compact`, `/handoff`, or `/clear`, a `Subagent`, or any other fresh context crosses an active Planning context, create the checkpoint for the next phase. Parallel subagents may reuse the same exact checkpoint when Planning artifacts are unchanged. If a subagent changes those artifacts before another fresh context, checkpoint again. The lightweight path remains available for markerless small work and for work that stays in the current session.
+
+Coverage is separate from validity. A decision can be active while its specification or verification evidence is still pending. Once checkpointed, its decision and rationale keep their meaning, complete coverage cannot regress, and existing evidence cannot be removed or replaced. A changed choice receives a new ID and a new checkpoint, while pending coverage may complete and evidence may be appended in order. An `Obligations: none` entry accepts applicability evidence only when it starts with `non-ticket:` or `not-applicable:`; the parser applies this rule when it reads the ledger as well as when coverage is added.
+
+`coverage add` treats the `none` sentinel case-insensitively. Before writing, it validates the complete proposed ledger, including the updated coverage and evidence lines. A validation failure leaves the ledger, configuration, Git index, and history unchanged.
+
+For a whole ticket graph, verification aggregation has two modes while the shared ledger remains unchanged. In commit mode, implementers put observable evidence on their own commits with repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailers, and the coordinator supplies each merged worker or final reviewed tip. In ticket-evidence mode, the coordinator passes an already-read `--ticket-evidence "DEC-NNN | origin | observable evidence"` record and omits `--commit`. Both modes require at least one non-empty record and validate the final checkpoint, current integration head, applicable decision IDs, and complete verification set before one ledger write. Supplied commit tips additionally prove the common checkpoint ancestry and merged state, reject commits that edit the ledger, and are read only from the final Git trailer block. Empty JSON arrays or blank list values are rejected. Evidence is retained in a compact JSON array, so repeated aggregation stays idempotent even when an observation contains `; `. Missing evidence leaves the ledger untouched, so the implementation checkpoint cannot pass early. An implementation checkpoint may pass `--decisions DEC-001,DEC-002` for an explicit subset; omitting that option keeps the default all-active gate.
+
+For a remote tracker, the `Repository` value in a marker is metadata for the reader, not a target-selection mechanism. Publishing skills read `docs/agents/issue-tracker.md` and pass its fully qualified `owner/repository` to every GitHub command. Before publishing or refreshing a remote marker, they resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there before writing to the tracker. If the remote or branch is absent, ambiguous, or cannot be verified, they stop and repair the configuration. They do not invent `origin`, a branch, or a fallback target. The final checkpoint is created only after the specification and all ticket or justified non-ticket coverage is recorded, then the parent and children receive fresh markers with its exact SHA.
 
 ## Common questions
 
@@ -65,11 +67,23 @@ If the tracker read returns an error, `&&` prevents the helper from running. The
 
 **What evidence does valid JSON expose?**
 
-`coverage` contains one entry for each selected decision and each declared obligation, with its `status` and `evidence`. `ancestry` contains `checkpoint_sha`, `head_sha`, and `is_ancestor`, which is true only after the branch relationship was proven.
+`coverage` contains one entry for each selected decision and each declared obligation, with its `status` and `evidence`. For `Obligations: none`, it includes the synthetic `applicability` pair. `ancestry` contains `checkpoint_sha`, `head_sha`, and `is_ancestor`, which is true only after the branch relationship was proven.
 
 **Can I update evidence after a checkpoint?**
 
 Yes, only monotonically. Pending coverage may become complete, and existing evidence may stay unchanged or gain appended values that preserve the previous order. Removing or replacing checkpointed evidence, or regressing complete coverage, fails validation. Editing a checkpointed decision meaning requires a superseding entry and a new checkpoint.
+
+**How do I record a decision with no delivery obligation?**
+
+Create it with `--obligations none`, then call `coverage add --obligation applicability --evidence "non-ticket: ..."` or use a `not-applicable: ...` explanation. The final and implementation gates reject the entry until that evidence is complete and non-empty.
+
+**Can an implementation checkpoint cover only this ticket's decisions?**
+
+Yes. Pass `--decisions DEC-NNN,DEC-NNN` to `checkpoint --phase implementation` for the explicit active subset owned by this invocation. The final planning phase rejects selection and still requires every active applicable decision. Omit selection at implementation closeout when the coordinator owns the whole graph.
+
+**What proves that a checkpoint did not include unrelated files?**
+
+The checkpoint records its exact config, ledger, and explicitly passed extra paths in `Planning-Paths`. Validation rejects changed paths outside that list, rejects extras that are not recognizable as a Planning context artifact, and rejects an ownership trailer with an empty diff. Older checkpoints remain readable only when their non-empty diff changes both config and ledger with no extra path.
 
 **How does a parallel implementation avoid ledger conflicts?**
 

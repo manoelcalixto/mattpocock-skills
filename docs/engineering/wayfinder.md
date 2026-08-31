@@ -43,6 +43,8 @@ The **frontier** is the open, unblocked, unclaimed tickets (the edge of the know
 
 Resolved material Decision tickets use the same per-effort Planning ledger as the main flow. The resolver checks active entries, references one existing ID or creates exactly one new entry, and carries that one stable ID in the ticket's Planning context marker. An ADR-worthy answer keeps its canonical rationale in the ADR; the ledger and ticket point to it. The map remains an index with a linked ticket and short gist, so it does not become a second rationale store. When a new entry creates an intermediate checkpoint, refresh both map and ticket markers to that checkpoint before publishing the resolution.
 
+Before publishing or refreshing an external marker, read `docs/agents/issue-tracker.md` and resolve the configured Git remote and branch from repository or workflow configuration. Require one unambiguous pair, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there before writing to the tracker. If either setting is absent, ambiguous, or cannot be verified, stop and repair the configuration. Use the configured tracker target for every operation. Do not invent `origin`, a branch, or a fallback target. This gate stays aligned with [planning-context](https://aihero.dev/skills-planning-context), [to-spec](https://aihero.dev/skills-to-spec), and [to-tickets](https://aihero.dev/skills-to-tickets).
+
 The map can move toward a build only through the shared coverage contract: [to-spec](https://aihero.dev/skills-to-spec) accounts for the active IDs, [to-tickets](https://aihero.dev/skills-to-tickets) maps their consequences, and the final Planning checkpoint proves the required coverage. A fresh build session starts only after that gate passes.
 
 ## The four decision-ticket types
@@ -73,6 +75,10 @@ No. Wayfinder's tickets are decision tickets, and by the time the map closes the
 
 **How does a resolved Decision ticket reach the Planning ledger without duplicating its rationale?**
 The resolver checks the active entries and either references one existing `DEC-NNN` ID or creates exactly one new entry through `planning-context`. The ticket carries that one active ID and points to the ledger or its ADR, while the map keeps only a linked gist. The map and ticket markers are regenerated after each new resolution checkpoint, so the same ID and current SHA travel through the spec, its implementation tickets, and the final checkpoint coverage.
+
+**Why must I push before publishing a Planning marker?**
+
+The marker contains a commit that the consumer must resolve. Before publication or refresh, resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. Stop if no unambiguous target exists or the reachability check fails. Never invent `origin`, a branch, or a fallback target.
 
 **My agent started writing production code in the middle of a wayfinder session.**
 The most-reported failure with this skill, and there is a real hole behind it. Wayfinder's "plan, don't do" default can be overridden in the map's **Notes**, but the Notes are written by the agent, so the constraint and its exemption live in the same file the constrained party owns. One user watched an agent write "this map carries execution" into its own Notes and then read it back in later sessions as its own licence, building on a live server. There is no hard in-skill stop for "I meant the default." Until there is: read the Notes on any map you didn't chart yourself, keep implementation in its own sessions, and treat any `wayfinder:task` that looks like a slice of the build as mis-typed.

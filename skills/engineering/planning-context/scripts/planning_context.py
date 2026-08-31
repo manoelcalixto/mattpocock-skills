@@ -17,22 +17,29 @@ CONFIG_REL = Path("docs/agents/planning.md")
 CONFIG_MARKER = "<!-- planning-context:v1 -->"
 DEFAULT_LEDGER_DIR = Path("docs/planning")
 OBLIGATIONS = ("specification", "tickets", "verification")
+APPLICABILITY_OBLIGATION = "applicability"
 PHASES = ("intermediate", "final", "implementation")
 PHASE_ORDER = {phase: index for index, phase in enumerate(PHASES)}
 PHASE_REQUIREMENTS = {
     "intermediate": (),
-    "final": ("specification", "tickets"),
-    "implementation": OBLIGATIONS,
+    "final": ("specification", "tickets", APPLICABILITY_OBLIGATION),
+    "implementation": (*OBLIGATIONS, APPLICABILITY_OBLIGATION),
 }
 ID_PATTERN = re.compile(r"^DEC-(\d{3,})$")
 EFFORT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 FULL_CHECKPOINT_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 VERIFICATION_PATTERN = re.compile(r"^Planning-Verification:\s*(DEC-\d{3,})\s*\|\s*(\S.*)$")
-FIELD_PATTERN = re.compile(
-    r"^- (Status|Decision|Context|Rationale|ADR|Obligations|Superseded by|Supersedes):\s*(.*)$"
+APPLICABILITY_EVIDENCE_PATTERN = re.compile(
+    r"^(?:non-ticket|not-applicable):\s*\S.*$", re.IGNORECASE
 )
-SUBFIELD_PATTERN = re.compile(r"^\s{2,}- (specification|tickets|verification):\s*(.*)$")
+FIELD_PATTERN = re.compile(
+    r"^- (Status|Decision|Context|Rationale|ADR|Constraints|Rejected alternatives|Obligations|Superseded by|Supersedes):\s*(.*)$"
+)
+SUBFIELD_PATTERN = re.compile(
+    r"^\s{2,}- (specification|tickets|verification|applicability):\s*(.*)$"
+)
 ENTRY_PATTERN = re.compile(r"^## (DEC-\d{3,})\s*$", re.MULTILINE)
+PLANNING_PATHS_TRAILER = "Planning-Paths"
 
 
 DEFAULT_CONFIG = f"""{CONFIG_MARKER}
@@ -58,6 +65,8 @@ class Entry:
     context: str
     rationale: str
     adr: str | None
+    constraints: str | None
+    rejected_alternatives: str | None
     obligations: tuple[str, ...]
     coverage: Mapping[str, str]
     evidence: Mapping[str, str]
@@ -72,6 +81,8 @@ class Entry:
             self.context,
             self.rationale,
             self.adr,
+            self.constraints,
+            self.rejected_alternatives,
             self.obligations,
         )
 
@@ -180,7 +191,12 @@ def load_config(repo: Path) -> str:
 def ledger_directory(repo: Path, config: str | None = None) -> Path:
     text = config if config is not None else load_config(repo)
     match = re.search(r"^- Ledger directory:\s*`([^`]+)`\s*$", text, re.MULTILINE)
-    raw_directory = match.group(1) if match else DEFAULT_LEDGER_DIR.as_posix()
+    if not match:
+        fail(
+            f"planning configuration at {CONFIG_REL.as_posix()} is invalid: "
+            "missing `Ledger directory: ...`; repair it before using Planning context"
+        )
+    raw_directory = match.group(1)
     return relative_path(repo, raw_directory)
 
 
@@ -240,6 +256,11 @@ def parse_entry(block: str, identifier: str) -> Entry:
     if status not in {"active", "superseded"}:
         fail(f"{identifier} has invalid status {status!r}")
     obligations = parse_obligations(fields["Obligations"])
+    for optional in ("Constraints", "Rejected alternatives"):
+        if optional in fields and not fields[optional]:
+            fail(f"{identifier} has an empty {optional} field")
+    constraints = fields.get("Constraints") or None
+    rejected_alternatives = fields.get("Rejected alternatives") or None
     for obligation in obligations:
         if obligation not in coverage:
             fail(f"{identifier} is missing {obligation} coverage")
@@ -247,6 +268,30 @@ def parse_entry(block: str, identifier: str) -> Entry:
             fail(f"{identifier} has invalid {obligation} coverage status")
         if obligation not in evidence:
             fail(f"{identifier} is missing {obligation} evidence")
+    if not obligations:
+        has_applicability_coverage = APPLICABILITY_OBLIGATION in coverage
+        has_applicability_evidence = APPLICABILITY_OBLIGATION in evidence
+        if has_applicability_coverage != has_applicability_evidence:
+            fail(f"{identifier} needs both applicability coverage and evidence lines")
+        if not has_applicability_coverage:
+            # Preserve the markerless and pre-v1 ledger shape while making its
+            # missing justification visible to every phase gate.
+            coverage[APPLICABILITY_OBLIGATION] = "pending"
+            evidence[APPLICABILITY_OBLIGATION] = "none"
+        elif coverage[APPLICABILITY_OBLIGATION] not in {"pending", "complete"}:
+            fail(f"{identifier} has invalid applicability coverage status")
+        applicability_evidence = evidence[APPLICABILITY_OBLIGATION]
+        if (
+            (
+                coverage[APPLICABILITY_OBLIGATION] == "complete"
+                or applicability_evidence.strip().lower() not in {"", "none"}
+            )
+            and not APPLICABILITY_EVIDENCE_PATTERN.fullmatch(applicability_evidence)
+        ):
+            fail(
+                f"{identifier} applicability evidence must start with "
+                "non-ticket: or not-applicable:"
+            )
     superseded_by = fields.get("Superseded by") or None
     if status == "superseded" and not superseded_by:
         fail(f"{identifier} is superseded but has no Superseded by field")
@@ -261,6 +306,8 @@ def parse_entry(block: str, identifier: str) -> Entry:
         context=fields["Context"],
         rationale=fields["Rationale"],
         adr=adr,
+        constraints=constraints,
+        rejected_alternatives=rejected_alternatives,
         obligations=obligations,
         coverage=coverage,
         evidence=evidence,
@@ -305,6 +352,8 @@ def format_entry(
     adr: str | None,
     obligations: Sequence[str],
     *,
+    constraints: str | None = None,
+    rejected_alternatives: str | None = None,
     supersedes: str | None = None,
 ) -> str:
     lines = [
@@ -314,18 +363,28 @@ def format_entry(
         f"- Context: {context}",
         f"- Rationale: {rationale}",
         f"- ADR: {adr or 'none'}",
-        f"- Obligations: {', '.join(obligations) if obligations else 'none'}",
     ]
+    if constraints:
+        lines.append(f"- Constraints: {constraints}")
+    if rejected_alternatives:
+        lines.append(f"- Rejected alternatives: {rejected_alternatives}")
+    lines.append(f"- Obligations: {', '.join(obligations) if obligations else 'none'}")
     if supersedes:
         lines.append(f"- Supersedes: {supersedes}")
     lines.append("- Coverage:")
-    for obligation in OBLIGATIONS:
-        if obligation in obligations:
-            lines.append(f"  - {obligation}: pending")
+    if obligations:
+        for obligation in OBLIGATIONS:
+            if obligation in obligations:
+                lines.append(f"  - {obligation}: pending")
+    else:
+        lines.append(f"  - {APPLICABILITY_OBLIGATION}: pending")
     lines.append("- Evidence:")
-    for obligation in OBLIGATIONS:
-        if obligation in obligations:
-            lines.append(f"  - {obligation}: none")
+    if obligations:
+        for obligation in OBLIGATIONS:
+            if obligation in obligations:
+                lines.append(f"  - {obligation}: none")
+    else:
+        lines.append(f"  - {APPLICABILITY_OBLIGATION}: none")
     return "\n".join(lines) + "\n"
 
 
@@ -372,7 +431,8 @@ def supersede_entry(text: str, identifier: str, successor: str) -> str:
 
 
 def command_init(repo: Path) -> dict[str, object]:
-    status, _ = ensure_config(repo)
+    status, config = ensure_config(repo)
+    ledger_directory(repo, config)
     return {"status": status, "path": CONFIG_REL.as_posix()}
 
 
@@ -397,6 +457,12 @@ def command_decision_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
     context = clean_single_line(args.context, "context")
     rationale = clean_single_line(args.rationale, "rationale")
     adr = clean_single_line(args.adr, "ADR") if args.adr else None
+    constraints = clean_single_line(args.constraints, "constraints") if args.constraints else None
+    rejected_alternatives = (
+        clean_single_line(args.rejected_alternatives, "rejected alternatives")
+        if args.rejected_alternatives
+        else None
+    )
     obligations = parse_obligations(args.obligations)
     supersedes = args.supersedes
     if supersedes:
@@ -414,6 +480,8 @@ def command_decision_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
         rationale,
         adr,
         obligations,
+        constraints=constraints,
+        rejected_alternatives=rejected_alternatives,
         supersedes=supersedes,
     )
     path = repo / relative
@@ -439,26 +507,48 @@ def command_decision_reference(repo: Path, args: argparse.Namespace) -> dict[str
 def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     effort = validate_effort(args.effort)
     obligation = clean_single_line(args.obligation.lower(), "obligation")
-    if obligation not in OBLIGATIONS:
+    if obligation not in (*OBLIGATIONS, APPLICABILITY_OBLIGATION):
         fail(f"unknown obligation: {obligation}")
     evidence = clean_single_line(args.evidence, "evidence")
+    if not has_non_empty_evidence(evidence):
+        fail("evidence must contain a non-empty value or JSON string list")
     relative, text, entries = read_ledger(repo, effort)
     if args.decision not in entries:
         fail(f"decision {args.decision} does not exist")
     entry = entries[args.decision]
-    if obligation not in entry.obligations:
+    if obligation == APPLICABILITY_OBLIGATION:
+        if entry.obligations:
+            fail(f"{args.decision} declares delivery obligations; applicability is only for Obligations: none")
+        if not APPLICABILITY_EVIDENCE_PATTERN.fullmatch(evidence):
+            fail("applicability evidence must explain the decision with non-ticket: or not-applicable:")
+    elif obligation not in entry.obligations:
         fail(f"{args.decision} does not declare {obligation} as an obligation")
     matches = list(ENTRY_PATTERN.finditer(text))
     match = next(item for item in matches if item.group(1) == args.decision)
     end = next((item.start() for item in matches if item.start() > match.start()), len(text))
     block = text[match.start() : end]
-    coverage_line = re.compile(rf"^(\s{{2,}}- {re.escape(obligation)}):\s*.*$", re.MULTILINE)
-    coverage_match = coverage_line.search(block)
-    if not coverage_match:
-        fail(f"{args.decision} has no {obligation} coverage line")
     lines = block.splitlines()
     coverage_prefix = f"  - {obligation}:"
+    if obligation == APPLICABILITY_OBLIGATION and not any(
+        line.startswith(coverage_prefix) for line in lines
+    ):
+        coverage_index = next(
+            (index for index, line in enumerate(lines) if line.strip() == "- Coverage:"),
+            None,
+        )
+        evidence_index = next(
+            (index for index, line in enumerate(lines) if line.strip() == "- Evidence:"),
+            None,
+        )
+        if coverage_index is None or evidence_index is None:
+            fail(f"{args.decision} has no applicability coverage and evidence sections")
+        lines.insert(coverage_index + 1, f"  - {APPLICABILITY_OBLIGATION}: pending")
+        if evidence_index > coverage_index:
+            evidence_index += 1
+        lines.insert(evidence_index + 1, f"  - {APPLICABILITY_OBLIGATION}: none")
     section = None
+    changed_coverage = False
+    changed_evidence = False
     for index, line in enumerate(lines):
         if line.strip() == "- Coverage:":
             section = "coverage"
@@ -467,13 +557,19 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
         elif line.startswith(coverage_prefix):
             if section == "coverage":
                 lines[index] = f"  - {obligation}: complete"
+                changed_coverage = True
             elif section == "evidence":
                 old = line.split(":", 1)[1].strip()
-                combined = evidence if old in {"", "none"} else f"{old}; {evidence}"
+                combined = evidence if not old or old.lower() == "none" else f"{old}; {evidence}"
                 lines[index] = f"  - {obligation}: {combined}"
+                changed_evidence = True
+    if not changed_coverage or not changed_evidence:
+        fail(f"{args.decision} has no {obligation} coverage and evidence lines")
     updated = "\n".join(lines) + "\n"
+    updated_text = text[: match.start()] + updated + text[end:]
+    parse_ledger(updated_text)
     path = repo / relative
-    path.write_text(text[: match.start()] + updated + text[end:])
+    path.write_text(updated_text)
     parse_ledger(path.read_text())
     return {
         "status": "recorded",
@@ -496,11 +592,46 @@ def missing_coverage(entries: Mapping[str, Entry], required: Iterable[str]) -> l
         if entry.status != "active":
             continue
         for obligation in required:
-            if obligation not in entry.obligations:
+            if obligation not in entry.obligations and not (
+                obligation == APPLICABILITY_OBLIGATION and not entry.obligations
+            ):
                 continue
-            if entry.coverage.get(obligation) != "complete" or entry.evidence.get(obligation) in {None, "", "none"}:
+            if entry.coverage.get(obligation, "pending") != "complete" or not has_non_empty_evidence(
+                entry.evidence.get(obligation)
+            ):
                 missing.append(f"{entry.identifier}:{obligation}")
     return missing
+
+
+def selected_checkpoint_entries(
+    entries: Mapping[str, Entry], phase: str, raw_decisions: str | None
+) -> dict[str, Entry]:
+    """Select implementation decisions without weakening the final planning gate."""
+
+    if raw_decisions is None:
+        return {
+            identifier: entry
+            for identifier, entry in entries.items()
+            if entry.status == "active"
+        }
+    if phase != "implementation":
+        fail("checkpoint decision selection is only supported for the implementation phase")
+    values = [item.strip() for item in raw_decisions.split(",") if item.strip()]
+    if not values:
+        fail("checkpoint decisions must name at least one active decision")
+    selected: dict[str, Entry] = {}
+    for raw_identifier in values:
+        identifier = active_decision_identifier(entries, raw_identifier)
+        selected[identifier] = entries[identifier]
+    return selected
+
+
+def entry_coverage_obligations(entry: Entry) -> tuple[str, ...]:
+    """Return delivery obligations plus the synthetic none-applicability gate."""
+
+    if entry.obligations:
+        return entry.obligations
+    return (APPLICABILITY_OBLIGATION,)
 
 
 def ensure_stage_path(repo: Path, raw_path: str) -> Path:
@@ -522,7 +653,8 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
     required = required_for_phase(phase)
     ensure_config(repo)
     ledger_relative, _, entries = read_ledger(repo, effort)
-    missing = missing_coverage(entries, required)
+    selected_entries = selected_checkpoint_entries(entries, phase, args.decisions)
+    missing = missing_coverage(selected_entries, required)
     if missing:
         fail(
             f"coverage incomplete for {phase} checkpoint: {', '.join(missing)}; "
@@ -534,6 +666,14 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
     seen: set[str] = set()
     for raw_path in raw_paths:
         relative = ensure_stage_path(repo, raw_path)
+        if relative.as_posix() not in {
+            CONFIG_REL.as_posix(),
+            ledger_relative.as_posix(),
+        } and not is_current_planning_artifact(repo, relative):
+            fail(
+                f"checkpoint path is not identifiable as a Planning context artifact: "
+                f"{relative.as_posix()}"
+            )
         if relative.as_posix() not in seen:
             paths.append(relative)
             seen.add(relative.as_posix())
@@ -555,6 +695,7 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
         f"Planning-Checkpoint: {effort}\n"
         f"Planning-Phase: {phase}\n"
         f"Planning-Ledger: {ledger_relative.as_posix()}\n"
+        f"{PLANNING_PATHS_TRAILER}: {json.dumps([path.as_posix() for path in paths], separators=(',', ':'))}\n"
     )
     run_git(
         repo,
@@ -573,13 +714,32 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
         "phase": phase,
         "sha": sha,
         "ledger": ledger_relative.as_posix(),
+        "decisions": list(selected_entries),
         "paths": [path.as_posix() for path in paths],
     }
 
 
+def parse_trailers_lines(message: str) -> tuple[str, ...]:
+    """Return the final trailer block using Git's deterministic parser."""
+
+    parsed = subprocess.run(
+        ["git", "interpret-trailers", "--parse"],
+        input=message,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if parsed.returncode != 0:
+        detail = parsed.stderr.strip() or parsed.stdout.strip() or "git trailer parsing failed"
+        fail(f"git interpret-trailers --parse failed: {detail}")
+    return tuple(parsed.stdout.splitlines())
+
+
 def parse_trailers(message: str) -> dict[str, str]:
+    """Parse only the final Git trailer block, preserving Git's semantics."""
+
     trailers: dict[str, str] = {}
-    for line in message.splitlines():
+    for line in parse_trailers_lines(message):
         match = re.match(r"^([A-Za-z][A-Za-z0-9-]*):\s*(.+)$", line)
         if match:
             trailers[match.group(1)] = match.group(2).strip()
@@ -590,10 +750,13 @@ def parse_verification_trailers(message: str) -> tuple[Verification, ...]:
     """Read repeatable Planning-Verification trailers without collapsing them."""
 
     records: list[Verification] = []
-    for line in message.splitlines():
-        match = VERIFICATION_PATTERN.fullmatch(line.strip())
+    for line in parse_trailers_lines(message):
+        match = VERIFICATION_PATTERN.fullmatch(line)
         if match:
-            records.append(Verification(match.group(1), match.group(2).strip()))
+            evidence = match.group(2).strip()
+            if not has_non_empty_evidence(evidence):
+                fail("Planning-Verification evidence must contain a non-empty value")
+            records.append(Verification(match.group(1), evidence))
     return tuple(records)
 
 
@@ -607,6 +770,8 @@ def parse_ticket_evidence(raw_evidence: str) -> Verification:
     identifier, origin, evidence = parts
     if not ID_PATTERN.fullmatch(identifier):
         fail("ticket evidence must name a DEC-NNN identifier")
+    if not has_non_empty_evidence(evidence):
+        fail("ticket evidence must contain a non-empty value")
     return Verification(identifier, evidence, origin)
 
 
@@ -632,6 +797,153 @@ def commits_since(repo: Path, checkpoint: str, tip: str) -> tuple[str, ...]:
 def changed_paths(repo: Path, commit: str) -> tuple[str, ...]:
     result = run_git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", "-m", "--root", commit)
     return tuple(path for path in result.stdout.splitlines() if path)
+
+
+def checkpoint_path_text(repo: Path, checkpoint: str, relative: Path) -> str | None:
+    result = run_git(repo, "show", f"{checkpoint}:{relative.as_posix()}", check=False)
+    if result.returncode != 0:
+        return None
+    return result.stdout
+
+
+def is_planning_artifact(
+    repo: Path, checkpoint: str, relative: Path
+) -> bool:
+    """Recognize explicitly owned planning artifacts beyond config and ledger."""
+
+    if is_planning_artifact_name(relative):
+        return True
+    try:
+        text = checkpoint_path_text(repo, checkpoint, relative)
+    except UnicodeDecodeError:
+        return False
+    if text is None:
+        return False
+    return has_planning_artifact_markers(text)
+
+
+def is_planning_artifact_name(relative: Path) -> bool:
+    """Recognize well-known Planning artifact paths without reading their contents."""
+
+    path_parts = relative.parts
+    if relative == Path("CONTEXT.md"):
+        return True
+    if (
+        len(path_parts) >= 3
+        and path_parts[:2] in {(".agents", "adr"), ("docs", "adr")}
+        and relative.suffix.lower() == ".md"
+    ):
+        return True
+    return relative.name.lower() in {"map.md", "spec.md", "ticket.md"}
+
+
+def has_planning_artifact_markers(text: str) -> bool:
+    """Recognize content that identifies an explicitly owned Planning artifact."""
+
+    if CONFIG_MARKER in text or re.search(r"^## Planning context\s*$", text, re.MULTILINE):
+        return True
+    return bool(
+        re.search(r"^# .*planning (?:map|context)\s*$", text, re.IGNORECASE | re.MULTILINE)
+        and re.search(r"\b(?:checkpoint|ledger|effort)\b", text, re.IGNORECASE)
+    )
+
+
+def current_path_text(repo: Path, relative: Path) -> str | None:
+    """Read the content that checkpoint would stage for a path, when textual."""
+
+    absolute = repo / relative
+    if absolute.exists():
+        try:
+            return absolute.read_text()
+        except (OSError, UnicodeDecodeError):
+            return None
+    for object_name in (f":{relative.as_posix()}", f"HEAD:{relative.as_posix()}"):
+        try:
+            result = run_git(repo, "show", object_name, check=False)
+        except UnicodeDecodeError:
+            return None
+        if result.returncode == 0:
+            return result.stdout
+    return None
+
+
+def is_current_planning_artifact(repo: Path, relative: Path) -> bool:
+    """Apply checkpoint ownership rules before staging a newly requested path."""
+
+    if is_planning_artifact_name(relative):
+        return True
+    text = current_path_text(repo, relative)
+    return text is not None and has_planning_artifact_markers(text)
+
+
+def validate_checkpoint_ownership(
+    repo: Path,
+    checkpoint: str,
+    ledger_relative: Path,
+    trailers: Mapping[str, str],
+) -> None:
+    """Prove that a checkpoint commit changes only owned planning artifacts."""
+
+    base_paths = {CONFIG_REL.as_posix(), ledger_relative.as_posix()}
+    changed = set(changed_paths(repo, checkpoint))
+    raw_owned = trailers.get(PLANNING_PATHS_TRAILER)
+    if raw_owned is None:
+        if changed == base_paths:
+            # Checkpoints created before the ownership trailer remain readable
+            # when their non-empty diff proves both built-in owned paths.
+            return
+        if not changed:
+            fail(
+                f"Planning checkpoint {checkpoint} has an empty diff and no "
+                f"{PLANNING_PATHS_TRAILER} trailer; legacy checkpoints must change "
+                "both the planning configuration and declared ledger"
+            )
+        missing = sorted(base_paths - changed)
+        if missing:
+            fail(
+                f"Planning checkpoint {checkpoint} has no {PLANNING_PATHS_TRAILER} trailer; "
+                "legacy checkpoints must change both the planning configuration and "
+                f"declared ledger (missing: {', '.join(missing)})"
+            )
+        fail(
+            f"Planning checkpoint {checkpoint} lacks the {PLANNING_PATHS_TRAILER} ownership trailer; "
+            "create a new checkpoint with explicitly owned planning paths"
+        )
+    if not changed:
+        fail(
+            f"Planning checkpoint {checkpoint} has an empty diff; "
+            f"{PLANNING_PATHS_TRAILER} cannot prove ownership without a changed path"
+        )
+    try:
+        decoded = json.loads(raw_owned)
+    except json.JSONDecodeError:
+        fail(f"Planning checkpoint {checkpoint} has invalid {PLANNING_PATHS_TRAILER} JSON")
+    if not isinstance(decoded, list) or not decoded or not all(isinstance(item, str) for item in decoded):
+        fail(f"Planning checkpoint {checkpoint} must list owned paths in {PLANNING_PATHS_TRAILER}")
+    owned: set[str] = set()
+    for raw_path in decoded:
+        relative = relative_path(repo, raw_path)
+        if relative.as_posix() != raw_path:
+            fail(f"Planning checkpoint {checkpoint} has a non-canonical owned path: {raw_path}")
+        owned.add(relative.as_posix())
+    if not base_paths.issubset(owned):
+        fail(
+            f"Planning checkpoint {checkpoint} ownership must include config and declared ledger "
+            f"({', '.join(sorted(base_paths))})"
+        )
+    unexpected = sorted(changed - owned)
+    if unexpected:
+        fail(
+            f"Planning checkpoint {checkpoint} changes non-owned paths: {', '.join(unexpected)}; "
+            "list only explicitly owned Planning context artifacts"
+        )
+    for raw_path in sorted(changed - base_paths):
+        relative = Path(raw_path)
+        if not is_planning_artifact(repo, checkpoint, relative):
+            fail(
+                f"Planning checkpoint {checkpoint} changes {raw_path}, which is not identifiable as a "
+                "Planning context artifact"
+            )
 
 
 def selected_verification_decisions(
@@ -671,6 +983,27 @@ def evidence_values(raw: str | None) -> list[str]:
     return [str(raw)]
 
 
+def has_non_empty_evidence(raw: str | None) -> bool:
+    """Require meaningful evidence, including for structured JSON values."""
+
+    if raw is None:
+        return False
+    value = str(raw).strip()
+    if not value or value.lower() == "none":
+        return False
+    try:
+        decoded = json.loads(value)
+    except json.JSONDecodeError:
+        return True
+    if decoded is None:
+        return False
+    if isinstance(decoded, list):
+        return bool(decoded) and all(isinstance(item, str) and item.strip() for item in decoded)
+    if isinstance(decoded, str):
+        return bool(decoded.strip())
+    return True
+
+
 def structured_evidence_values(raw: str | None) -> list[str] | None:
     """Decode only the canonical JSON evidence list representation."""
 
@@ -688,10 +1021,14 @@ def structured_evidence_values(raw: str | None) -> list[str] | None:
 def preserves_checkpointed_evidence(before: str, after: str) -> bool:
     """Allow an unchanged value or a deterministic append that keeps its prefix."""
 
+    after_values = structured_evidence_values(after)
+    if after_values is not None and not has_non_empty_evidence(after):
+        return False
+    before_values = structured_evidence_values(before)
+    if before_values is not None and not has_non_empty_evidence(before):
+        return False
     if before == after:
         return True
-    before_values = structured_evidence_values(before)
-    after_values = structured_evidence_values(after)
     if before_values is not None and after_values is not None:
         return after_values[: len(before_values)] == before_values
     return after.startswith(f"{before}; ") and bool(after[len(before) + 2 :].strip())
@@ -729,6 +1066,8 @@ def append_verification_evidence(
         if existing_evidence is None:
             fail(f"{identifier} has no verification evidence line")
         current_values = evidence_values(existing_evidence)
+        if existing_evidence not in {"", "none"} and not has_non_empty_evidence(existing_evidence):
+            fail(f"{identifier} has empty verification evidence; record a non-empty value before aggregation")
         for item in evidence:
             if item not in current_values:
                 current_values.append(item)
@@ -744,7 +1083,7 @@ def append_verification_evidence(
 
 
 def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
-    """Aggregate worker evidence only after every supplied tip is merged."""
+    """Aggregate verified commit or ticket evidence, validating supplied tips when present."""
 
     effort = validate_effort(args.effort)
     load_config(repo)
@@ -804,7 +1143,7 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
         for raw_evidence in (args.ticket_evidence or [])
         for record in (parse_ticket_evidence(raw_evidence),)
     )
-    if not records and not supplied_commits:
+    if not records:
         fail("at least one verification commit or ticket evidence record is required")
 
     updates: dict[str, list[str]] = {identifier: [] for identifier in selected}
@@ -828,11 +1167,9 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
     missing: list[str] = []
     for identifier in selected:
         entry = entries[identifier]
-        existing = entry.coverage.get("verification") == "complete" and entry.evidence.get("verification") not in {
-            None,
-            "",
-            "none",
-        }
+        existing = entry.coverage.get("verification") == "complete" and has_non_empty_evidence(
+            entry.evidence.get("verification")
+        )
         if not existing and not updates[identifier]:
             missing.append(f"{identifier}:verification")
     if missing:
@@ -892,6 +1229,7 @@ def validate_checkpoint_commit(
         fail("Planning checkpoint trailer does not name the declared effort")
     if trailers.get("Planning-Ledger") != ledger_relative.as_posix():
         fail("Planning checkpoint trailer does not name the declared ledger")
+    validate_checkpoint_ownership(repo, checkpoint_sha, ledger_relative, trailers)
     checkpoint_phase = trailers.get("Planning-Phase")
     if checkpoint_phase not in PHASES:
         fail("Planning checkpoint trailer has no valid Planning-Phase")
@@ -936,17 +1274,17 @@ def validate_checkpoint_commit(
             or before.supersedes != after.supersedes
         ):
             fail(f"validity for {identifier} changed after the checkpoint; create a new Planning checkpoint")
-        for obligation in before.obligations:
-            before_status = before.coverage[obligation]
-            after_status = after.coverage[obligation]
+        for obligation in entry_coverage_obligations(before):
+            before_status = before.coverage.get(obligation, "pending")
+            after_status = after.coverage.get(obligation, "pending")
             if before_status == "complete" and after_status != "complete":
                 fail(
                     f"checkpointed coverage for {identifier}:{obligation} is not monotonic; "
                     f"cannot regress from complete to {after_status}"
                 )
-            before_evidence = before.evidence[obligation]
-            after_evidence = after.evidence[obligation]
-            if before_evidence not in {"", "none"} and not preserves_checkpointed_evidence(
+            before_evidence = before.evidence.get(obligation, "none")
+            after_evidence = after.evidence.get(obligation, "none")
+            if has_non_empty_evidence(before_evidence) and not preserves_checkpointed_evidence(
                 before_evidence,
                 after_evidence,
             ):
@@ -1088,18 +1426,20 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     else:
         load_config(repo)
         effort = str(marker["effort"])
+        configured_ledger_relative = ledger_relative_path(repo, effort)
         if args.effort and validate_effort(args.effort) != effort:
             fail("declared effort does not match the Planning context marker")
         marker_ledger_raw = str(marker["ledger"])
-        try:
-            ledger_relative = relative_path(repo, marker_ledger_raw)
-        except PlanningError as error:
-            fail(f"external Decision ledger pointer needs a local clone path: {error}")
         override_ledger = args.ledger
         if override_ledger:
             ledger_relative = relative_path(repo, override_ledger, must_exist=True)
-        elif ledger_relative != ledger_relative_path(repo, effort):
-            fail("Planning context ledger does not match the repository configuration")
+        else:
+            try:
+                ledger_relative = relative_path(repo, marker_ledger_raw)
+            except PlanningError as error:
+                fail(f"external Decision ledger pointer needs a local clone path: {error}")
+            if ledger_relative != configured_ledger_relative:
+                fail("Planning context ledger does not match the repository configuration")
         checkpoint = str(marker["checkpoint"])
         requested = tuple(str(item) for item in marker["decisions"])
         source = "stdin" if args.context_stdin else "marker"
@@ -1112,7 +1452,7 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
             fail(f"declared decision {identifier} is superseded; update the Planning context")
     required = set(required_for_phase(args.phase)) if args.phase else set()
     for obligation in args.require or []:
-        if obligation not in OBLIGATIONS:
+        if obligation not in (*OBLIGATIONS, APPLICABILITY_OBLIGATION):
             fail(f"unknown required obligation: {obligation}")
         required.add(obligation)
     missing = missing_coverage({identifier: current[identifier] for identifier in selected}, required)
@@ -1123,11 +1463,10 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     coverage = {
         identifier: {
             obligation: {
-                "status": current[identifier].coverage[obligation],
-                "evidence": current[identifier].evidence[obligation],
+                "status": current[identifier].coverage.get(obligation, "pending"),
+                "evidence": current[identifier].evidence.get(obligation, "none"),
             }
-            for obligation in OBLIGATIONS
-            if obligation in current[identifier].obligations
+            for obligation in entry_coverage_obligations(current[identifier])
         }
         for identifier in selected
     }
@@ -1169,6 +1508,8 @@ def build_parser() -> argparse.ArgumentParser:
     decision_add.add_argument("--context", required=True)
     decision_add.add_argument("--rationale", required=True)
     decision_add.add_argument("--adr")
+    decision_add.add_argument("--constraints", help="optional one-line constraints")
+    decision_add.add_argument("--rejected-alternatives", help="optional one-line rejected alternatives")
     decision_add.add_argument("--obligations", help="comma-separated obligations or none")
     decision_add.add_argument("--supersedes")
 
@@ -1195,8 +1536,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--commits",
             dest="commits",
             action="append",
-            required=True,
-            help="merged worker commit or branch tip, repeat for each ticket",
+            help="verified merged worker commit or branch tip, repeat for each ticket; optional with ticket evidence",
         )
         command.add_argument(
             "--decisions",
@@ -1210,7 +1550,7 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     coverage_aggregate = coverage_commands.add_parser(
-        "aggregate", help="atomically aggregate merged worker verification trailers"
+        "aggregate", help="atomically aggregate verified commits or ticket evidence"
     )
     add_aggregate_arguments(coverage_aggregate)
 
@@ -1218,6 +1558,10 @@ def build_parser() -> argparse.ArgumentParser:
     checkpoint.add_argument("--effort", required=True)
     checkpoint.add_argument("--phase", required=True, choices=PHASES)
     checkpoint.add_argument("--message")
+    checkpoint.add_argument(
+        "--decisions",
+        help="comma-separated active decision IDs to gate for an implementation checkpoint",
+    )
     checkpoint.add_argument("--path", action="append", help="additional effort-owned planning artifact")
 
     marker = commands.add_parser("marker", help="generate or write a Planning context block")

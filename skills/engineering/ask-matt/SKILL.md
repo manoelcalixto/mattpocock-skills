@@ -20,18 +20,18 @@ The route most work travels. You have an idea and want it built.
    - **`/prototype`** to answer the question with throwaway code,
    - **`/handoff`** back what you learned, and reference it from the original idea thread.
 3. **Branch: is this a multi-session build?**
-   - **Yes** → **`/to-spec`** (turn the thread and its active Planning decisions into a spec), then **`/to-tickets`** to split it into tracer-bullet tickets, each declaring its **blocking edges** and relevant decision consequences. On a local tracker that's one file per ticket under `.scratch/<feature>/issues/`; on a real tracker the edges become native blocking links. The flow creates an intermediate checkpoint before the spec and a final Planning checkpoint after ticket coverage. Only after that final checkpoint passes may a fresh implementation session start from its exact SHA. Then choose the executor:
+   - **Yes** → **`/to-spec`** (turn the thread and its active Planning decisions into a spec), then **`/to-tickets`** to split it into tracer-bullet tickets, each declaring its **blocking edges** and relevant decision consequences. On a local tracker that's one file per ticket under `.scratch/<feature>/issues/`; on a real tracker the edges become native blocking links. The flow creates an intermediate checkpoint before the spec and a final Planning checkpoint after ticket coverage. Only after that final checkpoint passes may a fresh implementation session or subagent start from its exact SHA. Before remote publication or marker refresh, push that checkpoint through the configured remote and branch. Then choose the executor:
      - If the beta **`/implement-spec`** skill is installed and you want one draft PR with concurrent worktrees and one final integrated review checkpoint, invoke it in the fresh session against the whole spec and its ticket graph.
      - Otherwise, in a fresh session, work the frontier blockers-first with **`/implement`** per ticket, **`/clear`ing context between each one**. Each ticket is self-contained, so the last one's context is disposable.
    - **No** → **`/implement`** right here, in the same context window. This is the lightweight path for small work without a formal Planning context; do not create a spec, ticket graph, or checkpoint just to change phases.
 
    Either way, **`/implement`** builds each issue by driving **`/tdd`** internally (one red-green slice at a time), commits one stable review checkpoint, then runs **`/code-review`** once across its two axes (Standards + Spec) and batches the applicable fixes. Commits made while applying those findings stay inside the same checkpoint. Reach for **`/tdd`** on its own when you just want to build a concrete behaviour test-first without a full spec, and **`/code-review`** on its own whenever you want to review a branch or PR against a fixed point.
 
-   The multi-session route is therefore: `grill-with-docs → intermediate Planning checkpoint → to-spec → to-tickets → final Planning checkpoint → fresh implementation session → implement-spec or implement → code-review`.
+   The multi-session route is therefore: `grill-with-docs → intermediate Planning checkpoint → to-spec → to-tickets → final Planning checkpoint → fresh implementation session → implement-spec or implement → code-review`. A subagent or any other fresh context is the same Planning boundary; parallel consumers may reuse the exact checkpoint while its artifacts remain unchanged.
 
 ### Context hygiene
 
-Keep steps 1–3 in **one unbroken context window** (don't compact or clear until after `/to-tickets`) so the grilling, spec, and tickets all build on the same thinking. Each `/implement` then starts fresh, working from the ticket.
+Keep steps 1–3 in **one unbroken context window** (don't compact or clear until after `/to-tickets`) so the grilling, spec, and tickets all build on the same thinking. Each `/implement` then starts fresh, working from the ticket. If a subagent or another fresh context is dispatched while Planning is active, checkpoint before it or reuse the exact unchanged checkpoint.
 
 The limit on this is the **[smart zone](https://www.aihero.dev/ai-coding-dictionary/smart-zone)**: the window (~150k tokens on state-of-the-art models) within which the model still reasons sharply. If a session approaches it before `/to-tickets`, don't push on degraded; `/compact` at the nearest phase boundary and carry on (see Phase boundaries).
 
@@ -63,7 +63,7 @@ Three model-invoked references that run *beneath* the other skills, each the sin
 
 - **`/domain-modeling`**: sharpen the project's *domain* language: challenge a fuzzy term, resolve an overloaded word ("account" doing three jobs), record a hard-to-reverse decision as an ADR. It's the active discipline `/grill-with-docs` drives to keep `CONTEXT.md` a clean glossary.
 - **`/codebase-design`** is the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*: a lot of behaviour behind a small interface at a clean seam. `/tdd` and `/improve-codebase-architecture` both speak it.
-- **`/planning-context`** owns the versioned Planning context used when work crosses sessions: the per-effort Decision ledger, phase-aware Planning checkpoints, coverage gates, and consumer validation. Use it to checkpoint an active context before a fresh session; small work without a declared Planning context stays on the current-session path.
+- **`/planning-context`** owns the versioned Planning context used when work crosses sessions: the per-effort Decision ledger, phase-aware Planning checkpoints, coverage gates, and consumer validation. Use it to checkpoint an active context before a fresh session, subagent, or other fresh context; small work without a declared Planning context stays on the current-session path.
 
 ## Phase boundaries
 
@@ -72,7 +72,7 @@ A **phase** is a chunk of work inside a session: the grilling, the implementatio
 - **Continue**: stay put. Costs nothing, loses nothing.
 - **`/clear`**: empty the window, when nothing here matters to what's next.
 - **`/handoff`** writes a portable markdown file. Narrow: only for a **new harness**, a **new directory**, a **colleague**, or forking a side task **mid-phase**. When it crosses an active Planning context into a fresh session, checkpoint first and carry pointers to the versioned artifacts. What it buys is portability.
-- **Subagent**: send a tightly-scoped task to its own window and get a report back.
+- **Subagent**: send a tightly-scoped task to its own window and get a report back. Checkpoint first when an active Planning context crosses into it, or reuse the exact checkpoint when the artifacts are unchanged.
 - **`/compact`** compresses this context and seeds a fresh session with it. The **default**, at the bottom of the tree rather than the first reach.
 
 Read [PHASE-BOUNDARIES.md](PHASE-BOUNDARIES.md) for the ordered tree: the five questions, the reasoning behind each branch, and why the primary-source cost makes **Continue** the one to rule out first. Make the decision **at** a boundary; mid-phase, continue or split the rest into subagents.

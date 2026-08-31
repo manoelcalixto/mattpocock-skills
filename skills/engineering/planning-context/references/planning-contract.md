@@ -17,7 +17,7 @@ The repository configuration is `docs/agents/planning.md`. The default content i
 - Legacy inputs: allowed when no Planning context marker is declared.
 ```
 
-`init` is idempotent. A file that already carries the marker is preserved byte for byte. An existing file without the marker receives the default block appended to it, which is the lazy migration path. Setup should call the `planning-context` Skill tool to perform this initialization after the user confirms the other repository settings.
+`init` is idempotent. A file that already carries the marker is preserved byte for byte after its required fields validate. An existing file without the marker receives the default block appended to it, which is the lazy migration path. A marked file without `Ledger directory` is invalid and fails with a repair message instead of silently using the default. Setup should call the `planning-context` Skill tool to perform this initialization after the user confirms the other repository settings.
 
 ## Decision ledger
 
@@ -30,6 +30,8 @@ There is one ledger per effort. Its path is `<ledger directory>/<effort>/decisio
 - Context: Several sessions consume the same plan
 - Rationale: A versioned contract prevents drift
 - ADR: none
+- Constraints: Keep the checkpoint local until a consumer needs it
+- Rejected alternatives: Store one ledger for the whole repository
 - Obligations: specification, tickets, verification
 - Coverage:
   - specification: pending
@@ -41,7 +43,7 @@ There is one ledger per effort. Its path is `<ledger directory>/<effort>/decisio
   - verification: none
 ```
 
-`ADR` is optional and points to the canonical architectural record. `Obligations` may be `none` for an out-of-scope or process decision. The supported obligations are `specification`, `tickets`, and `verification`.
+`ADR` is optional and points to the canonical architectural record. `Constraints` and `Rejected alternatives` are optional one-line fields. They become part of checkpointed meaning when present. `Obligations` may be `none` for an out-of-scope or process decision. Such an entry has a synthetic `applicability` coverage and evidence pair, and its evidence must explain `non-ticket: ...` or `not-applicable: ...`. The delivery obligations are `specification`, `tickets`, and `verification`; `applicability` is reserved for `Obligations: none`.
 
 The helper allocates the next numeric ID within the selected effort. `decision add --supersedes DEC-001` changes only the old entry's validity fields and appends a new entry. The old decision and rationale stay byte-for-byte unchanged. A checkpointed ledger may receive monotonic coverage and evidence updates: coverage may advance from pending to complete, while existing evidence must remain unchanged or be extended without replacing its prior values. Adding, removing, or changing a decision meaning requires a new checkpoint.
 
@@ -66,21 +68,21 @@ The ledger is the canonical source for decision meaning. A producer records one 
 | Ticket | Every active entry that declares `tickets`, mapped to one or more relevant tickets with criteria; entries without that obligation get a written non-ticket or not-applicable reason | Published child issue, URL, or local ticket path |
 | Implementation | Applicable verification evidence after ticket work is integrated | Test command, observable result, or other verification artifact |
 
-The marker's `Decisions` list is the consumer's selected set. It must contain only active IDs represented by that artifact. A final checkpoint fails until every active entry's declared specification and ticket obligations have complete, non-empty evidence. A non-ticket obligation is complete only when its justification is recorded as the corresponding coverage evidence.
+The marker's `Decisions` list is the consumer's selected set. It must contain only active IDs represented by that artifact. A final checkpoint fails until every active entry's declared specification and ticket obligations have complete, non-empty evidence. An entry with `Obligations: none` must instead have complete, non-empty `applicability` evidence that gives its non-ticket or not-applicable justification. A decision that declares `tickets` can still use `non-ticket: ...` as its ticket coverage evidence when that is the explicit outcome. Empty JSON arrays and arrays containing only blank strings are not evidence.
 
 ## Phase gates
 
 | Phase | Required coverage |
 | --- | --- |
 | `intermediate` | none |
-| `final` | `specification` and `tickets`, when an entry declares them |
-| `implementation` | `specification`, `tickets`, and `verification`, when declared |
+| `final` | `specification` and `tickets`, when an entry declares them, plus `applicability` for `Obligations: none` |
+| `implementation` | `specification`, `tickets`, and `verification`, when declared, plus `applicability` for `Obligations: none` |
 
 The helper requires complete coverage and non-empty evidence for every active entry and applicable obligation. Superseded entries do not block a gate. This is a delivery gate, separate from entry validity.
 
 ## Fresh-session boundary
 
-When an active Planning context moves into a fresh session, create the checkpoint before the transition and pass its exact full SHA to the consumer. This includes `/compact`, `/handoff`, and `/clear`; select `intermediate` while planning continues, `final` before implementation, or `implementation` after verification. A markerless small task and work that stays in the current session do not require this gate.
+When an active Planning context moves into a fresh session, create the checkpoint before the transition and pass its exact full SHA to the consumer. This includes `/compact`, `/handoff`, `/clear`, a `Subagent`, and any other fresh context; select `intermediate` while planning continues, `final` before implementation, or `implementation` after verification. Parallel subagents that consume the same unchanged planning state may reuse that exact checkpoint SHA. If a subagent changes Planning artifacts before another fresh context, create the next checkpoint first. A markerless small task and work that stays in the current session do not require this gate.
 
 ## Implementation evidence aggregation
 
@@ -91,7 +93,7 @@ Planning-Verification: DEC-001 | npm run test:planning-context
 Planning-Verification: DEC-002 | rendered smoke test at /settings
 ```
 
-When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker.
+When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value and omits `--commit`. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker. The aggregate command still requires at least one valid commit trailer or ticket evidence record. When commits are supplied, the command preserves the ancestry and merged-tip validations described below.
 
 The coordinator must wait until every relevant worker tip is merged into the integration branch and any required bounded review or fix batches are complete, then call the owner with the canonical `coverage aggregate` command:
 
@@ -102,19 +104,20 @@ python3 skills/engineering/planning-context/scripts/planning_context.py --repo .
   --ticket-evidence "DEC-002 | issue #8 | remote acceptance evidence"
 ```
 
-The command resolves every supplied tip, proves that each descends from the final checkpoint and is an ancestor of the current integration head, and rejects any commit that edits the shared ledger. It reads all repeatable trailers from the supplied tips' checkpoint-to-tip history and the already-read ticket records, sorts their provenance deterministically, and checks the complete selected verification set before writing. A missing or invalid record fails without changing the ledger. On success it stores evidence as a compact JSON array of strings and marks the selected verification coverage complete, after which an `implementation` checkpoint can commit the ledger. A repeated successful call is idempotent, even when an evidence string contains `; `.
+The command resolves every supplied tip, proves that each descends from the final checkpoint and is an ancestor of the current integration head, and rejects any commit that edits the shared ledger. It reads only the final Git trailer block, including repeatable trailers and continuations, from the supplied tips' checkpoint-to-tip history and the already-read ticket records, sorts their provenance deterministically, and checks the complete selected verification set before writing. Empty or blank structured evidence fails before any write. A missing or invalid record fails without changing the ledger. On success it stores evidence as a compact JSON array of strings and marks the selected verification coverage complete, after which an `implementation` checkpoint can commit the ledger. A repeated successful call is idempotent, even when an evidence string contains `; `.
 
 ## Checkpoint contract
 
-`checkpoint` always includes `docs/agents/planning.md` and the effort ledger. Extra paths must be passed explicitly with `--path`. It stages those exact paths and commits them with:
+`checkpoint` always includes `docs/agents/planning.md` and the effort ledger. Extra paths must be passed explicitly with `--path`, and the checkpoint records the exact owned list in a `Planning-Paths` JSON trailer. The checkpoint command and validator reject a path that is not identifiable as a Planning context artifact, a diff that changes a path outside the owned list, or a mixed checkpoint with unrelated files. A checkpoint with an ownership trailer must have a non-empty owned diff. Checkpoints created by older versions remain readable without that trailer only when their non-empty diff changes both config and the declared ledger, with no extra paths. It stages those exact paths and commits them with:
 
 ```text
 Planning-Checkpoint: <effort>
 Planning-Phase: <intermediate|final|implementation>
 Planning-Ledger: <relative ledger path>
+Planning-Paths: ["docs/agents/planning.md","<relative ledger path>","<explicit planning artifact>"]
 ```
 
-The commit uses `git commit --only` with the owned path list, so unrelated staged or unstaged work is left outside the checkpoint. The returned full SHA is the pointer for a fresh consumer. Push it only when a remote consumer, pull request, or separate clone needs it.
+The commit uses `git commit --only` with the owned path list, so unrelated staged or unstaged work is left outside the checkpoint. An explicit extra should carry a Planning context marker or be a recognized planning source such as `CONTEXT.md`, an ADR, or a map/spec/ticket pointer. The returned full SHA is the pointer for a fresh consumer. Push it only when a remote consumer, pull request, or separate clone needs it, using the configured remote and branch.
 
 ## Consumer marker
 
@@ -133,13 +136,13 @@ Specifications and tickets that opt into the contract carry this block after a c
 
 `marker --output <path>` writes or replaces this block. `Repository` is informative. An external marker's `Planning checkpoint` value must be an exact 40-character hexadecimal commit SHA before validation attempts any Git resolution. The `marker` command itself may accept `HEAD`, a branch, tag, abbreviated SHA, or full SHA as input, then emits the resolved full SHA. The validator resolves the ledger and checkpoint in the current clone, proves that the current branch descends from the checkpoint, and checks that checkpointed decision meaning, coverage, and evidence have not regressed or been replaced. Local artifacts may instead discover the checkpoint through the Git trailer when no external marker is needed.
 
-For a remote tracker, the publishing skill must obtain the configured repository target from `docs/agents/issue-tracker.md` and pass it explicitly to every GitHub operation. A marker's `Repository` field is informative metadata; resolution still depends on the ledger, checkpoint, and ancestry in the consumer clone. After the final checkpoint, regenerate the marker so external children point to that exact final SHA.
+For a remote tracker, the publishing skill must obtain the configured repository target from `docs/agents/issue-tracker.md` and pass it explicitly to every GitHub operation. Before publishing or refreshing a marker, it must resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. A marker's `Repository` field is informative metadata; resolution still depends on the ledger, checkpoint, and ancestry in the consumer clone. After the final checkpoint, regenerate the marker so external children point to that exact final SHA.
 
 ## Validation and compatibility
 
 `validate` accepts exactly one context source. Use `--context-file <path>` for a local specification or ticket relative to the repository root. Use `--context-stdin` for a marker body already obtained from a configured remote tracker. Stdin is read-only transport and does not create a repository file. Both inputs preserve the same marker validation rules. A markerless input with no effort returns `legacy` with its context identifier, preserving the legacy path. A local markerless artifact can pass `--effort <effort>` to resolve the latest matching checkpoint through its Git trailer.
 
-A marker is fail-closed: its format, effort, ledger, exact full checkpoint SHA, decision IDs, trailer, ancestry, immutable meaning, monotonic coverage and evidence, and requested phase coverage must all resolve. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate.
+A marker is fail-closed: its format, effort, ledger, exact full checkpoint SHA, decision IDs, trailer, ownership, ancestry, immutable meaning, monotonic coverage and evidence, and requested phase coverage must all resolve. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate. An implementation checkpoint may pass `--decisions DEC-001,DEC-002` to gate only that explicit active subset; when selection is omitted, every active applicable decision is required. This selection is rejected for `final` checkpoints. When `validate --ledger <override>` is used, the configured `Ledger directory` is still parsed and checked for a safe repository-relative path before the local override is accepted; the override must resolve to a coherent local ledger and checkpoint trailer.
 
 With `--json`, a valid result identifies its input through `context` and `source`. A local marker uses the repository-relative path and `source: marker`; a marker received through stdin uses `context: <stdin>` and `source: stdin`; a local markerless artifact resolved through a trailer uses `source: trailer`. The result's `coverage` object has one entry for every selected decision and one nested entry for every declared obligation, each carrying the ledger's `status` and `evidence`. Its `ancestry` object has the resolved full `checkpoint_sha`, the current `head_sha`, and `is_ancestor: true`, which is emitted only after the helper proves the branch relationship.
 
@@ -172,12 +175,14 @@ The public interface is the CLI:
 ```bash
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . init
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . ledger create --effort demo
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision add --effort demo --decision "..." --context "..." --rationale "..."
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision add --effort demo --decision "..." --context "..." --rationale "..." --constraints "..." --rejected-alternatives "..."
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision reference --effort demo --decision DEC-001
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-001 --obligation specification --evidence spec.md
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-002 --obligation applicability --evidence "non-ticket: process-only decision"
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --commit <worker-tip>
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --ticket-evidence "DEC-001 | issue #8 | remote ticket evidence"
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase final
+python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase implementation --decisions DEC-001
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file spec.md --phase final
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file local-ticket.md --effort demo --phase final
