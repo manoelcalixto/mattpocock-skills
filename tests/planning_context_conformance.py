@@ -3272,6 +3272,28 @@ def test_repository_wiring() -> None:
     if "policy:" in metadata:
         raise HarnessFailure("model-invoked planning-context must not disable implicit invocation")
 
+    coverage_help = subprocess.run(
+        [sys.executable, str(HELPER), "coverage", "--help"],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if coverage_help.returncode != 0:
+        raise HarnessFailure(f"coverage help failed: {coverage_help.stderr}")
+    for phrase in ("verified commits", "ticket evidence"):
+        if phrase not in coverage_help.stdout:
+            raise HarnessFailure(f"coverage aggregate help does not expose both evidence modes: {phrase}")
+    aggregate_help = subprocess.run(
+        [sys.executable, str(HELPER), "coverage", "aggregate", "--help"],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if aggregate_help.returncode != 0 or "optional with ticket evidence" not in aggregate_help.stdout:
+        raise HarnessFailure(f"coverage aggregate option help omits ticket-only mode: {aggregate_help.stderr}")
+
     plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
     if "./skills/engineering/planning-context" not in plugin.get("skills", []):
         raise HarnessFailure("planning-context is missing from the Claude plugin manifest")

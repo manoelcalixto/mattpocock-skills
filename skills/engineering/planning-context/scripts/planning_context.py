@@ -1083,7 +1083,7 @@ def append_verification_evidence(
 
 
 def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
-    """Aggregate worker or ticket evidence after every supplied tip is merged."""
+    """Aggregate verified commit or ticket evidence, validating supplied tips when present."""
 
     effort = validate_effort(args.effort)
     load_config(repo)
@@ -1536,7 +1536,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--commits",
             dest="commits",
             action="append",
-            help="merged worker commit or branch tip, repeat for each ticket; optional with ticket evidence",
+            help="verified merged worker commit or branch tip, repeat for each ticket; optional with ticket evidence",
         )
         command.add_argument(
             "--decisions",
@@ -1550,7 +1550,7 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     coverage_aggregate = coverage_commands.add_parser(
-        "aggregate", help="atomically aggregate merged worker verification trailers"
+        "aggregate", help="atomically aggregate verified commits or ticket evidence"
     )
     add_aggregate_arguments(coverage_aggregate)
 
