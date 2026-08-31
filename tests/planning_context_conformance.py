@@ -201,6 +201,39 @@ def prepare_final_context(repo: Path, output: str = "ticket.md") -> tuple[Path, 
     return context, sha
 
 
+def prepare_multi_decision_final_context(repo: Path, output: str = "ticket.md") -> tuple[Path, str]:
+    create_effort(repo)
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        "demo",
+        "--decision",
+        "Keep final review evidence decision-specific",
+        "--context",
+        "A ticket graph may split decisions across worker surfaces",
+        "--rationale",
+        "The final union must prove every selected decision without overclaiming",
+    )
+    for decision in ("DEC-001", "DEC-002"):
+        for obligation, evidence in (("specification", "spec.md"), ("tickets", f"issue-{decision[-1]}")):
+            add_coverage(repo, "demo", decision, obligation, evidence)
+    checkpoint = payload(
+        run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "final", "--message", "multi-decision final plan")
+    )
+    sha = str(checkpoint["sha"])
+    context = write_marked_artifact(
+        repo,
+        "demo",
+        sha,
+        "DEC-001,DEC-002",
+        output,
+        "## What to build\n\nImplement the ticket as a complete vertical slice.",
+    )
+    return context, sha
+
+
 def prepare_parallel_graph(repo: Path) -> str:
     create_effort(repo)
     run_helper(
@@ -250,6 +283,21 @@ def create_worker_branch(
         body_parts.extend(("", *trailers))
     body = "\n".join(body_parts)
     run_git(repo, "commit", "-m", body)
+    return run_git(repo, "rev-parse", "HEAD").stdout.strip()
+
+
+def commit_change(
+    repo: Path,
+    filename: str,
+    message: str,
+    trailers: tuple[str, ...] = (),
+) -> str:
+    (repo / filename).write_text(f"{filename}\n")
+    run_git(repo, "add", filename)
+    body_parts = [message]
+    if trailers:
+        body_parts.extend(("", *trailers))
+    run_git(repo, "commit", "-m", "\n".join(body_parts))
     return run_git(repo, "rev-parse", "HEAD").stdout.strip()
 
 
@@ -499,6 +547,186 @@ def test_validation_and_immutability() -> None:
     run_helper(repo, "validate", "--context-file", "spec.md", "--phase", "final")
 
 
+def test_marker_requires_exact_full_checkpoint_sha() -> None:
+    repo = init_repo()
+    context, checkpoint = prepare_final_context(repo)
+    original = context.read_text()
+    run_git(repo, "tag", "planning-tag", checkpoint)
+    revisions = ("HEAD", "main", "planning-tag", checkpoint[:8])
+    for revision in revisions:
+        context.write_text(original.replace(checkpoint, revision))
+        invalid = run_helper(repo, "validate", "--context-file", context.name, expected=2)
+        error = invalid.stdout.lower() + invalid.stderr.lower()
+        if "exact 40-character hexadecimal" not in error:
+            raise HarnessFailure(f"marker accepted a non-full checkpoint revision {revision!r}: {invalid}")
+    context.write_text(original)
+    valid = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "final"))
+    if valid.get("status") != "valid" or valid.get("checkpoint") != checkpoint:
+        raise HarnessFailure(f"full checkpoint SHA marker was rejected: {valid}")
+    generated = payload(
+        run_helper(
+            repo,
+            "marker",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            "HEAD",
+            "--decisions",
+            "DEC-001",
+        )
+    )
+    if generated.get("checkpoint") != checkpoint or len(str(generated.get("checkpoint"))) != 40:
+        raise HarnessFailure(f"marker generation did not emit a full SHA: {generated}")
+
+
+def test_checkpoint_coverage_and_evidence_are_monotonic() -> None:
+    repo = init_repo()
+    context, checkpoint = prepare_final_context(repo)
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    original = ledger.read_text()
+
+    downgrade = original.replace("  - specification: complete", "  - specification: pending", 1)
+    ledger.write_text(downgrade)
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "monotonic" not in error or "coverage" not in error:
+        raise HarnessFailure(f"complete coverage downgrade was accepted: {invalid}")
+    if ledger.read_text() != downgrade:
+        raise HarnessFailure("coverage downgrade validation unexpectedly rewrote the ledger")
+
+    removed = original.replace("  - specification: spec.md", "  - specification: none", 1)
+    ledger.write_text(removed)
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "evidence" not in error or "append-only" not in error:
+        raise HarnessFailure(f"checkpointed evidence removal was accepted: {invalid}")
+
+    replaced = original.replace("  - specification: spec.md", "  - specification: other-spec.md", 1)
+    ledger.write_text(replaced)
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "evidence" not in error or "append-only" not in error:
+        raise HarnessFailure(f"checkpointed evidence replacement was accepted: {invalid}")
+
+    ledger.write_text(original)
+    add_coverage(repo, "demo", "DEC-001", "verification", "npm run test:planning-context")
+    valid = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "final"))
+    verification = valid["coverage"]["DEC-001"]["verification"]
+    if verification != {"status": "complete", "evidence": "npm run test:planning-context"}:
+        raise HarnessFailure(f"pending verification did not advance monotonically: {valid}")
+    implementation = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "implementation",
+            "--message",
+            "implementation monotonicity checkpoint",
+        )
+    )
+    implementation_sha = str(implementation["sha"])
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        implementation_sha,
+        "--decisions",
+        "DEC-001",
+        "--output",
+        context.name,
+    )
+    validated = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "implementation"))
+    if validated.get("status") != "valid" or validated.get("checkpoint") != implementation_sha:
+        raise HarnessFailure(f"pending-to-complete verification did not validate at implementation phase: {validated}")
+
+
+def test_checkpointed_json_evidence_is_append_only() -> None:
+    repo = init_repo()
+    context, planning_checkpoint = prepare_final_context(repo)
+    tip = commit_change(
+        repo,
+        "verification.txt",
+        "verification evidence",
+        ("Planning-Verification: DEC-001 | first structured evidence",),
+    )
+    payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            planning_checkpoint,
+            "--head",
+            tip,
+            "--decisions",
+            "DEC-001",
+            "--commit",
+            tip,
+        )
+    )
+    implementation = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "implementation",
+            "--message",
+            "structured evidence checkpoint",
+        )
+    )
+    implementation_sha = str(implementation["sha"])
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        implementation_sha,
+        "--decisions",
+        "DEC-001",
+        "--output",
+        context.name,
+    )
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    before = ledger.read_text()
+    verification_line = next(
+        line
+        for line in before.splitlines()
+        if line.startswith("  - verification:")
+        and line.split(":", 1)[1].strip().startswith("[")
+    )
+    values = json.loads(verification_line.split(":", 1)[1].strip())
+    extended_values = [*values, "manually appended evidence"]
+    extended_line = "  - verification: " + json.dumps(
+        extended_values,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    ledger.write_text(before.replace(verification_line, extended_line, 1))
+    valid = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "implementation"))
+    if valid.get("status") != "valid":
+        raise HarnessFailure(f"ordered JSON evidence extension was rejected: {valid}")
+
+    replacement_line = "  - verification: " + json.dumps(
+        ["arbitrary replacement"],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    ledger.write_text(ledger.read_text().replace(extended_line, replacement_line, 1))
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "implementation", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "append-only" not in error or ledger.read_text() == before:
+        raise HarnessFailure(f"arbitrary JSON evidence replacement was accepted: {invalid}")
+
+
 def test_implement_preflight_wiring() -> None:
     skill = IMPLEMENT_SKILL.read_text()
     docs = IMPLEMENT_DOCS.read_text()
@@ -532,6 +760,156 @@ def test_implement_preflight_wiring() -> None:
         raise HarnessFailure("implement does not capture tracker content before stdin validation")
     if "never interpret a tracker read failure as `legacy`" not in skill:
         raise HarnessFailure("implement does not keep tracker read failures out of the legacy path")
+
+
+def test_implement_planning_closeout_wiring() -> None:
+    skill = IMPLEMENT_SKILL.read_text()
+    docs = IMPLEMENT_DOCS.read_text()
+    implement_spec = IMPLEMENT_SPEC_SKILL.read_text()
+    assert_ordered(
+        skill,
+        "implement Planning closeout",
+        "## Planning preflight",
+        'Call the Skill tool with "tdd"',
+        "Commit the completed implementation",
+        'Call the Skill tool with "code-review"',
+        "## Planning implementation closeout",
+        "coverage aggregate",
+        "checkpoint --phase implementation",
+    )
+    for phrase in (
+        "one for each applicable decision returned by preflight",
+        "--decisions <comma-separated-preflight-decision-IDs>",
+        "--head <final-reviewed-head-sha>",
+        "--commit <final-reviewed-head-sha>",
+        "whose behavior that commit verifies or changes",
+        "the union of the final history and validated ticket evidence",
+        "Only after aggregation succeeds",
+        'If preflight returned "status": "legacy"',
+        "never infer a ledger, checkpoint, or coverage aggregation",
+    ):
+        if phrase not in skill:
+            raise HarnessFailure(f"implement Planning closeout contract is missing: {phrase}")
+    assert_ordered(
+        docs,
+        "implement documentation Planning closeout",
+        "## Planning preflight",
+        "Commit the implementation",
+        "code-review",
+        "coverage aggregate",
+        "checkpoint --phase implementation",
+    )
+    assert_ordered(
+        implement_spec,
+        "implement-spec Planning closeout",
+        "## Merge and review checkpoint",
+        "code-review",
+        "## Planning implementation closeout",
+        "coverage aggregate",
+        "checkpoint --phase implementation",
+    )
+    for phrase in (
+        "the final reviewed integration head",
+        "--commit <final-reviewed-head-sha>",
+        "A worker records only decisions relevant to its ticket",
+        "the union of the final history and validated ticket evidence",
+        "every decision ID returned by preflight",
+        "Skip this closeout for an entirely markerless graph",
+        "do not infer a ledger, coverage aggregation, or Planning checkpoint",
+    ):
+        if phrase not in implement_spec:
+            raise HarnessFailure(f"implement-spec Planning closeout contract is missing: {phrase}")
+
+
+def test_implement_single_ticket_planning_closeout() -> None:
+    repo = init_repo()
+    context, planning_checkpoint = prepare_multi_decision_final_context(repo)
+    implementation_tip = commit_change(
+        repo,
+        "implementation.txt",
+        "single-ticket implementation",
+        (
+            "Planning-Verification: DEC-001 | single-ticket implementation verification",
+            "Planning-Verification: DEC-002 | single-ticket implementation verification",
+        ),
+    )
+    review_fix_tip = commit_change(
+        repo,
+        "review-fix.txt",
+        "single-ticket review fix",
+        ("Planning-Verification: DEC-002 | single-ticket review-fix verification",),
+    )
+    review_fix_message = run_git(repo, "show", "-s", "--format=%B", review_fix_tip).stdout
+    if "Planning-Verification: DEC-001" in review_fix_message or "Planning-Verification: DEC-002" not in review_fix_message:
+        raise HarnessFailure("single-ticket fix did not record only its changed decision")
+    aggregated = payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            planning_checkpoint,
+            "--head",
+            review_fix_tip,
+            "--decisions",
+            "DEC-001,DEC-002",
+            "--commit",
+            review_fix_tip,
+        )
+    )
+    if aggregated.get("status") != "aggregated" or aggregated.get("decisions") != ["DEC-001", "DEC-002"]:
+        raise HarnessFailure(f"single-ticket closeout did not aggregate preflight decisions: {aggregated}")
+    if implementation_tip not in run_git(repo, "rev-list", "--reverse", f"{planning_checkpoint}..{review_fix_tip}").stdout:
+        raise HarnessFailure("single-ticket review-fix tip does not include the implementation commit")
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    ledger_text = ledger.read_text()
+    for evidence in (
+        "single-ticket implementation verification",
+        "single-ticket review-fix verification",
+    ):
+        if evidence not in ledger_text:
+            raise HarnessFailure(f"final reviewed evidence was not aggregated: {evidence}")
+    for decision in ("DEC-001", "DEC-002"):
+        block = ledger_text[ledger_text.index(f"## {decision}") :]
+        if "  - verification: complete" not in block:
+            raise HarnessFailure(f"single-ticket closeout did not complete verification coverage for {decision}")
+
+    implementation = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "implementation",
+            "--message",
+            "single-ticket implementation evidence checkpoint",
+        )
+    )
+    implementation_sha = str(implementation["sha"])
+    parent = run_git(repo, "rev-parse", f"{implementation_sha}^").stdout.strip()
+    if implementation_sha == review_fix_tip or parent != review_fix_tip:
+        raise HarnessFailure("implementation checkpoint was not created after the final reviewed head")
+    message = run_git(repo, "show", "-s", "--format=%B", implementation_sha).stdout
+    if "Planning-Phase: implementation" not in message:
+        raise HarnessFailure("single-ticket implementation checkpoint lacks its phase trailer")
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        implementation_sha,
+        "--decisions",
+        "DEC-001,DEC-002",
+        "--output",
+        context.name,
+    )
+    validated = payload(run_helper(repo, "validate", "--context-file", context.name, "--phase", "implementation"))
+    if validated.get("status") != "valid" or validated.get("checkpoint") != implementation_sha:
+        raise HarnessFailure(f"single-ticket final Planning checkpoint did not validate: {validated}")
 
 
 def test_implement_preflight_valid() -> None:
@@ -1993,7 +2371,12 @@ def main() -> int:
         test_ledger_ids_and_supersession,
         test_checkpoint_gates_staging_and_trailer,
         test_validation_and_immutability,
+        test_marker_requires_exact_full_checkpoint_sha,
+        test_checkpoint_coverage_and_evidence_are_monotonic,
+        test_checkpointed_json_evidence_is_append_only,
         test_implement_preflight_wiring,
+        test_implement_planning_closeout_wiring,
+        test_implement_single_ticket_planning_closeout,
         test_implement_preflight_valid,
         test_implement_preflight_legacy,
         test_implement_preflight_invalid,

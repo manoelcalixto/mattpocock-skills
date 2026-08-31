@@ -43,7 +43,7 @@ There is one ledger per effort. Its path is `<ledger directory>/<effort>/decisio
 
 `ADR` is optional and points to the canonical architectural record. `Obligations` may be `none` for an out-of-scope or process decision. The supported obligations are `specification`, `tickets`, and `verification`.
 
-The helper allocates the next numeric ID within the selected effort. `decision add --supersedes DEC-001` changes only the old entry's validity fields and appends a new entry. The old decision and rationale stay byte-for-byte unchanged. A checkpointed ledger may receive coverage and evidence updates, but adding, removing, or changing a decision meaning requires a new checkpoint.
+The helper allocates the next numeric ID within the selected effort. `decision add --supersedes DEC-001` changes only the old entry's validity fields and appends a new entry. The old decision and rationale stay byte-for-byte unchanged. A checkpointed ledger may receive monotonic coverage and evidence updates: coverage may advance from pending to complete, while existing evidence must remain unchanged or be extended without replacing its prior values. Adding, removing, or changing a decision meaning requires a new checkpoint.
 
 ### Wayfinder resolution
 
@@ -93,7 +93,7 @@ Planning-Verification: DEC-002 | rendered smoke test at /settings
 
 When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker.
 
-The coordinator must wait until every relevant worker tip is merged into the integration branch, then call the owner with the canonical `coverage aggregate` command:
+The coordinator must wait until every relevant worker tip is merged into the integration branch and any required bounded review or fix batches are complete, then call the owner with the canonical `coverage aggregate` command:
 
 ```bash
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
@@ -131,7 +131,7 @@ Specifications and tickets that opt into the contract carry this block after a c
 - Decisions: DEC-001
 ```
 
-`marker --output <path>` writes or replaces this block. `Repository` is informative. The validator resolves the ledger and checkpoint in the current clone, proves that the current branch descends from the checkpoint, and checks that checkpointed decision meaning is unchanged. Local artifacts may instead discover the checkpoint through the Git trailer when no external marker is needed.
+`marker --output <path>` writes or replaces this block. `Repository` is informative. An external marker's `Planning checkpoint` value must be an exact 40-character hexadecimal commit SHA before validation attempts any Git resolution. The `marker` command itself may accept `HEAD`, a branch, tag, abbreviated SHA, or full SHA as input, then emits the resolved full SHA. The validator resolves the ledger and checkpoint in the current clone, proves that the current branch descends from the checkpoint, and checks that checkpointed decision meaning, coverage, and evidence have not regressed or been replaced. Local artifacts may instead discover the checkpoint through the Git trailer when no external marker is needed.
 
 For a remote tracker, the publishing skill must obtain the configured repository target from `docs/agents/issue-tracker.md` and pass it explicitly to every GitHub operation. A marker's `Repository` field is informative metadata; resolution still depends on the ledger, checkpoint, and ancestry in the consumer clone. After the final checkpoint, regenerate the marker so external children point to that exact final SHA.
 
@@ -139,7 +139,7 @@ For a remote tracker, the publishing skill must obtain the configured repository
 
 `validate` accepts exactly one context source. Use `--context-file <path>` for a local specification or ticket relative to the repository root. Use `--context-stdin` for a marker body already obtained from a configured remote tracker. Stdin is read-only transport and does not create a repository file. Both inputs preserve the same marker validation rules. A markerless input with no effort returns `legacy` with its context identifier, preserving the legacy path. A local markerless artifact can pass `--effort <effort>` to resolve the latest matching checkpoint through its Git trailer.
 
-A marker is fail-closed: its format, effort, ledger, checkpoint, decision IDs, trailer, ancestry, immutable meaning, and requested phase coverage must all resolve. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate.
+A marker is fail-closed: its format, effort, ledger, exact full checkpoint SHA, decision IDs, trailer, ancestry, immutable meaning, monotonic coverage and evidence, and requested phase coverage must all resolve. Use `--phase final` before a fresh implementation session and `--phase implementation` when aggregating completion evidence. Use repeated `--require` flags for a narrower explicit gate.
 
 With `--json`, a valid result identifies its input through `context` and `source`. A local marker uses the repository-relative path and `source: marker`; a marker received through stdin uses `context: <stdin>` and `source: stdin`; a local markerless artifact resolved through a trailer uses `source: trailer`. The result's `coverage` object has one entry for every selected decision and one nested entry for every declared obligation, each carrying the ledger's `status` and `evidence`. Its `ancestry` object has the resolved full `checkpoint_sha`, the current `head_sha`, and `is_ancestor: true`, which is emitted only after the helper proves the branch relationship.
 
