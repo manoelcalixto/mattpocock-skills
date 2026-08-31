@@ -1083,7 +1083,7 @@ def append_verification_evidence(
 
 
 def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
-    """Aggregate worker evidence only after every supplied tip is merged."""
+    """Aggregate worker or ticket evidence after every supplied tip is merged."""
 
     effort = validate_effort(args.effort)
     load_config(repo)
@@ -1143,7 +1143,7 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
         for raw_evidence in (args.ticket_evidence or [])
         for record in (parse_ticket_evidence(raw_evidence),)
     )
-    if not records and not supplied_commits:
+    if not records:
         fail("at least one verification commit or ticket evidence record is required")
 
     updates: dict[str, list[str]] = {identifier: [] for identifier in selected}
@@ -1536,8 +1536,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--commits",
             dest="commits",
             action="append",
-            required=True,
-            help="merged worker commit or branch tip, repeat for each ticket",
+            help="merged worker commit or branch tip, repeat for each ticket; optional with ticket evidence",
         )
         command.add_argument(
             "--decisions",

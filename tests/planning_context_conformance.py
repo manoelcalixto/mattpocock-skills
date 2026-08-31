@@ -1991,7 +1991,7 @@ def test_trailers_are_read_only_from_the_final_block() -> None:
         expected=2,
     )
     error = missing.stdout + missing.stderr
-    if "verification coverage incomplete" not in error.lower() or "dec-001:verification" not in error.lower():
+    if "at least one verification commit or ticket evidence record is required" not in error.lower():
         raise HarnessFailure(f"body verification metadata followed by prose was accepted: {missing}")
     if ledger.read_text() != before:
         raise HarnessFailure("forged verification trailer failure changed the ledger")
@@ -2427,15 +2427,7 @@ def test_aggregation_rejects_ledger_edit_in_merge_commit() -> None:
 def test_ticket_only_evidence_surface() -> None:
     repo = init_repo()
     checkpoint = prepare_parallel_graph(repo)
-    worker = create_worker_branch(
-        repo,
-        "ticket-only",
-        checkpoint,
-        "ticket-only.txt",
-        "ticket-only implementation",
-    )
     run_git(repo, "switch", "-c", "integration", checkpoint)
-    run_git(repo, "merge", "--no-ff", "ticket-only", "-m", "merge ticket-only")
     result = payload(
         run_helper(
             repo,
@@ -2449,8 +2441,6 @@ def test_ticket_only_evidence_surface() -> None:
             "HEAD",
             "--decisions",
             "DEC-001",
-            "--commit",
-            worker,
             "--ticket-evidence",
             "DEC-001 | issue #8 | ticket-only acceptance evidence",
         )
@@ -2458,9 +2448,53 @@ def test_ticket_only_evidence_surface() -> None:
     if result.get("status") != "aggregated":
         raise HarnessFailure(f"ticket-only evidence was not aggregated: {result}")
     ledger = (repo / "docs" / "planning" / "demo" / "decision-ledger.md").read_text()
-    if "ticket issue #8: ticket-only acceptance evidence" not in ledger:
+    decision_block = ledger[ledger.index("## DEC-001") :]
+    if "  - verification: complete" not in decision_block:
+        raise HarnessFailure("ticket-only evidence did not complete verification coverage")
+    if "ticket issue #8: ticket-only acceptance evidence" not in decision_block:
         raise HarnessFailure("ticket-only evidence did not retain its origin")
     invalid_before = ledger
+    missing_evidence = run_helper(
+        repo,
+        "coverage",
+        "aggregate",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--head",
+        "HEAD",
+        "--decisions",
+        "DEC-002",
+        expected=2,
+    )
+    if "at least one verification" not in (missing_evidence.stdout + missing_evidence.stderr).lower():
+        raise HarnessFailure(f"ticket-only aggregation accepted an empty evidence set: {missing_evidence}")
+    if (repo / "docs" / "planning" / "demo" / "decision-ledger.md").read_text() != invalid_before:
+        raise HarnessFailure("empty ticket-only evidence failure changed the ledger")
+
+    incomplete = run_helper(
+        repo,
+        "coverage",
+        "aggregate",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--head",
+        "HEAD",
+        "--decisions",
+        "DEC-001,DEC-002",
+        "--ticket-evidence",
+        "DEC-001 | issue #8 | repeated ticket evidence",
+        expected=2,
+    )
+    incomplete_text = incomplete.stdout + incomplete.stderr
+    if "dec-002:verification" not in incomplete_text.lower():
+        raise HarnessFailure(f"incomplete ticket-only coverage did not fail with the missing decision: {incomplete}")
+    if (repo / "docs" / "planning" / "demo" / "decision-ledger.md").read_text() != invalid_before:
+        raise HarnessFailure("incomplete ticket-only coverage failure changed the ledger")
+
     invalid = run_helper(
         repo,
         "coverage",
@@ -2473,8 +2507,6 @@ def test_ticket_only_evidence_surface() -> None:
         "HEAD",
         "--decisions",
         "DEC-002",
-        "--commit",
-        worker,
         "--ticket-evidence",
         "missing origin separator",
         expected=2,

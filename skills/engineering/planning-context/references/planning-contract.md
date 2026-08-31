@@ -93,7 +93,7 @@ Planning-Verification: DEC-001 | npm run test:planning-context
 Planning-Verification: DEC-002 | rendered smoke test at /settings
 ```
 
-When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker.
+When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value and omits `--commit`. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker. The aggregate command still requires at least one valid commit trailer or ticket evidence record. When commits are supplied, the command preserves the ancestry and merged-tip validations described below.
 
 The coordinator must wait until every relevant worker tip is merged into the integration branch and any required bounded review or fix batches are complete, then call the owner with the canonical `coverage aggregate` command:
 
