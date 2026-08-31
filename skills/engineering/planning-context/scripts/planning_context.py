@@ -29,6 +29,9 @@ ID_PATTERN = re.compile(r"^DEC-(\d{3,})$")
 EFFORT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]{0,62}$")
 FULL_CHECKPOINT_SHA_PATTERN = re.compile(r"^[0-9a-fA-F]{40}$")
 VERIFICATION_PATTERN = re.compile(r"^Planning-Verification:\s*(DEC-\d{3,})\s*\|\s*(\S.*)$")
+APPLICABILITY_EVIDENCE_PATTERN = re.compile(
+    r"^(?:non-ticket|not-applicable):\s*\S.*$", re.IGNORECASE
+)
 FIELD_PATTERN = re.compile(
     r"^- (Status|Decision|Context|Rationale|ADR|Constraints|Rejected alternatives|Obligations|Superseded by|Supersedes):\s*(.*)$"
 )
@@ -257,11 +260,7 @@ def parse_entry(block: str, identifier: str) -> Entry:
         if optional in fields and not fields[optional]:
             fail(f"{identifier} has an empty {optional} field")
     constraints = fields.get("Constraints") or None
-    if constraints == "none":
-        constraints = None
     rejected_alternatives = fields.get("Rejected alternatives") or None
-    if rejected_alternatives == "none":
-        rejected_alternatives = None
     for obligation in obligations:
         if obligation not in coverage:
             fail(f"{identifier} is missing {obligation} coverage")
@@ -281,6 +280,18 @@ def parse_entry(block: str, identifier: str) -> Entry:
             evidence[APPLICABILITY_OBLIGATION] = "none"
         elif coverage[APPLICABILITY_OBLIGATION] not in {"pending", "complete"}:
             fail(f"{identifier} has invalid applicability coverage status")
+        applicability_evidence = evidence[APPLICABILITY_OBLIGATION]
+        if (
+            (
+                coverage[APPLICABILITY_OBLIGATION] == "complete"
+                or applicability_evidence.strip().lower() not in {"", "none"}
+            )
+            and not APPLICABILITY_EVIDENCE_PATTERN.fullmatch(applicability_evidence)
+        ):
+            fail(
+                f"{identifier} applicability evidence must start with "
+                "non-ticket: or not-applicable:"
+            )
     superseded_by = fields.get("Superseded by") or None
     if status == "superseded" and not superseded_by:
         fail(f"{identifier} is superseded but has no Superseded by field")
@@ -875,13 +886,31 @@ def validate_checkpoint_ownership(
     changed = set(changed_paths(repo, checkpoint))
     raw_owned = trailers.get(PLANNING_PATHS_TRAILER)
     if raw_owned is None:
-        if changed.issubset(base_paths):
+        if changed == base_paths:
             # Checkpoints created before the ownership trailer remain readable
-            # when their diff already proves the narrow built-in ownership.
+            # when their non-empty diff proves both built-in owned paths.
             return
+        if not changed:
+            fail(
+                f"Planning checkpoint {checkpoint} has an empty diff and no "
+                f"{PLANNING_PATHS_TRAILER} trailer; legacy checkpoints must change "
+                "both the planning configuration and declared ledger"
+            )
+        missing = sorted(base_paths - changed)
+        if missing:
+            fail(
+                f"Planning checkpoint {checkpoint} has no {PLANNING_PATHS_TRAILER} trailer; "
+                "legacy checkpoints must change both the planning configuration and "
+                f"declared ledger (missing: {', '.join(missing)})"
+            )
         fail(
             f"Planning checkpoint {checkpoint} lacks the {PLANNING_PATHS_TRAILER} ownership trailer; "
             "create a new checkpoint with explicitly owned planning paths"
+        )
+    if not changed:
+        fail(
+            f"Planning checkpoint {checkpoint} has an empty diff; "
+            f"{PLANNING_PATHS_TRAILER} cannot prove ownership without a changed path"
         )
     try:
         decoded = json.loads(raw_owned)
@@ -990,10 +1019,14 @@ def structured_evidence_values(raw: str | None) -> list[str] | None:
 def preserves_checkpointed_evidence(before: str, after: str) -> bool:
     """Allow an unchanged value or a deterministic append that keeps its prefix."""
 
+    after_values = structured_evidence_values(after)
+    if after_values is not None and not has_non_empty_evidence(after):
+        return False
+    before_values = structured_evidence_values(before)
+    if before_values is not None and not has_non_empty_evidence(before):
+        return False
     if before == after:
         return True
-    before_values = structured_evidence_values(before)
-    after_values = structured_evidence_values(after)
     if before_values is not None and after_values is not None:
         return after_values[: len(before_values)] == before_values
     return after.startswith(f"{before}; ") and bool(after[len(before) + 2 :].strip())
@@ -1391,18 +1424,20 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     else:
         load_config(repo)
         effort = str(marker["effort"])
+        configured_ledger_relative = ledger_relative_path(repo, effort)
         if args.effort and validate_effort(args.effort) != effort:
             fail("declared effort does not match the Planning context marker")
         marker_ledger_raw = str(marker["ledger"])
-        try:
-            ledger_relative = relative_path(repo, marker_ledger_raw)
-        except PlanningError as error:
-            fail(f"external Decision ledger pointer needs a local clone path: {error}")
         override_ledger = args.ledger
         if override_ledger:
             ledger_relative = relative_path(repo, override_ledger, must_exist=True)
-        elif ledger_relative != ledger_relative_path(repo, effort):
-            fail("Planning context ledger does not match the repository configuration")
+        else:
+            try:
+                ledger_relative = relative_path(repo, marker_ledger_raw)
+            except PlanningError as error:
+                fail(f"external Decision ledger pointer needs a local clone path: {error}")
+            if ledger_relative != configured_ledger_relative:
+                fail("Planning context ledger does not match the repository configuration")
         checkpoint = str(marker["checkpoint"])
         requested = tuple(str(item) for item in marker["decisions"])
         source = "stdin" if args.context_stdin else "marker"
