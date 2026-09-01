@@ -683,8 +683,16 @@ def ensure_stage_path(repo: Path, raw_path: str) -> Path:
             fail(f"checkpoint path is a directory: {relative.as_posix()}")
         return relative
     tracked = run_git(repo, "ls-files", "--error-unmatch", "--", relative.as_posix(), check=False)
-    if tracked.returncode != 0:
+    if tracked.returncode == 0:
+        return relative
+    if tracked.returncode not in (1,):
+        detail = tracked.stderr.strip() or tracked.stdout.strip() or "git ls-files failed"
+        fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
+    head_entry = tree_entry(repo, "HEAD", relative)
+    if head_entry is None:
         fail(f"checkpoint path does not exist: {relative.as_posix()}")
+    if head_entry.mode == "040000":
+        fail(f"checkpoint path is a directory: {relative.as_posix()}")
     return relative
 
 
@@ -728,6 +736,18 @@ def diff_changed(
         detail = comparison.stderr.strip() or comparison.stdout.strip() or "git diff failed"
         fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
     return False
+
+
+def staged_path_changed(repo: Path, relative: Path) -> bool:
+    """Return whether the real index changes one path from HEAD."""
+
+    entries = index_entries(repo, relative)
+    if any(entry.stage != "0" for entry in entries):
+        fail(
+            f"checkpoint path {relative.as_posix()} has unresolved index conflicts; "
+            "resolve them before checkpointing"
+        )
+    return diff_changed(repo, relative, cached=True)
 
 
 def path_change_state(repo: Path, relative: Path) -> tuple[bool, bool]:
@@ -795,7 +815,9 @@ def current_checkpoint_path_text(repo: Path, relative: Path) -> str | None:
 def read_checkpoint_ledger(repo: Path, effort: str) -> tuple[Path, str, dict[str, Entry]]:
     """Read the ledger version that the checkpoint staging plan will commit."""
 
-    config = current_checkpoint_path_text(repo, CONFIG_REL) or load_config(repo)
+    config = current_checkpoint_path_text(repo, CONFIG_REL)
+    if config is None:
+        fail(f"planning configuration is missing at {CONFIG_REL.as_posix()}; repair it before checkpointing")
     relative = ledger_relative_path(repo, effort, config)
     text = current_checkpoint_path_text(repo, relative)
     if text is None:
@@ -818,7 +840,8 @@ def validate_checkpoint_stage_paths(repo: Path, paths: Sequence[Path]) -> None:
         if tracked.returncode not in (0, 1):
             detail = tracked.stderr.strip() or tracked.stdout.strip() or "git ls-files failed"
             fail(f"could not validate checkpoint path {relative.as_posix()}: {detail}")
-        if tracked.returncode == 1 and (repo / relative).exists():
+        head_entry = tree_entry(repo, "HEAD", relative) if tracked.returncode == 1 else None
+        if tracked.returncode == 1 and (repo / relative).exists() and head_entry is None:
             ignored = run_git(repo, "check-ignore", "--quiet", "--", relative.as_posix(), check=False)
             if ignored.returncode == 0:
                 fail(
@@ -830,6 +853,12 @@ def validate_checkpoint_stage_paths(repo: Path, paths: Sequence[Path]) -> None:
                 fail(f"could not validate checkpoint path {relative.as_posix()}: {detail}")
         dry_run = run_git(repo, "add", "--dry-run", "--", relative.as_posix(), check=False)
         if dry_run.returncode != 0:
+            entries = index_entries(repo, relative)
+            staged_deletion = not entries and (
+                head_entry is not None or tree_entry(repo, "HEAD", relative) is not None
+            )
+            if staged_deletion:
+                continue
             detail = dry_run.stderr.strip() or dry_run.stdout.strip() or "git add --dry-run failed"
             fail(f"checkpoint path {relative.as_posix()} cannot be staged safely: {detail}")
 
@@ -848,7 +877,7 @@ def prepare_checkpoint_index(
         if sources[relative.as_posix()] == "index":
             entries = index_entries(repo, relative)
             if not entries:
-                run_git(repo, "update-index", "--remove", "--", relative.as_posix(), env=env)
+                run_git(repo, "update-index", "--force-remove", "--", relative.as_posix(), env=env)
                 continue
             if len(entries) != 1 or entries[0].stage != "0":
                 fail(f"checkpoint path {relative.as_posix()} has unresolved index conflicts")
@@ -868,7 +897,7 @@ def prepare_checkpoint_index(
         if absolute.exists():
             run_git(repo, "add", "--", relative.as_posix(), env=env)
         else:
-            run_git(repo, "update-index", "--remove", "--", relative.as_posix(), env=env)
+            run_git(repo, "update-index", "--force-remove", "--", relative.as_posix(), env=env)
     return env
 
 
@@ -895,7 +924,7 @@ def sync_real_index_to_checkpoint(repo: Path, checkpoint: str, paths: Sequence[P
     for relative in paths:
         entry = tree_entry(repo, checkpoint, relative)
         if entry is None:
-            run_git(repo, "update-index", "--remove", "--", relative.as_posix())
+            run_git(repo, "update-index", "--force-remove", "--", relative.as_posix())
             continue
         run_git(
             repo,
@@ -908,12 +937,36 @@ def sync_real_index_to_checkpoint(repo: Path, checkpoint: str, paths: Sequence[P
         )
 
 
+def validate_checkpoint_repository_state(repo: Path) -> None:
+    """Reject commit-in-progress and repository-wide unresolved merge state."""
+
+    merge_head_path = Path(run_git(repo, "rev-parse", "--git-path", "MERGE_HEAD").stdout.strip())
+    if not merge_head_path.is_absolute():
+        merge_head_path = repo / merge_head_path
+    if merge_head_path.exists():
+        fail(
+            "cannot create a Planning checkpoint while a merge is in progress; "
+            "finish the merge before checkpointing"
+        )
+    unmerged = run_git(repo, "ls-files", "--unmerged", "-z", check=False)
+    if unmerged.returncode != 0:
+        detail = unmerged.stderr.strip() or unmerged.stdout.strip() or "git ls-files failed"
+        fail(f"could not inspect repository conflicts before checkpointing: {detail}")
+    if unmerged.stdout:
+        fail(
+            "cannot create a Planning checkpoint while unresolved index conflicts exist; "
+            "resolve every conflict before checkpointing"
+        )
+
+
 def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     effort = validate_effort(args.effort)
     phase = clean_single_line(args.phase.lower(), "phase")
     required = required_for_phase(phase)
     subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
-    ensure_config(repo)
+    validate_checkpoint_repository_state(repo)
+    if not staged_path_changed(repo, CONFIG_REL):
+        ensure_config(repo)
     ledger_relative, _, entries = read_checkpoint_ledger(repo, effort)
     selected_entries = selected_checkpoint_entries(entries, phase, args.decisions)
     missing = missing_coverage(selected_entries, required)
@@ -1231,7 +1284,10 @@ def validate_checkpoint_ownership(
         relative = relative_path(repo, raw_path)
         if relative.as_posix() != raw_path:
             fail(f"Planning checkpoint {checkpoint} has a non-canonical owned path: {raw_path}")
-        owned.add(relative.as_posix())
+        canonical = relative.as_posix()
+        if canonical in owned:
+            fail(f"Planning checkpoint {checkpoint} lists duplicate owned path: {canonical}")
+        owned.add(canonical)
     if not base_paths.issubset(owned):
         fail(
             f"Planning checkpoint {checkpoint} ownership must include config and declared ledger "
@@ -1248,11 +1304,11 @@ def validate_checkpoint_ownership(
             f"Planning checkpoint {checkpoint} is extra-only; its changed diff must include "
             "the planning configuration or declared ledger"
         )
-    for raw_path in sorted(changed - base_paths):
+    for raw_path in sorted(owned - base_paths):
         relative = Path(raw_path)
         if not is_planning_artifact(repo, checkpoint, relative):
             fail(
-                f"Planning checkpoint {checkpoint} changes {raw_path}, which is not identifiable as a "
+                f"Planning checkpoint {checkpoint} lists {raw_path}, which is not identifiable as a "
                 "Planning context artifact"
             )
 
@@ -1400,7 +1456,18 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
     """Aggregate verified commit or ticket evidence, validating supplied tips when present."""
 
     effort = validate_effort(args.effort)
+    if staged_path_changed(repo, CONFIG_REL):
+        fail(
+            "coverage aggregation cannot run while the planning configuration has staged changes; "
+            "create a checkpoint first"
+        )
     load_config(repo)
+    configured_ledger = ledger_relative_path(repo, effort)
+    if staged_path_changed(repo, configured_ledger):
+        fail(
+            f"coverage aggregation cannot run while the Decision ledger has staged changes at "
+            f"{configured_ledger.as_posix()}; create a checkpoint first"
+        )
     ledger_relative, ledger_text, entries = read_ledger(repo, effort)
     checkpoint_raw = args.checkpoint or find_checkpoint(repo, effort, ledger_relative)
     checkpoint = resolve_commit(repo, checkpoint_raw, "checkpoint")
@@ -1560,6 +1627,16 @@ def validate_checkpoint_commit(
     config_exists = run_git(repo, "cat-file", "-e", config_object, check=False)
     if config_exists.returncode != 0:
         fail("Planning checkpoint does not contain the planning configuration")
+    try:
+        config_snapshot = run_git(repo, "show", config_object).stdout
+    except UnicodeDecodeError:
+        fail("Planning checkpoint planning configuration is not valid text")
+    snapshot_ledger_relative = ledger_relative_path(repo, effort, config_snapshot)
+    if snapshot_ledger_relative != ledger_relative:
+        fail(
+            f"Planning checkpoint configuration resolves to {snapshot_ledger_relative.as_posix()}, "
+            f"not the declared ledger {ledger_relative.as_posix()}"
+        )
     object_path = f"{checkpoint_sha}:{ledger_relative.as_posix()}"
     exists = run_git(repo, "cat-file", "-e", object_path, check=False)
     if exists.returncode != 0:
@@ -1908,11 +1985,15 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     coverage_aggregate = coverage_commands.add_parser(
-        "aggregate", help="atomically aggregate verified commits or ticket evidence"
+        "aggregate",
+        help="atomically aggregate verified commits or ticket evidence without staged Planning paths",
     )
     add_aggregate_arguments(coverage_aggregate)
 
-    checkpoint = commands.add_parser("checkpoint", help="create a phase-aware Git Planning checkpoint")
+    checkpoint = commands.add_parser(
+        "checkpoint",
+        help="create a phase-aware Git Planning checkpoint from a clean merge/conflict state",
+    )
     checkpoint.add_argument("--effort", required=True)
     checkpoint.add_argument("--phase", required=True, choices=PHASES)
     checkpoint.add_argument("--message")
