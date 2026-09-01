@@ -11,6 +11,7 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Issue tracker**: where issues live (GitHub by default; local markdown is also supported out of the box)
 - **Triage labels**: the strings used for the five canonical triage roles
 - **Domain docs**: where `CONTEXT.md` and ADRs live, and the consumer rules for reading them
+- **Planning discovery**: where a versioned Planning context keeps its per-effort ledger and checkpoint rules
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -25,6 +26,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 - `CONTEXT.md` and `CONTEXT-MAP.md` at the repo root
 - `docs/adr/` and any `src/*/docs/adr/` directories
 - `docs/agents/`: does this skill's prior output already exist?
+- `docs/agents/planning.md`: is Planning context already configured?
 - `.scratch/`: a sign that a local-markdown issue tracker convention is already in use
 - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
 - Monorepo signals: a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. These are present only in a genuinely large multi-package repo; their absence means single-context, which is almost every repo.
@@ -37,7 +39,7 @@ Lead each section with the recommended answer so the user can accept it in a wor
 
 **Section A: Issue tracker.**
 
-> Explainer: The "issue tracker" is where issues live for this repo. Skills like `to-tickets`, `triage`, and `to-spec` read from and write to it. They need to know whether to call `gh issue create`, write a markdown file under `.scratch/`, or follow some other workflow you describe. Pick the place you actually track work for this repo.
+> Explainer: The "issue tracker" is where issues live for this repo. Skills like `to-tickets`, `triage`, and `to-spec` read from and write to it. They need to know whether to call `gh issue create --repo <configured target>`, write a markdown file under `.scratch/`, or follow some other workflow you describe. Pick the place you actually track work for this repo.
 
 Default posture: these skills were designed for GitHub. If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
 
@@ -46,7 +48,7 @@ Default posture: these skills were designed for GitHub. If a `git remote` points
 - **Local markdown**: issues live as files under `.scratch/<feature>/` in this repo (good for solo projects or repos without a remote)
 - **Other** (Jira, Linear, etc.): ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
 
-Record the choice in `docs/agents/issue-tracker.md`. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later.
+Record the choice in `docs/agents/issue-tracker.md`. The GitHub template must preserve the configured `owner/repository` as an explicit target on every `gh` operation, because repository inference can reach an upstream remote. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later.
 
 **Section B: Triage label vocabulary.** Skip this section entirely if the `triage` skill isn't installed (exploration told you), since an uninstalled skill needs no labels.
 
@@ -66,6 +68,7 @@ Show the user a draft of:
 
 - The `## Agent skills` block to add to whichever of `CLAUDE.md` / `AGENTS.md` is being edited (see step 4 for selection rules)
 - The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, and `docs/agents/triage-labels.md` (the last only when `triage` is installed)
+- The default Planning context discovery that `planning-context` will add to `docs/agents/planning.md`
 
 Let them edit before writing.
 
@@ -109,8 +112,17 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [triage-labels.md](./triage-labels.md): label mapping (only if `triage` is installed)
 - [domain.md](./domain.md): domain doc consumer rules + layout
 
+When the GitHub choice is confirmed, resolve the seed before copying it: replace every literal `<owner>/<repo>` with the confirmed configured `owner/repository` target from `docs/agents/issue-tracker.md`. Verify that the generated `docs/agents/issue-tracker.md` contains no `<owner>/<repo>` placeholder, every `gh issue` or `gh pr` operation passes `--repo <configured target>`, and every `gh api` path starts with `repos/<configured target>/`. Never copy the seed verbatim or infer a target from the checkout.
+
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
+
+After the repository choices are confirmed, call the Skill tool with `planning-context` to initialize the default Planning context discovery. It creates `docs/agents/planning.md` for a new repository and lazily appends the versioned block to an existing file without replacing its content.
+
+### Planning discovery modes
+
+- **New repository**: `planning-context` creates the default `docs/agents/planning.md`, which tells later sessions where to resolve per-effort ledgers and Planning checkpoints.
+- **Existing repository**: the first Planning context use performs lazy migration. An initialized `planning.md` stays byte-for-byte unchanged; an older file keeps its notes and receives the default versioned block once. Setup does not replace existing planning content.
 
 ### 5. Done
 
-Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later; re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.
+Tell the user the setup is complete and which engineering skills will now read from these files. Mention that `planning-context` now owns versioned ledgers and checkpoints, and that existing repositories can receive its default block on first use. They can edit `docs/agents/*.md` directly later; re-running this skill is only necessary if they want to switch issue trackers or restart from scratch.

@@ -4,6 +4,10 @@
 
 Every ticket is a **tracer bullet**: a narrow but complete path through every layer of the change (schema, API, UI, tests) that can be demoed on its own the moment it lands. That is the constraint that makes it behave differently from the obvious way to split work, which is to cut one layer at a time and integrate at the end. It also sizes each ticket to fit in a single fresh [context window](https://www.aihero.dev/ai-coding-dictionary/context-window), because the thing that will pick the ticket up is a [session](https://www.aihero.dev/ai-coding-dictionary/session) that has never seen your spec.
 
+When the source has an active Planning context, each ticket carries only the decision IDs that affect it, one actionable consequence per ID, and acceptance criteria that make those consequences observable. The ledger remains the source for rationale. Every active entry with a ticket obligation is covered by at least one ticket, while a process or out-of-scope entry gets a written non-ticket justification instead of an artificial slice.
+
+A cleared Wayfinder map uses this same contract. Preserve each resolved Decision ticket's active ID and consequence when slicing the implementation work, and read the map and its tickets as pointers to the ledger rather than as another rationale source.
+
 ## When to reach for it
 
 You invoke this by typing `/to-tickets`. The [agent](https://www.aihero.dev/ai-coding-dictionary/agent) won't reach for it on its own.
@@ -20,7 +24,7 @@ Tickets that `to-tickets` produced are agent-ready by construction. Don't run [t
 
 ## Prerequisites
 
-`to-tickets` publishes into a tracker, so [setup-matt-pocock-skills](https://aihero.dev/skills-setup-matt-pocock-skills) must have configured one for this repo, along with the triage-label vocabulary. Either kind works: a real tracker like GitHub or Linear, or local markdown files under `.scratch/`, which is supported out of the box.
+`to-tickets` publishes into a tracker, so [setup-matt-pocock-skills](https://aihero.dev/skills-setup-matt-pocock-skills) must have configured one for this repo, along with the triage-label vocabulary. Either kind works: a real tracker like GitHub or Linear, or local markdown files under `.scratch/`, which is supported out of the box. A Planning-enabled source also needs a resolvable intermediate checkpoint and ledger from [planning-context](https://aihero.dev/skills-planning-context); a legacy source without its marker remains valid without them.
 
 ## Tracer bullets, not layers
 
@@ -40,6 +44,12 @@ The edges are the point of the artifact. They read two ways depending on the tra
 | A real tracker (GitHub, Linear) | Native blocking links, or sub-issues where the tracker has them | Any ticket whose blockers are done is on the **frontier** and can be grabbed |
 
 The edges live in the ticket either way. The medium only decides whether anything can act on them in parallel. `to-tickets` produces the artifact; running it (one session at a time, or a fleet) is your job, not the skill's.
+
+## Planning coverage and the final gate
+
+The published marker in each ticket names the exact checkpoint and only that ticket's decision IDs. After publishing, `planning-context` records ticket evidence for every mapped entry. A non-ticket decision is complete only when its coverage evidence states why no implementation ticket applies. Once all ticket obligations are covered, `planning-context` creates the final checkpoint. It fails with the pending IDs while any specification or ticket obligation remains unresolved. Before publishing or refreshing any remote marker, resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. The parent spec and every child ticket then receive a regenerated marker with the final checkpoint SHA.
+
+Read `docs/agents/issue-tracker.md` before writing to a remote tracker. For GitHub, copy its configured `owner/repository` into every `gh` command's explicit `--repo owner/repository` option, and use `repos/owner/repository/...` for `gh api`. After the final checkpoint, push and verify the configured remote and branch before updating each child with `gh issue edit <child> --repo owner/repository --body "<body with the regenerated marker>"`. Never infer a target from the checkout or a remote, especially when an upstream repository is also configured.
 
 ## The wide-refactor exception
 
@@ -62,10 +72,22 @@ Over-decomposition is the most reported friction on this skill, and it is consis
 This is the failure the vertical-slice rule is written against, and the skill still produces it sometimes. Catch it at the quiz step by asking one question per ticket: what can I demo when this is done? A ticket with no answer is a horizontal slice. Some people add a "demo path" line to each ticket for this reason, and report it nudges the model toward vertical decomposition.
 
 **On GitHub the tickets weren't created as sub-issues of the spec issue.**
-Known and unfixed. It has been reported across a dozen runs and several models, [most fully in issue #554](https://github.com/mattpocock/skills/issues/554), and it is worse on Codex than on Claude. `gh` has supported this natively since v2.94: `gh issue create --parent <n>`, and `gh issue edit <parent> --add-sub-issue <n>` after the fact. Until the tracker template prefers those, wiring the parent links yourself after a run is the reliable move.
+Known and unfixed. It has been reported across a dozen runs and several models, [most fully in issue #554](https://github.com/mattpocock/skills/issues/554), and it is worse on Codex than on Claude. `gh` has supported this natively since v2.94: `gh issue create --repo owner/repository --parent <n>`, and `gh issue edit <parent> --repo owner/repository --add-sub-issue <n>` after the fact. Until the tracker template prefers those, wiring the parent links yourself after a run is the reliable move.
 
 **"Blocked by" was written into the issue body instead of a real blocking link.**
-Same class of problem, [reported in issue #513](https://github.com/mattpocock/skills/issues/513), where the agent went as far as asserting GitHub has no native blocking relationship at all. It does: `gh issue create --blocked-by 12,15`. Because blockers are published first, their numbers are always available at creation time. The body text is meant to be the fallback for trackers with no native edge, not the default.
+Same class of problem, [reported in issue #513](https://github.com/mattpocock/skills/issues/513), where the agent went as far as asserting GitHub has no native blocking relationship at all. It does: `gh issue create --repo owner/repository --blocked-by 12,15`. Because blockers are published first, their numbers are always available at creation time. The body text is meant to be the fallback for trackers with no native edge, not the default.
+
+**Why does a ticket repeat a decision ID but not its rationale?**
+The ID is the stable traceability link, and the consequence is the focused instruction the ticket needs. The ledger owns the canonical decision and rationale, so copying them into every child would create drift. A ticket may mention only the IDs and consequences relevant to its own acceptance criteria.
+
+**What happens to a decision that should not become a ticket?**
+Record a concise non-ticket or not-applicable reason in Planning coverage, using the ledger's declared obligation and evidence. The final gate accepts that explicit justification; it does not require an artificial implementation ticket.
+
+**Why is there a checkpoint after ticket publication?**
+The intermediate checkpoint lets the spec and tickets point to a durable ledger while they are being drafted. The final checkpoint is the fail-closed boundary before fresh implementation work, and it cannot succeed while required specification or ticket coverage is pending.
+
+**Why must GitHub commands name `--repo`?**
+The configured tracker target is authoritative. An explicit fully qualified target prevents a checkout with an upstream remote or stale `gh` context from publishing the spec, child tickets, edges, or marker updates elsewhere.
 
 **Where do the local tickets go? The v1.1 notes said a root-level `tickets.md`.**
 They did, and that was a bug: a single shared file also raced when parallel agents wrote to it. Local mode now writes one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, in dependency order, matching the layout the local tracker template already described. The `NN` prefix is a real ticket ID, so `/implement 03` works instead of retyping a long title.
@@ -87,13 +109,15 @@ The skill stops at the artifact, and there is no auto-dispatch mode. Dispatch is
 - Nothing in a ticket body is a file path or a line number, except a snippet a prototype produced.
 - Each ticket reads like something a fresh session could finish without you in the room.
 - Prefactoring, where it found any, is at the front of the order rather than mixed into feature tickets.
+- With Planning context active, every ticket lists only its relevant decision IDs, consequences, and criteria, and every active ticket obligation is covered or explicitly justified as non-ticket.
+- The final checkpoint is refused with named pending coverage and succeeds only after the parent spec and children have evidence.
 
 ## Where it fits
 
 `to-tickets` is a step in the main build chain:
 
 ```txt
-grill-with-docs → to-spec → to-tickets → implement → code-review
+grill-with-docs → intermediate checkpoint → to-spec → to-tickets → final checkpoint → implement → code-review
 ```
 
-Upstream is [to-spec](https://aihero.dev/skills-to-spec), which hands it a settled spec to slice against; keep both in one unbroken context window. Downstream is [implement](https://aihero.dev/skills-implement), which builds one ticket per fresh session, driving [tdd](https://aihero.dev/skills-tdd) for the tests and closing with [code-review](https://aihero.dev/skills-code-review). When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+Upstream is [to-spec](https://aihero.dev/skills-to-spec), which hands it a settled spec and decision coverage to slice against; keep both in one unbroken context window. Beside it is [planning-context](https://aihero.dev/skills-planning-context), which records ticket evidence and owns the final gate. Downstream is [implement](https://aihero.dev/skills-implement), which builds one ticket per fresh session after that gate, driving [tdd](https://aihero.dev/skills-tdd) for the tests and closing with [code-review](https://aihero.dev/skills-code-review). When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.

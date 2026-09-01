@@ -1,8 +1,24 @@
 # Matt Pocock Skills
 
-A collection of agent skills (slash commands and behaviors) loaded by Claude Code. Skills are organized into buckets and consumed by per-repo configuration emitted by `/setup-matt-pocock-skills`.
+A fork of Matt Pocock's agent skills, maintained for the user's Codex workflow. Skills are organized into buckets and consumed by per-repo configuration emitted by `/setup-matt-pocock-skills`.
 
 ## Language
+
+**Codex-native adaptation**:
+A change maintained in this fork to improve the user's Codex workflow, even when it diverges from upstream's Claude Code-oriented conventions. It does not imply an upstream contribution.
+_Avoid_: upstream-ready change, upstream contribution
+
+**Planning context**:
+The durable, versioned set of planning knowledge that a fresh implementation session must resolve: the Decision ledger, applicable domain glossary and ADRs, specification, issues, and Planning checkpoint.
+_Avoid_: context window (session-local model input), handoff document (a portable summary)
+
+**Planning checkpoint**:
+The phase boundary before work continues in a fresh session. At this checkpoint, planning knowledge is made durable in a commit and the next session is given resolvable pointers to every required artifact.
+_Avoid_: handoff (does not require durable repository state), save point (does not identify the planning boundary)
+
+**Decision ledger**:
+A versioned record of resolved planning decisions that must remain traceable through specifications, issues, implementation, and verification. It captures material decisions that need durable downstream coverage but do not warrant an ADR.
+_Avoid_: ADR (reserved for architectural decisions), Decision ticket (an unresolved question tracked by `wayfinder`)
 
 **Issue tracker**:
 The tool that hosts a repo's issues: GitHub Issues, Linear, a local `.scratch/` markdown convention, or similar. Skills like `to-tickets`, `to-spec`, and `triage` read from and write to it.
@@ -29,6 +45,9 @@ The consolidated set of applicable changes produced from one review pass. It is 
 - An **Issue tracker** holds many **Issues**
 - An **Issue** carries one **Triage role** at a time
 - A **Decision ticket** is an **Issue** (a child of a `wayfinder:map`)
+- A **Planning context** contains the durable pointers required by a fresh implementation session
+- A **Planning checkpoint** makes a **Decision ledger** and the other required planning artifacts durable before a fresh session
+- A **Decision ticket** may produce a resolved entry in the **Decision ledger**
 - A **Review checkpoint** may produce at most two **Fix batches**, bounded by the initial review and one eligible follow-up
 
 ## Flagged ambiguities

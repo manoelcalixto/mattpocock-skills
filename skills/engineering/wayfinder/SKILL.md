@@ -8,6 +8,16 @@ A loose idea has arrived, too big for one agent session, and wrapped in fog: the
 
 The destination varies per effort, and naming it is the first act of charting: it shapes every ticket. It might be a spec to hand off and iterate on, a decision to lock before planning starts, or a change made in place like a data-structure migration. The map is domain-agnostic: engineering work, course content, whatever fits the shape.
 
+## Planning context
+
+Wayfinder uses the shared Planning context when an effort crosses sessions. Before creating the map, call the Skill tool once with `planning-context` to initialize the effort ledger and create an intermediate checkpoint. Keep the map and its tickets as tracker pointers to that ledger.
+
+When a Decision ticket resolves a material choice, inspect the active entries first. Run `decision reference --effort <effort> --decision DEC-NNN` when one active entry already represents the answer, or run `decision add` once when it does not. Use the returned stable ID exactly once for that ticket. If the answer is ADR-worthy, call the Skill tool with `domain-modeling`, make the ADR canonical, and pass its path with `decision add --adr`; the ledger and ticket point to the ADR without repeating its rationale.
+
+After creating a new entry, create an intermediate checkpoint before publishing the resolution or crossing into another session, then refresh both the map and resolved ticket markers to that checkpoint and active ID. The map's **Decisions so far** keeps only a linked ticket and short gist, while the ledger or its ADR remains the canonical rationale. When the map clears, hand off through `to-spec` and `to-tickets`; a fresh build session waits for their final Planning checkpoint gate to pass.
+
+Before publishing or refreshing an external Planning marker, read `docs/agents/issue-tracker.md` and resolve the configured Git remote and branch from repository or workflow configuration. Require one unambiguous remote and branch, then run `git push <configured-remote> HEAD:<configured-branch>` and verify that the checkpoint is reachable there before any tracker write. If the remote or branch is absent, ambiguous, or cannot be verified, stop and repair the configuration. Use the configured tracker target for every tracker operation. Do not invent `origin`, a branch, or a fallback target. This is the same publication gate used by `planning-context`, `to-spec`, and `to-tickets`.
+
 ## Plan, don't do
 
 Wayfinder is **planning** by default: each ticket resolves a decision, and the map is done when the way is clear, with nothing left to decide before someone goes and does the thing. The pull to just do the work is usually the signal you've reached the edge of the map and it's time to hand off. An effort can override this in its **Notes**, carrying execution into the map itself, but absent that, produce decisions, not deliverables.
@@ -50,6 +60,10 @@ The whole map at low resolution, loaded once per session. Open tickets are **not
 ## Out of scope
 
 <!-- see "Out of scope": work ruled beyond the destination; closed, never graduates -->
+
+## Planning context
+
+<!-- the marker produced by planning-context after the effort checkpoint exists -->
 ```
 
 ### Tickets
@@ -110,10 +124,11 @@ User invokes with a loose idea.
 
 1. **Name the destination.** Call the Skill tool twice, for "grilling" and "domain-modeling", to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
 2. **Map the frontier.** Grill again, **breadth-first** this time: fan out across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. **If this surfaces no fog** (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop and ask the user how they'd like to proceed.
-3. **Create the map** (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**.
-4. **Create the tickets you can specify now** as child issues of the map, then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the **Not yet specified** section.
-5. **Fire the research subagents.** For each `research` ticket you just created, spin up a subagent that calls the Skill tool with "research" to resolve it in parallel, capturing its findings on a throwaway `research/<name>` branch with a context pointer from the ticket.
-6. Stop: charting is one session's work; it hand-resolves nothing.
+3. **Initialize the Planning context.** Call the Skill tool once with `planning-context`, create the per-effort ledger, and create an intermediate checkpoint before the map is published. Add the returned marker to the map's Planning context section.
+4. **Create the map** (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into **Not yet specified**, and the Planning context marker pointing at the checkpoint. Use the configured tracker target for this operation.
+5. **Create the tickets you can specify now** as child issues of the map, then wire blocking edges in a **second pass** (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the **Not yet specified** section.
+6. **Fire the research subagents.** For each `research` ticket you just created, spin up a subagent that calls the Skill tool with "research" to resolve it in parallel, capturing its findings on a throwaway `research/<name>` branch with a context pointer from the ticket.
+7. Stop: charting is one session's work; it hand-resolves nothing.
 
 ### Work through the map
 
@@ -122,7 +137,10 @@ User invokes with a map (URL or number). A ticket is **optional**: without one, 
 1. Load the **map**: the low-res view, not every ticket body.
 2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. **Claim it**: assign it to yourself before any work.
 3. Resolve it. **Zoom as needed**: fetch the full body of any related or closed ticket on demand; call the Skill tool for whichever skills the `## Notes` block names. If in doubt, call the Skill tool twice, for "grilling" and "domain-modeling".
-4. Record the resolution: post the answer as a **resolution comment**, **close** the issue, and **append a context pointer** to the map's Decisions-so-far.
-5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from **Not yet specified** so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, **rule it out of scope** rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
+4. For a material Decision ticket, use the Planning context procedure above: reference one active ledger ID or create exactly one entry, then create an intermediate checkpoint when a new entry was added. Refresh the map and ticket markers to that checkpoint with coherent active IDs. Keep the map's gist free of the ledger's canonical rationale.
+5. Record the resolution: post the answer and its Planning context pointer as a **resolution comment**, **close** the issue, and **append a context pointer** to the map's Decisions-so-far. Use the configured tracker target for each operation.
+6. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from **Not yet specified** so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, **rule it out of scope** rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
 
 The user may run unblocked tickets in parallel, so expect other sessions to be editing the tracker concurrently.
+
+When the map has no remaining in-scope decisions, hand off to `to-spec` with the map as its source, then to `to-tickets`. Do not open a build session from the map alone. The final Planning checkpoint is the gate that permits a fresh build session after specification and ticket coverage are complete.

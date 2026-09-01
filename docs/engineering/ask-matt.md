@@ -26,10 +26,11 @@ The tracker-dependent routes (triage, `to-spec`, `to-tickets`, `implement`) assu
 
 The word the skill gives you to think with is **flow**: a path *through* the skills, not a single one. Naming your situation places you on a flow at a step, which is a different answer from "here is the skill that matches your keywords". Four kinds of route exist, and the skill itself carries them in full:
 
-- **The main flow**, idea to ship. Grill, spec, tickets, implement, then one bounded review checkpoint, with two branches inside it: a prototype detour when a question needs runnable code to settle, and the spec-and-tickets split, which only earns its cost when the build spans more than one session. After ticketing, an installed beta `implement-spec` can orchestrate the whole graph into one draft PR and one integrated checkpoint; otherwise `/implement` handles one ticket and one checkpoint per invocation.
+- **The main flow**, idea to ship. Grill, record material decisions, create an intermediate Planning checkpoint, synthesize the spec, distribute decision consequences into tickets, create the final checkpoint, then start implementation in a fresh session and review. It still has two branches inside it: a prototype detour when a question needs runnable code to settle, and the spec-and-tickets split, which only earns its cost when the build spans more than one session. Small work without a formal Planning context stays in the current session and does not gain a spec, ticket graph, or checkpoint just for changing phases. After ticketing, an installed beta `implement-spec` can orchestrate the whole graph into one draft PR and one integrated checkpoint; otherwise `/implement` handles one ticket and one checkpoint per invocation in a fresh session. A subagent or other fresh context is the same boundary and reuses the exact checkpoint while Planning artifacts remain unchanged.
+- **Wayfinder handoff**, for a map that has cleared. Each resolved material Decision ticket references one active ledger ID or creates exactly one entry, and the map keeps only a linked gist. The ID and its consequence travel through `to-spec` and `to-tickets`; the final Planning checkpoint gates a fresh build session or subagent. The handoff carries the checkpoint and artifact pointers, not a second copy of the ledger, spec, tickets, or ADR.
 - **On-ramps**, for a situation that generates work and then merges onto the main flow: incoming bug reports, something broken, or an effort too foggy and too large to hold in one session.
 - **Standalones**, off every flow, reached for on their own terms: the prototype, the questionnaire, the merge conflict you are already sitting in.
-- **A vocabulary layer underneath**, the two references the other skills pull in when the words rather than the process are the problem.
+- **A vocabulary and context layer underneath**, the three model-invoked references the other skills pull in when the words or the cross-session contract rather than the process are the problem.
 
 ## The phase boundary
 
@@ -39,8 +40,8 @@ The other idea it hands you is the **phase boundary**. A phase is a chunk of wor
 | --- | --- |
 | **Continue** | The next phase wants this one verbatim, or you have [smart zone](https://www.aihero.dev/ai-coding-dictionary/smart-zone) left. It is the only move that keeps the session as a [primary source](https://www.aihero.dev/ai-coding-dictionary/primary-source), so rule it out first |
 | **`/clear`** | Everything behind you is disposable. Cheapest move on the board, and one-way if you were wrong |
-| **[handoff](https://aihero.dev/skills-handoff)** | Something has to travel: a new [harness](https://www.aihero.dev/ai-coding-dictionary/harness), a new directory, a colleague, a side task forked mid-phase |
-| **Subagent** | The task is scoped tightly enough to run with you [away from the keyboard](https://www.aihero.dev/ai-coding-dictionary/afk) |
+| **[handoff](https://aihero.dev/skills-handoff)** | Something has to travel: a new [harness](https://www.aihero.dev/ai-coding-dictionary/harness), a new directory, a colleague, a side task forked mid-phase. With an active Planning context, checkpoint before a fresh session and carry only resolvable artifact pointers |
+| **Subagent** | The task is scoped tightly enough to run with you [away from the keyboard](https://www.aihero.dev/ai-coding-dictionary/afk); with active Planning context, checkpoint first or reuse the exact checkpoint while its artifacts stay unchanged |
 | **`/compact`** | None of the above. The default, and it lands here often |
 
 Two of those are routinely got wrong, which is why the router carries the order rather than the list. `/handoff` reads like the general bridge between windows and is not: portability is the whole of what it buys. `/compact` is the bottom of the tree rather than the first reach, because the four questions above it are each cheaper or more precise.
@@ -80,7 +81,7 @@ Check the changelog for a rename before assuming it is gone. `writing-great-skil
 ## It's working if
 
 - It ends by naming what to type and stops there, instead of starting the work itself.
-- The route it gives back mentions where to clear or compact context and where the single bounded review checkpoint sits, not just a list of skill names.
+- The route it gives back mentions where Planning checkpoints sit, where to clear or compact context, and where the single bounded review checkpoint sits, not just a list of skill names.
 - For a whole ticket graph, it distinguishes an installed `/implement-spec` orchestration from `/implement` per ticket.
 - Where two skills are close, it says which one and why the other is wrong for you.
 - Any claim it makes about another skill's behaviour shows up in the trace as it reading that skill's `SKILL.md`.
@@ -88,6 +89,6 @@ Check the changelog for a rename before assuming it is gone. `writing-great-skil
 
 ## Where it fits
 
-`ask-matt` is a **standalone router** that sits over the whole set. It is never a step in a chain; it points into every chain, and it is the node the other docs pages link back to so none of them has to redraw the graph. From here you most often land on [grill-with-docs](https://aihero.dev/skills-grill-with-docs), the head of the main flow, or [triage](https://aihero.dev/skills-triage), the on-ramp for work that arrived rather than work you started.
+`ask-matt` is a **standalone router** that sits over the whole set. It is never a step in a chain; it points into every chain, and it is the node the other docs pages link back to so none of them has to redraw the graph. Its vocabulary layer now also includes [planning-context](https://aihero.dev/skills-planning-context), which keeps the ledger and checkpoint contract coherent when work crosses sessions. At a phase boundary, an active Planning context must be checkpointed before `/compact`, `/handoff`, `/clear`, a subagent, or another fresh context boundary. An unchanged subagent may reuse the exact checkpoint; a changed Planning artifact needs a new checkpoint. From here you most often land on [grill-with-docs](https://www.aihero.dev/skills-grill-with-docs), the head of the main flow, or [triage](https://aihero.dev/skills-triage), the on-ramp for work that arrived rather than work you started.
 
 It is a [secondary source](https://www.aihero.dev/ai-coding-dictionary/secondary-source) over the skills it describes. Where the router and a `SKILL.md` disagree, the `SKILL.md` is right.

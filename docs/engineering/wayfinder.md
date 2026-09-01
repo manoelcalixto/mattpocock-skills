@@ -39,6 +39,14 @@ Four things live on it:
 
 The **frontier** is the open, unblocked, unclaimed tickets (the edge of the known). A session claims a ticket by assigning it to itself before doing any work, so the assignee *is* the claim and concurrent sessions skip it. Tickets are referred to by name throughout, never by a bare `#42`; a wall of issue numbers is illegible in narration.
 
+## Planning context and handoff
+
+Resolved material Decision tickets use the same per-effort Planning ledger as the main flow. The resolver checks active entries, references one existing ID or creates exactly one new entry, and carries that one stable ID in the ticket's Planning context marker. An ADR-worthy answer keeps its canonical rationale in the ADR; the ledger and ticket point to it. The map remains an index with a linked ticket and short gist, so it does not become a second rationale store. When a new entry creates an intermediate checkpoint, refresh both map and ticket markers to that checkpoint before publishing the resolution.
+
+Before publishing or refreshing an external marker, read `docs/agents/issue-tracker.md` and resolve the configured Git remote and branch from repository or workflow configuration. Require one unambiguous pair, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there before writing to the tracker. If either setting is absent, ambiguous, or cannot be verified, stop and repair the configuration. Use the configured tracker target for every operation. Do not invent `origin`, a branch, or a fallback target. This gate stays aligned with [planning-context](https://aihero.dev/skills-planning-context), [to-spec](https://aihero.dev/skills-to-spec), and [to-tickets](https://aihero.dev/skills-to-tickets).
+
+The map can move toward a build only through the shared coverage contract: [to-spec](https://aihero.dev/skills-to-spec) accounts for the active IDs, [to-tickets](https://aihero.dev/skills-to-tickets) maps their consequences, and the final Planning checkpoint proves the required coverage. A fresh build session starts only after that gate passes.
+
 ## The four decision-ticket types
 
 Every ticket carries a `wayfinder:<type>` label, and is either **[HITL](https://www.aihero.dev/ai-coding-dictionary/human-in-the-loop)** (worked with a human who speaks for themselves) or **[AFK](https://www.aihero.dev/ai-coding-dictionary/afk)**, driven by the agent alone. A HITL ticket only resolves through the live exchange; an agent that answers its own [grilling](https://www.aihero.dev/ai-coding-dictionary/grilling) questions has broken it.
@@ -65,6 +73,13 @@ The whole map. That means the destination of the entire map, not just the initia
 **The map is cleared. Didn't wayfinder already write the spec and make the tickets? Why do I still need `/to-spec` and `/to-tickets`?**
 No. Wayfinder's tickets are decision tickets, and by the time the map closes they are all closed too. What is left is a map full of linked decisions, which is not a build plan. [to-spec](https://aihero.dev/skills-to-spec) collapses those linked decisions into one spec (`/to-spec #<map_issue>`) and [to-tickets](https://aihero.dev/skills-to-tickets) slices that into tracer-bullet implementation tickets. Looping the map straight into [implement](https://aihero.dev/skills-implement) skips the collapse and throws the linked detail away. Go straight to implementation only when the effort turned out genuinely small. People do run the abbreviated pipeline and report it working; the two extra steps buy you an explicit spec artifact that a reviewer or a colleague can read, which matters more the less solo you are.
 
+**How does a resolved Decision ticket reach the Planning ledger without duplicating its rationale?**
+The resolver checks the active entries and either references one existing `DEC-NNN` ID or creates exactly one new entry through `planning-context`. The ticket carries that one active ID and points to the ledger or its ADR, while the map keeps only a linked gist. The map and ticket markers are regenerated after each new resolution checkpoint, so the same ID and current SHA travel through the spec, its implementation tickets, and the final checkpoint coverage.
+
+**Why must I push before publishing a Planning marker?**
+
+The marker contains a commit that the consumer must resolve. Before publication or refresh, resolve the configured Git remote and branch, run `git push <configured-remote> HEAD:<configured-branch>`, and verify that the checkpoint is reachable there. Stop if no unambiguous target exists or the reachability check fails. Never invent `origin`, a branch, or a fallback target.
+
 **My agent started writing production code in the middle of a wayfinder session.**
 The most-reported failure with this skill, and there is a real hole behind it. Wayfinder's "plan, don't do" default can be overridden in the map's **Notes**, but the Notes are written by the agent, so the constraint and its exemption live in the same file the constrained party owns. One user watched an agent write "this map carries execution" into its own Notes and then read it back in later sessions as its own licence, building on a live server. There is no hard in-skill stop for "I meant the default." Until there is: read the Notes on any map you didn't chart yourself, keep implementation in its own sessions, and treat any `wayfinder:task` that looks like a slice of the build as mis-typed.
 
@@ -90,14 +105,18 @@ It is this skill, renamed to `wayfinder` in v1.1 and invoked as `/wayfinder`. "D
 
 - The destination is written down and agreed before a single ticket exists.
 - Every open ticket reads as a question. Any ticket that reads "build the X" is either mis-typed or belongs downstream of the map.
+- Every resolved material Decision ticket carries exactly one active `DEC-NNN` ID, and an existing decision is referenced instead of copied into a second entry.
+- The map's Decisions-so-far line links to the ticket and gives a short gist, while the canonical rationale remains in the ledger or its ADR.
+- The map marker advances with each resolution checkpoint and the final checkpoint, while its selected IDs stay active.
 - You can look at your tracker and see which tickets are takeable without opening the map, since that is the frontier rendering itself through native blocking.
 - A session resolves one ticket, posts the answer as a resolution comment, closes it, and leaves one line on the map's *Decisions so far*. Then it stops.
 - **Not yet specified** shrinks over time. A patch of fog that graduates into a ticket disappears from that section rather than living in both places.
 - When the opening breadth-first grill turns up no fog at all, the skill stops and tells you the effort is small enough to skip the map.
 - The session that finishes the map hands you toward a spec, not a pull request.
+- A fresh build session begins only after `to-spec`, `to-tickets`, and the final Planning checkpoint have supplied the required coverage.
 
 ## Where it fits
 
 `wayfinder` is a **situational on-ramp**, not the default front door. The grill-led idea → ship chain is still where most work starts; wayfinder is what you climb onto when the idea is too big to hold in one session, and it merges back onto that chain at [to-spec](https://aihero.dev/skills-to-spec), because a cleared map hands off rather than builds.
 
-Underneath, it is mostly other skills wearing wayfinder's scheduling: [grilling](https://aihero.dev/skills-grilling) and [domain-modeling](https://aihero.dev/skills-domain-modeling) resolve the default ticket type, [prototype](https://aihero.dev/skills-prototype) resolves the tickets that talking cannot, and [research](https://aihero.dev/skills-research) runs as a subagent so its reading never lands in your session. [handoff](https://aihero.dev/skills-handoff) is the bridge in and out: into a map from a conversation that outgrew itself, out of one when a side quest appears mid-session. For anything else, [ask-matt](https://aihero.dev/skills-ask-matt) routes over the whole set.
+Underneath, it is mostly other skills wearing wayfinder's scheduling: [grilling](https://aihero.dev/skills-grilling) and [domain-modeling](https://aihero.dev/skills-domain-modeling) resolve the default ticket type, [planning-context](https://aihero.dev/skills-planning-context) owns the ledger and checkpoint gate, [prototype](https://aihero.dev/skills-prototype) resolves the tickets that talking cannot, and [research](https://aihero.dev/skills-research) runs as a subagent so its reading never lands in your session. [handoff](https://aihero.dev/skills-handoff) is the bridge in and out: into a map from a conversation that outgrew itself, out of one when a side quest appears mid-session. Wayfinder stays inside this fork's configured tracker and does not create an upstream contribution path. For anything else, [ask-matt](https://aihero.dev/skills-ask-matt) routes over the whole set.
