@@ -93,7 +93,7 @@ Planning-Verification: DEC-001 | npm run test:planning-context
 Planning-Verification: DEC-002 | rendered smoke test at /settings
 ```
 
-When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value and omits `--commit`. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker. The aggregate command still requires at least one valid commit trailer or ticket evidence record. When commits are supplied, the command preserves the ancestry and merged-tip validations described below.
+When the evidence lives only in an already-read remote ticket, the coordinator passes a repeatable `--ticket-evidence "DEC-NNN | origin | observable evidence"` value and omits `--commit`. The origin is mandatory and must identify the validated ticket or local ticket surface. This input is evidence transport, not permission to infer a ticket or to write the ledger from a worker. The aggregate command requires at least one valid commit trailer or ticket evidence record when the selected set contains a decision that declares `verification`; when all selected IDs omit that obligation, evidence records are optional, and any record naming those IDs is rejected. When commits are supplied, the command preserves the ancestry and merged-tip validations described below.
 
 The coordinator must wait until every relevant worker tip is merged into the integration branch and any required bounded review or fix batches are complete, then call the owner with the canonical `coverage aggregate` command:
 
@@ -117,7 +117,7 @@ Planning-Ledger: <relative ledger path>
 Planning-Paths: ["docs/agents/planning.md","<relative ledger path>","<explicit planning artifact>"]
 ```
 
-The commit uses `git commit --only` with the owned path list, so unrelated staged or unstaged work is left outside the checkpoint. An explicit extra should carry a Planning context marker or be a recognized planning source such as `CONTEXT.md`, an ADR, or a map/spec/ticket pointer. The returned full SHA is the pointer for a fresh consumer. Push it only when a remote consumer, pull request, or separate clone needs it, using the configured remote and branch.
+The checkpoint validates and commits those exact paths. It pre-validates every owned path with `git check-ignore` and `git add --dry-run`, then builds an isolated temporary index from `HEAD` plus the owned paths. This preserves unrelated staged or unstaged work and keeps staged-only planning content in the checkpoint instead of replacing it with the working tree. After the commit, only owned index entries are synchronized to the new `HEAD`; a preflight failure leaves the real index and files unchanged. An explicit extra should carry a Planning context marker or be a recognized planning source such as `CONTEXT.md`, an ADR, or a map/spec/ticket pointer. The returned full SHA is the pointer for a fresh consumer. Push it only when a remote consumer, pull request, or separate clone needs it, using the configured remote and branch.
 
 ## Consumer marker
 

@@ -1176,6 +1176,101 @@ def test_checkpoint_snapshot_phase_gate_is_atomic() -> None:
         raise HarnessFailure("snapshot phase validation changed the configuration")
 
 
+def test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        "demo",
+        "--decision",
+        "Keep every final decision covered",
+        "--context",
+        "A final checkpoint must represent the complete active ledger",
+        "--rationale",
+        "A consumer marker cannot hide pending final coverage",
+    )
+    for obligation in ("specification", "tickets"):
+        add_coverage(repo, "demo", "DEC-001", obligation, f"dec-001-{obligation}")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    run_git(repo, "add", config.relative_to(repo).as_posix(), ledger.relative_to(repo).as_posix())
+    run_git(
+        repo,
+        "commit",
+        "-m",
+        "forged partial final checkpoint\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md"]',
+    )
+    checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    context = repo / "partial-final.md"
+    context.write_text(
+        f"## Planning context\n\n"
+        "- Format: v1\n"
+        "- Effort: demo\n"
+        "- Decision ledger: `docs/planning/demo/decision-ledger.md`\n"
+        f"- Planning checkpoint: {checkpoint}\n"
+        "- Decisions: DEC-001\n"
+    )
+    marker_generated = run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--decisions",
+        "DEC-001",
+    )
+    if payload(marker_generated).get("status") != "generated":
+        raise HarnessFailure(f"marker generation did not produce a marker block: {marker_generated}")
+    validate_invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    validate_error = validate_invalid.stdout.lower() + validate_invalid.stderr.lower()
+    if "checkpoint snapshot" not in validate_error or "dec-002" not in validate_error:
+        raise HarnessFailure(f"final validation narrowed a forged snapshot by marker IDs: {validate_invalid}")
+
+
+def test_checkpoint_preserves_staged_planning_content() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "intermediate", "--message", "base checkpoint")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.write_text(config.read_text() + "\n# staged configuration content\n")
+    ledger.write_text(ledger.read_text() + "\n# staged ledger content\n")
+    run_git(repo, "add", config.relative_to(repo).as_posix(), ledger.relative_to(repo).as_posix())
+    run_git(
+        repo,
+        "restore",
+        "--source=HEAD",
+        "--worktree",
+        "--",
+        config.relative_to(repo).as_posix(),
+        ledger.relative_to(repo).as_posix(),
+    )
+    sentinel = repo / "staged-sentinel.txt"
+    sentinel.write_text("keep this staged work\n")
+    run_git(repo, "add", sentinel.name)
+    checkpoint = payload(
+        run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "intermediate", "--message", "staged content")
+    )
+    sha = str(checkpoint["sha"])
+    if "# staged configuration content" not in run_git(repo, "show", f"{sha}:docs/agents/planning.md").stdout:
+        raise HarnessFailure("checkpoint replaced staged configuration with working-tree content")
+    if "# staged ledger content" not in run_git(repo, "show", f"{sha}:docs/planning/demo/decision-ledger.md").stdout:
+        raise HarnessFailure("checkpoint replaced staged ledger with working-tree content")
+    if run_git(repo, "show", f"{sha}:staged-sentinel.txt", check=False).returncode == 0:
+        raise HarnessFailure("checkpoint included unrelated staged work")
+    sentinel_status = run_git(repo, "status", "--porcelain", "--", sentinel.name).stdout.strip()
+    if sentinel_status != "A  staged-sentinel.txt":
+        raise HarnessFailure(f"checkpoint changed unrelated staged work: {sentinel_status!r}")
+
+
 def test_checkpoint_coverage_and_evidence_are_monotonic() -> None:
     repo = init_repo()
     context, checkpoint = prepare_final_context(repo)
@@ -1554,12 +1649,14 @@ def test_implement_planning_closeout_wiring() -> None:
         "checkpoint --phase implementation",
     )
     for phrase in (
-        "one for each applicable decision returned by preflight",
+        "one for each applicable preflight decision that declares `verification`",
         "--decisions <comma-separated-preflight-decision-IDs>",
         "--head <final-reviewed-head-sha>",
         "--commit <final-reviewed-head-sha>",
         "whose behavior that commit verifies or changes",
         "the union of the final history and validated ticket evidence",
+        "filters selected decisions without `verification`",
+        "fails closed when selected verification evidence is missing",
         "Only after aggregation succeeds",
         'If preflight returned "status": "legacy"',
         "never infer a ledger, checkpoint, or coverage aggregation",
@@ -1589,7 +1686,10 @@ def test_implement_planning_closeout_wiring() -> None:
         "--commit <final-reviewed-head-sha>",
         "A worker records only decisions relevant to its ticket",
         "the union of the final history and validated ticket evidence",
-        "every applicable decision ID returned by preflight",
+        "every applicable preflight decision that declares `verification`",
+        "filters selected decisions without `verification`",
+        "ticket-only mode valid",
+        "fails closed when selected verification evidence is missing",
         "Skip this closeout for an entirely markerless graph",
         "do not infer a ledger, coverage aggregation, or Planning checkpoint",
     ):
@@ -1832,6 +1932,26 @@ def test_verification_is_required_only_when_declared() -> None:
         raise HarnessFailure(f"verification evidence for a non-verification decision was accepted: {forged}")
     if ledger.read_text() != before:
         raise HarnessFailure("invalid non-applicable verification evidence changed the ledger")
+    no_verification_record = payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            planning_checkpoint,
+            "--head",
+            "HEAD",
+            "--decisions",
+            "DEC-002",
+        )
+    )
+    if no_verification_record.get("status") != "unchanged" or no_verification_record.get("decisions") != []:
+        raise HarnessFailure(
+            "aggregation required a record for a selected decision without verification: "
+            f"{no_verification_record}"
+        )
     aggregate = payload(
         run_helper(
             repo,
@@ -2649,6 +2769,97 @@ def test_checkpoint_rejects_extra_only_without_staging() -> None:
         raise HarnessFailure("extra-only checkpoint changed the pre-existing index")
     if not extra.exists() or run_git(repo, "status", "--porcelain", "--", extra.name).stdout.strip() != "?? extra-planning.md":
         raise HarnessFailure("extra-only checkpoint altered the extra artifact")
+
+
+def test_checkpoint_validation_rejects_forged_extra_only_commit() -> None:
+    repo = init_repo()
+    prepare_final_context(repo, "forged-extra-only.md")
+    extra = repo / "forged-planning.md"
+    extra.write_text("## Planning context\n\nForged extra artifact.\n")
+    run_git(repo, "add", extra.name)
+    run_git(
+        repo,
+        "commit",
+        "-m",
+        "forged extra-only checkpoint\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md","forged-planning.md"]',
+    )
+    checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    marker_invalid = run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--decisions",
+        "DEC-001",
+        expected=2,
+    )
+    marker_error = marker_invalid.stdout.lower() + marker_invalid.stderr.lower()
+    if "extra-only" not in marker_error or "config" not in marker_error or "ledger" not in marker_error:
+        raise HarnessFailure(f"marker accepted a forged extra-only checkpoint: {marker_invalid}")
+    context = repo / "forged-extra-only-consumer.md"
+    context.write_text(
+        f"## Planning context\n\n"
+        "- Format: v1\n"
+        "- Effort: demo\n"
+        "- Decision ledger: `docs/planning/demo/decision-ledger.md`\n"
+        f"- Planning checkpoint: {checkpoint}\n"
+        "- Decisions: DEC-001\n"
+    )
+    validate_invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    validate_error = validate_invalid.stdout.lower() + validate_invalid.stderr.lower()
+    if "extra-only" not in validate_error:
+        raise HarnessFailure(f"validate accepted a forged extra-only checkpoint: {validate_invalid}")
+
+
+def test_checkpoint_staging_prevalidation_is_atomic() -> None:
+    repo = init_repo()
+    prepare_final_context(repo, "ignored-extra-base.md")
+    gitignore = repo / ".gitignore"
+    gitignore.write_text("ignored-planning.md\n")
+    run_git(repo, "add", gitignore.name)
+    run_git(repo, "commit", "-m", "configure ignored planning artifact")
+    extra = repo / "ignored-planning.md"
+    extra.write_text("## Planning context\n\nIgnored extra artifact.\n")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.write_text(config.read_text() + "\n# prevalidation config change\n")
+    ledger.write_text(ledger.read_text() + "\n# prevalidation ledger change\n")
+    sentinel = repo / "prevalidation-sentinel.txt"
+    sentinel.write_text("already staged\n")
+    run_git(repo, "add", sentinel.name)
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+    before_config = config.read_text()
+    before_ledger = ledger.read_text()
+    before_extra = extra.read_text()
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--path",
+        extra.name,
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "ignored" not in error or "stage it explicitly" not in error:
+        raise HarnessFailure(f"ignored Planning artifact did not fail prevalidation: {invalid}")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("ignored Planning artifact failure created a commit")
+    if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+        raise HarnessFailure("ignored Planning artifact failure changed the index")
+    if config.read_text() != before_config or ledger.read_text() != before_ledger or extra.read_text() != before_extra:
+        raise HarnessFailure("ignored Planning artifact failure changed Planning files")
+    if run_git(repo, "status", "--porcelain", "--", sentinel.name).stdout.strip() != "A  prevalidation-sentinel.txt":
+        raise HarnessFailure("ignored Planning artifact failure changed the staged sentinel")
 
 
 def test_checkpoint_message_validation_precedes_staging() -> None:
@@ -3777,6 +3988,9 @@ def test_repository_wiring() -> None:
     )
     if aggregate_help.returncode != 0 or "optional with ticket evidence" not in aggregate_help.stdout:
         raise HarnessFailure(f"coverage aggregate option help omits ticket-only mode: {aggregate_help.stderr}")
+    normalized_help = " ".join(aggregate_help.stdout.split())
+    if "required only when selected decisions declare verification" not in normalized_help:
+        raise HarnessFailure("coverage aggregate help implies every selected decision needs evidence")
 
     plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
     if "./skills/engineering/planning-context" not in plugin.get("skills", []):
@@ -3945,6 +4159,8 @@ def main() -> int:
         test_validation_and_immutability,
         test_marker_requires_exact_full_checkpoint_sha,
         test_checkpoint_snapshot_phase_gate_is_atomic,
+        test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection,
+        test_checkpoint_preserves_staged_planning_content,
         test_checkpoint_coverage_and_evidence_are_monotonic,
         test_empty_structured_evidence_fails_closed_and_atomically,
         test_checkpointed_json_evidence_is_append_only,
@@ -3965,6 +4181,8 @@ def main() -> int:
         test_checkpoint_ownership_rejects_non_planning_and_mixed_diffs,
         test_checkpoint_ownership_uses_parent_for_deleted_and_renamed_artifacts,
         test_checkpoint_rejects_extra_only_without_staging,
+        test_checkpoint_validation_rejects_forged_extra_only_commit,
+        test_checkpoint_staging_prevalidation_is_atomic,
         test_checkpoint_message_validation_precedes_staging,
         test_verification_aggregation_requires_merged_tips_and_is_atomic,
         test_merged_coordinator_aggregation_and_implementation_checkpoint,
