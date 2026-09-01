@@ -750,6 +750,15 @@ def staged_path_changed(repo: Path, relative: Path) -> bool:
     return diff_changed(repo, relative, cached=True)
 
 
+def checkpoint_config_is_tracked(repo: Path) -> bool:
+    """Return whether the planning configuration exists in HEAD or the index."""
+
+    in_index = bool(index_entries(repo, CONFIG_REL))
+    head = run_git(repo, "rev-parse", "--verify", "HEAD", check=False)
+    in_head = head.returncode == 0 and tree_entry(repo, "HEAD", CONFIG_REL) is not None
+    return in_head or in_index
+
+
 def path_change_state(repo: Path, relative: Path) -> tuple[bool, bool]:
     """Return independent index-vs-HEAD and working-tree-vs-HEAD changes."""
 
@@ -966,6 +975,11 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
     subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
     validate_checkpoint_repository_state(repo)
     if not staged_path_changed(repo, CONFIG_REL):
+        if not (repo / CONFIG_REL).exists() and checkpoint_config_is_tracked(repo):
+            fail(
+                f"planning configuration is missing at {CONFIG_REL.as_posix()}; "
+                "repair it before checkpointing"
+            )
         ensure_config(repo)
     ledger_relative, _, entries = read_checkpoint_ledger(repo, effort)
     selected_entries = selected_checkpoint_entries(entries, phase, args.decisions)

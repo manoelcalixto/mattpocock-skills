@@ -1322,6 +1322,51 @@ def test_checkpoint_respects_staged_configuration_deletion_and_empty_content() -
             raise HarnessFailure(f"staged {mode} configuration failure rewrote the worktree")
 
 
+def test_checkpoint_rejects_unstaged_configuration_deletion_atomically() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--message",
+            "base unstaged deletion",
+        )
+    )
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.unlink()
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+    before_ledger = ledger.read_text()
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--message",
+        "reject unstaged configuration deletion",
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "planning configuration is missing" not in error:
+        raise HarnessFailure(f"unstaged configuration deletion was not rejected clearly: {invalid}")
+    if config.exists():
+        raise HarnessFailure("unstaged configuration deletion was repaired during failed checkpoint")
+    if ledger.read_text() != before_ledger:
+        raise HarnessFailure("unstaged configuration deletion changed the ledger")
+    if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+        raise HarnessFailure("unstaged configuration deletion changed the index")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("unstaged configuration deletion created a commit")
+
+
 def test_checkpoint_supports_staged_extra_deletions_and_renames() -> None:
     for operation in ("rm", "rm-cached", "mv"):
         repo = init_repo()
@@ -4623,6 +4668,7 @@ def main() -> int:
         test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection,
         test_checkpoint_preserves_staged_planning_content,
         test_checkpoint_respects_staged_configuration_deletion_and_empty_content,
+        test_checkpoint_rejects_unstaged_configuration_deletion_atomically,
         test_checkpoint_supports_staged_extra_deletions_and_renames,
         test_coverage_aggregate_rejects_staged_planning_paths_atomically,
         test_checkpoint_coverage_and_evidence_are_monotonic,
