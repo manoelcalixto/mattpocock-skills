@@ -1637,6 +1637,9 @@ def validate_checkpoint_commit(
             f"Planning checkpoint phase {checkpoint_phase} cannot satisfy the requested {required_phase} phase; "
             "create a newer checkpoint"
         )
+    snapshot_phase = "final" if checkpoint_phase == "final" else required_phase
+    if checkpoint_phase == "final":
+        required = required_for_phase("final")
     config_object = f"{checkpoint_sha}:{CONFIG_REL.as_posix()}"
     config_exists = run_git(repo, "cat-file", "-e", config_object, check=False)
     if config_exists.returncode != 0:
@@ -1658,7 +1661,7 @@ def validate_checkpoint_commit(
     snapshot_text = run_git(repo, "show", object_path).stdout
     snapshot = parse_ledger(snapshot_text)
     snapshot_entries = snapshot
-    if selected_decisions and required_phase != "final" and checkpoint_phase != "final":
+    if selected_decisions and snapshot_phase != "final" and checkpoint_phase != "final":
         missing_decisions = sorted(set(selected_decisions) - set(snapshot))
         if missing_decisions:
             fail(
@@ -1672,7 +1675,7 @@ def validate_checkpoint_commit(
     snapshot_missing = missing_coverage(snapshot_entries, required)
     if snapshot_missing:
         fail(
-            f"coverage incomplete for {required_phase} checkpoint snapshot: "
+            f"coverage incomplete for {snapshot_phase} checkpoint snapshot: "
             f"{', '.join(snapshot_missing)}; create a newer checkpoint"
         )
     current_path = repo / ledger_relative

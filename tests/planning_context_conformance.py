@@ -1151,13 +1151,15 @@ def test_checkpoint_snapshot_phase_gate_is_atomic() -> None:
     checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
     add_coverage(repo, "demo", "DEC-001", "specification", "spec.md")
     add_coverage(repo, "demo", "DEC-001", "tickets", "issue-7")
-    context = write_marked_artifact(
-        repo,
-        "demo",
-        checkpoint,
-        "DEC-001",
-        "snapshot-gate.md",
-        "## What to build\n\nThe current ledger completed coverage after the checkpoint.",
+    context = repo / "snapshot-gate.md"
+    context.write_text(
+        "## Planning context\n\n"
+        "- Format: v1\n"
+        "- Effort: demo\n"
+        "- Decision ledger: `docs/planning/demo/decision-ledger.md`\n"
+        f"- Planning checkpoint: {checkpoint}\n"
+        "- Decisions: DEC-001\n\n"
+        "## What to build\n\nThe current ledger completed coverage after the checkpoint.\n"
     )
     before_ledger = ledger.read_text()
     before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
@@ -1217,7 +1219,7 @@ def test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection() -> None:
         f"- Planning checkpoint: {checkpoint}\n"
         "- Decisions: DEC-001\n"
     )
-    marker_generated = run_helper(
+    marker_invalid = run_helper(
         repo,
         "marker",
         "--effort",
@@ -1226,9 +1228,11 @@ def test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection() -> None:
         checkpoint,
         "--decisions",
         "DEC-001",
+        expected=2,
     )
-    if payload(marker_generated).get("status") != "generated":
-        raise HarnessFailure(f"marker generation did not produce a marker block: {marker_generated}")
+    marker_error = marker_invalid.stdout.lower() + marker_invalid.stderr.lower()
+    if "checkpoint snapshot" not in marker_error or "dec-002" not in marker_error:
+        raise HarnessFailure(f"marker generation narrowed a forged final snapshot by marker IDs: {marker_invalid}")
     validate_invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
     validate_error = validate_invalid.stdout.lower() + validate_invalid.stderr.lower()
     if "checkpoint snapshot" not in validate_error or "dec-002" not in validate_error:
