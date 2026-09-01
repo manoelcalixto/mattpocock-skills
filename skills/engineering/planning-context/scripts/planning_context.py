@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -36,7 +38,7 @@ FIELD_PATTERN = re.compile(
     r"^- (Status|Decision|Context|Rationale|ADR|Constraints|Rejected alternatives|Obligations|Superseded by|Supersedes):\s*(.*)$"
 )
 SUBFIELD_PATTERN = re.compile(
-    r"^\s{2,}- (specification|tickets|verification|applicability):\s*(.*)$"
+    r"^(?P<indent>\s{2,})- (?P<field>specification|tickets|verification|applicability):\s*(?P<value>.*)$"
 )
 ENTRY_PATTERN = re.compile(r"^## (DEC-\d{3,})\s*$", re.MULTILINE)
 PLANNING_PATHS_TRAILER = "Planning-Paths"
@@ -96,6 +98,15 @@ class Verification:
     origin: str | None = None
 
 
+@dataclass(frozen=True)
+class IndexEntry:
+    """One stage-zero entry from the repository index."""
+
+    mode: str
+    object_id: str
+    stage: str
+
+
 def fail(message: str) -> None:
     raise PlanningError(message)
 
@@ -105,7 +116,12 @@ def run_git(
     *args: str,
     input_text: str | None = None,
     check: bool = True,
+    env: Mapping[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    command_env = None
+    if env is not None:
+        command_env = os.environ.copy()
+        command_env.update(env)
     result = subprocess.run(
         ["git", *args],
         cwd=repo,
@@ -113,6 +129,7 @@ def run_git(
         input=input_text,
         capture_output=True,
         check=False,
+        env=command_env,
     )
     if check and result.returncode != 0:
         detail = result.stderr.strip() or result.stdout.strip() or "git command failed"
@@ -177,6 +194,7 @@ def ensure_config(repo: Path) -> tuple[str, str]:
 
     suffix = "" if text.endswith("\n") else "\n"
     migrated = f"{text}{suffix}\n{DEFAULT_CONFIG}"
+    ledger_directory(repo, migrated)
     path.write_text(migrated)
     return "migrated", migrated
 
@@ -242,7 +260,7 @@ def parse_entry(block: str, identifier: str) -> Entry:
         subfield_match = SUBFIELD_PATTERN.match(line)
         if subfield_match and section in {"Coverage", "Evidence"}:
             target = coverage if section == "Coverage" else evidence
-            target[subfield_match.group(1)] = subfield_match.group(2).strip()
+            target[subfield_match.group("field")] = subfield_match.group("value").strip()
             continue
         if line.strip() == "- Coverage:":
             section = "Coverage"
@@ -430,6 +448,23 @@ def supersede_entry(text: str, identifier: str, successor: str) -> str:
     return text
 
 
+def section_subfield_indent(lines: Sequence[str], section_name: str) -> str:
+    """Reuse the first valid subfield indentation in a ledger section."""
+
+    in_section = False
+    for line in lines:
+        if line.strip() == f"- {section_name}:":
+            in_section = True
+            continue
+        if line.startswith("-") and line.strip().endswith(":"):
+            in_section = False
+        if in_section:
+            match = SUBFIELD_PATTERN.fullmatch(line)
+            if match:
+                return match.group("indent")
+    return "  "
+
+
 def command_init(repo: Path) -> dict[str, object]:
     status, config = ensure_config(repo)
     ledger_directory(repo, config)
@@ -528,9 +563,12 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
     end = next((item.start() for item in matches if item.start() > match.start()), len(text))
     block = text[match.start() : end]
     lines = block.splitlines()
-    coverage_prefix = f"  - {obligation}:"
+    coverage_indent = section_subfield_indent(lines, "Coverage")
+    evidence_indent = section_subfield_indent(lines, "Evidence")
     if obligation == APPLICABILITY_OBLIGATION and not any(
-        line.startswith(coverage_prefix) for line in lines
+        (subfield := SUBFIELD_PATTERN.fullmatch(line)) is not None
+        and subfield.group("field") == obligation
+        for line in lines
     ):
         coverage_index = next(
             (index for index, line in enumerate(lines) if line.strip() == "- Coverage:"),
@@ -542,10 +580,10 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
         )
         if coverage_index is None or evidence_index is None:
             fail(f"{args.decision} has no applicability coverage and evidence sections")
-        lines.insert(coverage_index + 1, f"  - {APPLICABILITY_OBLIGATION}: pending")
+        lines.insert(coverage_index + 1, f"{coverage_indent}- {APPLICABILITY_OBLIGATION}: pending")
         if evidence_index > coverage_index:
             evidence_index += 1
-        lines.insert(evidence_index + 1, f"  - {APPLICABILITY_OBLIGATION}: none")
+        lines.insert(evidence_index + 1, f"{evidence_indent}- {APPLICABILITY_OBLIGATION}: none")
     section = None
     changed_coverage = False
     changed_evidence = False
@@ -554,14 +592,17 @@ def command_coverage_add(repo: Path, args: argparse.Namespace) -> dict[str, obje
             section = "coverage"
         elif line.strip() == "- Evidence:":
             section = "evidence"
-        elif line.startswith(coverage_prefix):
+        else:
+            subfield = SUBFIELD_PATTERN.fullmatch(line)
+            if subfield is None or subfield.group("field") != obligation:
+                continue
             if section == "coverage":
-                lines[index] = f"  - {obligation}: complete"
+                lines[index] = f"{subfield.group('indent')}- {obligation}: complete"
                 changed_coverage = True
             elif section == "evidence":
                 old = line.split(":", 1)[1].strip()
                 combined = evidence if not old or old.lower() == "none" else f"{old}; {evidence}"
-                lines[index] = f"  - {obligation}: {combined}"
+                lines[index] = f"{subfield.group('indent')}- {obligation}: {combined}"
                 changed_evidence = True
     if not changed_coverage or not changed_evidence:
         fail(f"{args.decision} has no {obligation} coverage and evidence lines")
@@ -642,17 +683,305 @@ def ensure_stage_path(repo: Path, raw_path: str) -> Path:
             fail(f"checkpoint path is a directory: {relative.as_posix()}")
         return relative
     tracked = run_git(repo, "ls-files", "--error-unmatch", "--", relative.as_posix(), check=False)
-    if tracked.returncode != 0:
+    if tracked.returncode == 0:
+        return relative
+    if tracked.returncode not in (1,):
+        detail = tracked.stderr.strip() or tracked.stdout.strip() or "git ls-files failed"
+        fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
+    head_entry = tree_entry(repo, "HEAD", relative)
+    if head_entry is None:
         fail(f"checkpoint path does not exist: {relative.as_posix()}")
+    if head_entry.mode == "040000":
+        fail(f"checkpoint path is a directory: {relative.as_posix()}")
     return relative
+
+
+def index_entries(repo: Path, relative: Path) -> tuple[IndexEntry, ...]:
+    """Read every index entry for a path without changing the real index."""
+
+    result = run_git(repo, "ls-files", "--stage", "-z", "--", relative.as_posix())
+    entries: list[IndexEntry] = []
+    for raw_entry in result.stdout.split("\0"):
+        if not raw_entry:
+            continue
+        try:
+            metadata, path = raw_entry.split("\t", 1)
+            mode, object_id, stage = metadata.split()
+        except ValueError:
+            fail(f"could not inspect checkpoint index entry {relative.as_posix()}")
+        if path != relative.as_posix():
+            continue
+        entries.append(IndexEntry(mode, object_id, stage))
+    return tuple(entries)
+
+
+def diff_changed(
+    repo: Path,
+    relative: Path,
+    *,
+    cached: bool,
+) -> bool:
+    """Return whether HEAD or the working tree differs for one path."""
+
+    args = ["diff", "--quiet"]
+    if cached:
+        args.extend(["--cached", "HEAD"])
+    else:
+        args.append("HEAD")
+    args.extend(["--", relative.as_posix()])
+    comparison = run_git(repo, *args, check=False)
+    if comparison.returncode == 1:
+        return True
+    if comparison.returncode != 0:
+        detail = comparison.stderr.strip() or comparison.stdout.strip() or "git diff failed"
+        fail(f"could not inspect checkpoint path {relative.as_posix()}: {detail}")
+    return False
+
+
+def staged_path_changed(repo: Path, relative: Path) -> bool:
+    """Return whether the real index changes one path from HEAD."""
+
+    entries = index_entries(repo, relative)
+    if any(entry.stage != "0" for entry in entries):
+        fail(
+            f"checkpoint path {relative.as_posix()} has unresolved index conflicts; "
+            "resolve them before checkpointing"
+        )
+    return diff_changed(repo, relative, cached=True)
+
+
+def checkpoint_config_is_tracked(repo: Path) -> bool:
+    """Return whether the planning configuration exists in HEAD or the index."""
+
+    in_index = bool(index_entries(repo, CONFIG_REL))
+    head = run_git(repo, "rev-parse", "--verify", "HEAD", check=False)
+    in_head = head.returncode == 0 and tree_entry(repo, "HEAD", CONFIG_REL) is not None
+    return in_head or in_index
+
+
+def path_change_state(repo: Path, relative: Path) -> tuple[bool, bool]:
+    """Return independent index-vs-HEAD and working-tree-vs-HEAD changes."""
+
+    entries = index_entries(repo, relative)
+    if any(entry.stage != "0" for entry in entries):
+        fail(
+            f"checkpoint path {relative.as_posix()} has unresolved index conflicts; "
+            "resolve them before checkpointing"
+        )
+    index_changed = diff_changed(repo, relative, cached=True)
+    worktree_changed = diff_changed(repo, relative, cached=False)
+    if not entries and (repo / relative).exists():
+        worktree_changed = True
+    return index_changed, worktree_changed
+
+
+def has_effective_path_change(repo: Path, relative: Path) -> bool:
+    """Check for a content or deletion change in the index or working tree."""
+
+    index_changed, worktree_changed = path_change_state(repo, relative)
+    return index_changed or worktree_changed
+
+
+def checkpoint_path_source(repo: Path, relative: Path) -> str:
+    """Choose staged content whenever the index contains an effective change."""
+
+    index_changed, _worktree_changed = path_change_state(repo, relative)
+    if index_changed:
+        return "index"
+    return "worktree"
+
+
+def index_path_text(repo: Path, relative: Path) -> str | None:
+    """Read textual content from the real index for a path, when present."""
+
+    entries = index_entries(repo, relative)
+    if not entries:
+        return None
+    if len(entries) != 1 or entries[0].stage != "0":
+        fail(f"checkpoint path {relative.as_posix()} has unresolved index conflicts")
+    result = run_git(repo, "cat-file", "blob", entries[0].object_id, check=False)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "git cat-file failed"
+        fail(f"could not read checkpoint index entry {relative.as_posix()}: {detail}")
+    return result.stdout
+
+
+def current_checkpoint_path_text(repo: Path, relative: Path) -> str | None:
+    """Read the content that the checkpoint staging plan will commit."""
+
+    source = checkpoint_path_source(repo, relative)
+    if source == "index":
+        return index_path_text(repo, relative)
+    absolute = repo / relative
+    if absolute.exists():
+        try:
+            return absolute.read_text()
+        except (OSError, UnicodeDecodeError):
+            return None
+    return None
+
+
+def read_checkpoint_ledger(repo: Path, effort: str) -> tuple[Path, str, dict[str, Entry]]:
+    """Read the ledger version that the checkpoint staging plan will commit."""
+
+    config = current_checkpoint_path_text(repo, CONFIG_REL)
+    if config is None:
+        fail(f"planning configuration is missing at {CONFIG_REL.as_posix()}; repair it before checkpointing")
+    relative = ledger_relative_path(repo, effort, config)
+    text = current_checkpoint_path_text(repo, relative)
+    if text is None:
+        fail(f"decision ledger is missing at {relative.as_posix()}; create it first")
+    return relative, text, parse_ledger(text)
+
+
+def validate_checkpoint_stage_paths(repo: Path, paths: Sequence[Path]) -> None:
+    """Validate every path before any staging mutation can occur."""
+
+    for relative in paths:
+        tracked = run_git(
+            repo,
+            "ls-files",
+            "--error-unmatch",
+            "--",
+            relative.as_posix(),
+            check=False,
+        )
+        if tracked.returncode not in (0, 1):
+            detail = tracked.stderr.strip() or tracked.stdout.strip() or "git ls-files failed"
+            fail(f"could not validate checkpoint path {relative.as_posix()}: {detail}")
+        head_entry = tree_entry(repo, "HEAD", relative) if tracked.returncode == 1 else None
+        if tracked.returncode == 1 and (repo / relative).exists() and head_entry is None:
+            ignored = run_git(repo, "check-ignore", "--quiet", "--", relative.as_posix(), check=False)
+            if ignored.returncode == 0:
+                fail(
+                    f"checkpoint path {relative.as_posix()} is ignored; "
+                    "remove the ignore rule or stage it explicitly before checkpointing"
+                )
+            if ignored.returncode != 1:
+                detail = ignored.stderr.strip() or ignored.stdout.strip() or "git check-ignore failed"
+                fail(f"could not validate checkpoint path {relative.as_posix()}: {detail}")
+        dry_run = run_git(repo, "add", "--dry-run", "--", relative.as_posix(), check=False)
+        if dry_run.returncode != 0:
+            entries = index_entries(repo, relative)
+            staged_deletion = not entries and (
+                head_entry is not None or tree_entry(repo, "HEAD", relative) is not None
+            )
+            if staged_deletion:
+                continue
+            detail = dry_run.stderr.strip() or dry_run.stdout.strip() or "git add --dry-run failed"
+            fail(f"checkpoint path {relative.as_posix()} cannot be staged safely: {detail}")
+
+
+def prepare_checkpoint_index(
+    repo: Path,
+    index_path: Path,
+    paths: Sequence[Path],
+    sources: Mapping[str, str],
+) -> dict[str, str]:
+    """Build an isolated index containing HEAD plus only owned path changes."""
+
+    env = {"GIT_INDEX_FILE": str(index_path)}
+    run_git(repo, "read-tree", "HEAD", env=env)
+    for relative in paths:
+        if sources[relative.as_posix()] == "index":
+            entries = index_entries(repo, relative)
+            if not entries:
+                run_git(repo, "update-index", "--force-remove", "--", relative.as_posix(), env=env)
+                continue
+            if len(entries) != 1 or entries[0].stage != "0":
+                fail(f"checkpoint path {relative.as_posix()} has unresolved index conflicts")
+            entry = entries[0]
+            run_git(
+                repo,
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                entry.mode,
+                entry.object_id,
+                relative.as_posix(),
+                env=env,
+            )
+            continue
+        absolute = repo / relative
+        if absolute.exists():
+            run_git(repo, "add", "--", relative.as_posix(), env=env)
+        else:
+            run_git(repo, "update-index", "--force-remove", "--", relative.as_posix(), env=env)
+    return env
+
+
+def tree_entry(repo: Path, commit: str, relative: Path) -> IndexEntry | None:
+    """Read one stage-zero tree entry from a commit."""
+
+    result = run_git(repo, "ls-tree", "-z", commit, "--", relative.as_posix())
+    entries = [raw for raw in result.stdout.split("\0") if raw]
+    if not entries:
+        return None
+    try:
+        metadata, path = entries[0].split("\t", 1)
+        mode, _kind, object_id = metadata.split()
+    except ValueError:
+        fail(f"could not inspect checkpoint tree entry {relative.as_posix()}")
+    if path != relative.as_posix():
+        fail(f"could not inspect checkpoint tree entry {relative.as_posix()}")
+    return IndexEntry(mode, object_id, "0")
+
+
+def sync_real_index_to_checkpoint(repo: Path, checkpoint: str, paths: Sequence[Path]) -> None:
+    """Advance only owned real-index entries after an isolated commit."""
+
+    for relative in paths:
+        entry = tree_entry(repo, checkpoint, relative)
+        if entry is None:
+            run_git(repo, "update-index", "--force-remove", "--", relative.as_posix())
+            continue
+        run_git(
+            repo,
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            entry.mode,
+            entry.object_id,
+            relative.as_posix(),
+        )
+
+
+def validate_checkpoint_repository_state(repo: Path) -> None:
+    """Reject commit-in-progress and repository-wide unresolved merge state."""
+
+    merge_head_path = Path(run_git(repo, "rev-parse", "--git-path", "MERGE_HEAD").stdout.strip())
+    if not merge_head_path.is_absolute():
+        merge_head_path = repo / merge_head_path
+    if merge_head_path.exists():
+        fail(
+            "cannot create a Planning checkpoint while a merge is in progress; "
+            "finish the merge before checkpointing"
+        )
+    unmerged = run_git(repo, "ls-files", "--unmerged", "-z", check=False)
+    if unmerged.returncode != 0:
+        detail = unmerged.stderr.strip() or unmerged.stdout.strip() or "git ls-files failed"
+        fail(f"could not inspect repository conflicts before checkpointing: {detail}")
+    if unmerged.stdout:
+        fail(
+            "cannot create a Planning checkpoint while unresolved index conflicts exist; "
+            "resolve every conflict before checkpointing"
+        )
 
 
 def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     effort = validate_effort(args.effort)
     phase = clean_single_line(args.phase.lower(), "phase")
     required = required_for_phase(phase)
-    ensure_config(repo)
-    ledger_relative, _, entries = read_ledger(repo, effort)
+    subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
+    validate_checkpoint_repository_state(repo)
+    if not staged_path_changed(repo, CONFIG_REL):
+        if not (repo / CONFIG_REL).exists() and checkpoint_config_is_tracked(repo):
+            fail(
+                f"planning configuration is missing at {CONFIG_REL.as_posix()}; "
+                "repair it before checkpointing"
+            )
+        ensure_config(repo)
+    ledger_relative, _, entries = read_checkpoint_ledger(repo, effort)
     selected_entries = selected_checkpoint_entries(entries, phase, args.decisions)
     missing = missing_coverage(selected_entries, required)
     if missing:
@@ -677,19 +1006,23 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
         if relative.as_posix() not in seen:
             paths.append(relative)
             seen.add(relative.as_posix())
-    run_git(repo, "add", "--", *(path.as_posix() for path in paths))
-    staged = run_git(
-        repo,
-        "diff",
-        "--cached",
-        "--quiet",
-        "--",
-        *(path.as_posix() for path in paths),
-        check=False,
-    )
-    if staged.returncode == 0:
-        fail("checkpoint has no changes in its owned planning artifacts")
-    subject = clean_single_line(args.message or f"planning: checkpoint {effort} ({phase})", "message")
+    base_paths = (Path(CONFIG_REL), ledger_relative)
+    unchanged = [
+        path.as_posix()
+        for path in base_paths
+        if not has_effective_path_change(repo, path)
+    ]
+    if len(unchanged) == len(base_paths):
+        fail(
+            "checkpoint must change the planning configuration or declared ledger; "
+            "extra-only checkpoints are not durable; "
+            f"unchanged: {', '.join(unchanged)}"
+        )
+    validate_checkpoint_stage_paths(repo, paths)
+    sources = {
+        path.as_posix(): checkpoint_path_source(repo, path)
+        for path in paths
+    }
     trailer_message = (
         f"{subject}\n\n"
         f"Planning-Checkpoint: {effort}\n"
@@ -697,17 +1030,41 @@ def command_checkpoint(repo: Path, args: argparse.Namespace) -> dict[str, object
         f"Planning-Ledger: {ledger_relative.as_posix()}\n"
         f"{PLANNING_PATHS_TRAILER}: {json.dumps([path.as_posix() for path in paths], separators=(',', ':'))}\n"
     )
-    run_git(
-        repo,
-        "commit",
-        "--only",
-        "-F",
-        "-",
-        "--",
-        *(path.as_posix() for path in paths),
-        input_text=trailer_message,
-    )
-    sha = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    descriptor, index_path = tempfile.mkstemp(prefix="planning-context-index-")
+    os.close(descriptor)
+    temporary_index = Path(index_path)
+    temporary_index.unlink()
+    try:
+        temporary_env = prepare_checkpoint_index(repo, temporary_index, paths, sources)
+        staged = run_git(
+            repo,
+            "diff",
+            "--cached",
+            "--quiet",
+            "HEAD",
+            "--",
+            *(path.as_posix() for path in paths),
+            check=False,
+            env=temporary_env,
+        )
+        if staged.returncode == 0:
+            fail("checkpoint has no changes in its owned planning artifacts")
+        run_git(
+            repo,
+            "commit",
+            "-F",
+            "-",
+            input_text=trailer_message,
+            env=temporary_env,
+        )
+        sha = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+        sync_real_index_to_checkpoint(repo, sha, paths)
+    finally:
+        if temporary_index.exists():
+            temporary_index.unlink()
+        temporary_lock = Path(f"{temporary_index}.lock")
+        if temporary_lock.exists():
+            temporary_lock.unlink()
     return {
         "status": "created",
         "effort": effort,
@@ -751,6 +1108,11 @@ def parse_verification_trailers(message: str) -> tuple[Verification, ...]:
 
     records: list[Verification] = []
     for line in parse_trailers_lines(message):
+        if line.startswith("Planning-Verification:") and not VERIFICATION_PATTERN.fullmatch(line):
+            fail(
+                "malformed Planning-Verification trailer; use "
+                "Planning-Verification: DEC-NNN | observable evidence"
+            )
         match = VERIFICATION_PATTERN.fullmatch(line)
         if match:
             evidence = match.group(2).strip()
@@ -806,6 +1168,13 @@ def checkpoint_path_text(repo: Path, checkpoint: str, relative: Path) -> str | N
     return result.stdout
 
 
+def checkpoint_parent_shas(repo: Path, checkpoint: str) -> tuple[str, ...]:
+    """Return every parent so merge checkpoints can prove inherited ownership."""
+
+    message = run_git(repo, "show", "-s", "--format=%P", checkpoint).stdout
+    return tuple(parent for parent in message.split() if parent)
+
+
 def is_planning_artifact(
     repo: Path, checkpoint: str, relative: Path
 ) -> bool:
@@ -817,9 +1186,16 @@ def is_planning_artifact(
         text = checkpoint_path_text(repo, checkpoint, relative)
     except UnicodeDecodeError:
         return False
-    if text is None:
-        return False
-    return has_planning_artifact_markers(text)
+    if text is not None:
+        return has_planning_artifact_markers(text)
+    for parent in checkpoint_parent_shas(repo, checkpoint):
+        try:
+            parent_text = checkpoint_path_text(repo, parent, relative)
+        except UnicodeDecodeError:
+            continue
+        if parent_text is not None and has_planning_artifact_markers(parent_text):
+            return True
+    return False
 
 
 def is_planning_artifact_name(relative: Path) -> bool:
@@ -851,12 +1227,9 @@ def has_planning_artifact_markers(text: str) -> bool:
 def current_path_text(repo: Path, relative: Path) -> str | None:
     """Read the content that checkpoint would stage for a path, when textual."""
 
-    absolute = repo / relative
-    if absolute.exists():
-        try:
-            return absolute.read_text()
-        except (OSError, UnicodeDecodeError):
-            return None
+    current = current_checkpoint_path_text(repo, relative)
+    if current is not None:
+        return current
     for object_name in (f":{relative.as_posix()}", f"HEAD:{relative.as_posix()}"):
         try:
             result = run_git(repo, "show", object_name, check=False)
@@ -925,7 +1298,10 @@ def validate_checkpoint_ownership(
         relative = relative_path(repo, raw_path)
         if relative.as_posix() != raw_path:
             fail(f"Planning checkpoint {checkpoint} has a non-canonical owned path: {raw_path}")
-        owned.add(relative.as_posix())
+        canonical = relative.as_posix()
+        if canonical in owned:
+            fail(f"Planning checkpoint {checkpoint} lists duplicate owned path: {canonical}")
+        owned.add(canonical)
     if not base_paths.issubset(owned):
         fail(
             f"Planning checkpoint {checkpoint} ownership must include config and declared ledger "
@@ -937,11 +1313,16 @@ def validate_checkpoint_ownership(
             f"Planning checkpoint {checkpoint} changes non-owned paths: {', '.join(unexpected)}; "
             "list only explicitly owned Planning context artifacts"
         )
-    for raw_path in sorted(changed - base_paths):
+    if not changed.intersection(base_paths):
+        fail(
+            f"Planning checkpoint {checkpoint} is extra-only; its changed diff must include "
+            "the planning configuration or declared ledger"
+        )
+    for raw_path in sorted(owned - base_paths):
         relative = Path(raw_path)
         if not is_planning_artifact(repo, checkpoint, relative):
             fail(
-                f"Planning checkpoint {checkpoint} changes {raw_path}, which is not identifiable as a "
+                f"Planning checkpoint {checkpoint} lists {raw_path}, which is not identifiable as a "
                 "Planning context artifact"
             )
 
@@ -963,10 +1344,7 @@ def selected_verification_decisions(
         identifier = active_decision_identifier(entries, raw_identifier)
         if identifier not in selected:
             selected.append(identifier)
-    for identifier in selected:
-        if "verification" not in entries[identifier].obligations:
-            fail(f"{identifier} does not declare verification as an obligation")
-    return tuple(selected)
+    return tuple(identifier for identifier in selected if "verification" in entries[identifier].obligations)
 
 
 def evidence_values(raw: str | None) -> list[str]:
@@ -1052,17 +1430,22 @@ def append_verification_evidence(
         section: str | None = None
         existing_evidence: str | None = None
         evidence_line_index: int | None = None
+        evidence_indent: str | None = None
         for line_index, line in enumerate(lines):
             if line.strip() == "- Coverage:":
                 section = "coverage"
             elif line.strip() == "- Evidence:":
                 section = "evidence"
-            elif line.startswith("  - verification:"):
+            else:
+                subfield = SUBFIELD_PATTERN.fullmatch(line)
+                if subfield is None or subfield.group("field") != "verification":
+                    continue
                 if section == "coverage":
-                    lines[line_index] = "  - verification: complete"
+                    lines[line_index] = f"{subfield.group('indent')}- verification: complete"
                 elif section == "evidence":
                     existing_evidence = line.split(":", 1)[1].strip()
                     evidence_line_index = line_index
+                    evidence_indent = subfield.group("indent")
         if existing_evidence is None:
             fail(f"{identifier} has no verification evidence line")
         current_values = evidence_values(existing_evidence)
@@ -1071,9 +1454,10 @@ def append_verification_evidence(
         for item in evidence:
             if item not in current_values:
                 current_values.append(item)
-        if evidence_line_index is not None:
+        if evidence_line_index is not None and evidence_indent is not None:
             lines[evidence_line_index] = (
-                "  - verification: " + json.dumps(current_values, ensure_ascii=False, separators=(",", ":"))
+                f"{evidence_indent}- verification: "
+                + json.dumps(current_values, ensure_ascii=False, separators=(",", ":"))
             )
         replacements.append((match.start(), end, "\n".join(lines) + "\n"))
 
@@ -1086,7 +1470,18 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
     """Aggregate verified commit or ticket evidence, validating supplied tips when present."""
 
     effort = validate_effort(args.effort)
+    if staged_path_changed(repo, CONFIG_REL):
+        fail(
+            "coverage aggregation cannot run while the planning configuration has staged changes; "
+            "create a checkpoint first"
+        )
     load_config(repo)
+    configured_ledger = ledger_relative_path(repo, effort)
+    if staged_path_changed(repo, configured_ledger):
+        fail(
+            f"coverage aggregation cannot run while the Decision ledger has staged changes at "
+            f"{configured_ledger.as_posix()}; create a checkpoint first"
+        )
     ledger_relative, ledger_text, entries = read_ledger(repo, effort)
     checkpoint_raw = args.checkpoint or find_checkpoint(repo, effort, ledger_relative)
     checkpoint = resolve_commit(repo, checkpoint_raw, "checkpoint")
@@ -1143,7 +1538,7 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
         for raw_evidence in (args.ticket_evidence or [])
         for record in (parse_ticket_evidence(raw_evidence),)
     )
-    if not records:
+    if selected and not records:
         fail("at least one verification commit or ticket evidence record is required")
 
     updates: dict[str, list[str]] = {identifier: [] for identifier in selected}
@@ -1152,6 +1547,8 @@ def command_coverage_aggregate(repo: Path, args: argparse.Namespace) -> dict[str
             fail(f"verification trailer names missing decision {record.decision}")
         if entries[record.decision].status != "active":
             fail(f"verification trailer names superseded decision {record.decision}")
+        if "verification" not in entries[record.decision].obligations:
+            fail(f"{record.decision} does not declare verification as an obligation")
         if record.decision not in selected:
             fail(
                 f"verification trailer for {record.decision} is outside the selected implementation decisions"
@@ -1215,7 +1612,9 @@ def validate_checkpoint_commit(
     ledger_relative: Path,
     *,
     required_phase: str | None = None,
+    selected_decisions: Sequence[str] | None = None,
 ) -> dict[str, Entry]:
+    required = required_for_phase(required_phase) if required_phase is not None else ()
     resolved = run_git(repo, "rev-parse", "--verify", f"{sha}^{{commit}}", check=False)
     if resolved.returncode != 0:
         fail(f"Planning checkpoint {sha} cannot be resolved")
@@ -1242,12 +1641,40 @@ def validate_checkpoint_commit(
     config_exists = run_git(repo, "cat-file", "-e", config_object, check=False)
     if config_exists.returncode != 0:
         fail("Planning checkpoint does not contain the planning configuration")
+    try:
+        config_snapshot = run_git(repo, "show", config_object).stdout
+    except UnicodeDecodeError:
+        fail("Planning checkpoint planning configuration is not valid text")
+    snapshot_ledger_relative = ledger_relative_path(repo, effort, config_snapshot)
+    if snapshot_ledger_relative != ledger_relative:
+        fail(
+            f"Planning checkpoint configuration resolves to {snapshot_ledger_relative.as_posix()}, "
+            f"not the declared ledger {ledger_relative.as_posix()}"
+        )
     object_path = f"{checkpoint_sha}:{ledger_relative.as_posix()}"
     exists = run_git(repo, "cat-file", "-e", object_path, check=False)
     if exists.returncode != 0:
         fail("Planning checkpoint does not contain the declared Decision ledger")
     snapshot_text = run_git(repo, "show", object_path).stdout
     snapshot = parse_ledger(snapshot_text)
+    snapshot_entries = snapshot
+    if selected_decisions and required_phase != "final" and checkpoint_phase != "final":
+        missing_decisions = sorted(set(selected_decisions) - set(snapshot))
+        if missing_decisions:
+            fail(
+                "declared decision(s) are missing from the Planning checkpoint snapshot: "
+                + ", ".join(missing_decisions)
+            )
+        snapshot_entries = {
+            identifier: snapshot[identifier]
+            for identifier in selected_decisions
+        }
+    snapshot_missing = missing_coverage(snapshot_entries, required)
+    if snapshot_missing:
+        fail(
+            f"coverage incomplete for {required_phase} checkpoint snapshot: "
+            f"{', '.join(snapshot_missing)}; create a newer checkpoint"
+        )
     current_path = repo / ledger_relative
     if not current_path.exists():
         fail("declared Decision ledger is missing from the current branch")
@@ -1389,8 +1816,14 @@ def command_marker(repo: Path, args: argparse.Namespace) -> dict[str, object]:
     if resolved.returncode != 0:
         fail(f"Planning checkpoint {checkpoint} cannot be resolved")
     resolved_sha = resolved.stdout.strip()
-    validate_checkpoint_commit(repo, resolved_sha, effort, ledger_relative)
     decisions = tuple(item.strip() for item in (args.decisions or "").split(",") if item.strip())
+    validate_checkpoint_commit(
+        repo,
+        resolved_sha,
+        effort,
+        ledger_relative,
+        selected_decisions=decisions or None,
+    )
     for identifier in decisions:
         active_decision_identifier(entries, identifier)
     block = marker_block(effort, ledger_relative, resolved_sha, decisions, args.repository)
@@ -1443,7 +1876,17 @@ def command_validate(repo: Path, args: argparse.Namespace) -> dict[str, object]:
         checkpoint = str(marker["checkpoint"])
         requested = tuple(str(item) for item in marker["decisions"])
         source = "stdin" if args.context_stdin else "marker"
-    current = validate_checkpoint_commit(repo, checkpoint, effort, ledger_relative, required_phase=args.phase)
+    checkpoint_selected = requested or None
+    if args.phase == "final":
+        checkpoint_selected = None
+    current = validate_checkpoint_commit(
+        repo,
+        checkpoint,
+        effort,
+        ledger_relative,
+        required_phase=args.phase,
+        selected_decisions=checkpoint_selected,
+    )
     selected = requested or tuple(identifier for identifier, entry in current.items() if entry.status == "active")
     for identifier in selected:
         if identifier not in current:
@@ -1536,11 +1979,17 @@ def build_parser() -> argparse.ArgumentParser:
             "--commits",
             dest="commits",
             action="append",
-            help="verified merged worker commit or branch tip, repeat for each ticket; optional with ticket evidence",
+            help=(
+                "verified merged worker commit or branch tip, repeat for each ticket; "
+                "optional with ticket evidence and required only when selected decisions declare verification"
+            ),
         )
         command.add_argument(
             "--decisions",
-            help="comma-separated active decision IDs applicable to this implementation",
+            help=(
+                "comma-separated active decision IDs applicable to this implementation; "
+                "IDs without verification are filtered from the evidence gate"
+            ),
         )
         command.add_argument(
             "--ticket-evidence",
@@ -1550,11 +1999,15 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     coverage_aggregate = coverage_commands.add_parser(
-        "aggregate", help="atomically aggregate verified commits or ticket evidence"
+        "aggregate",
+        help="atomically aggregate verified commits or ticket evidence without staged Planning paths",
     )
     add_aggregate_arguments(coverage_aggregate)
 
-    checkpoint = commands.add_parser("checkpoint", help="create a phase-aware Git Planning checkpoint")
+    checkpoint = commands.add_parser(
+        "checkpoint",
+        help="create a phase-aware Git Planning checkpoint from a clean merge/conflict state",
+    )
     checkpoint.add_argument("--effort", required=True)
     checkpoint.add_argument("--phase", required=True, choices=PHASES)
     checkpoint.add_argument("--message")

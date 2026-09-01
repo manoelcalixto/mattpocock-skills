@@ -48,11 +48,11 @@ A run is eight beats, in order:
 3. Drive [tdd](https://aihero.dev/skills-tdd) at the pre-agreed seams, one red-green slice at a time.
 4. Typecheck often, run single test files as it goes.
 5. Run the full test suite once, at the end.
-6. Commit the implementation to the current branch, pinning the exact review checkpoint. For a valid Planning context, include one repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailer per applicable preflight decision.
+6. Commit the implementation to the current branch, pinning the exact review checkpoint. For a valid Planning context, include one repeatable `Planning-Verification: DEC-NNN | <observable evidence>` trailer per applicable preflight decision that declares `verification`. Decisions without that obligation stay trailer-free, and the closeout aggregator filters them out while rejecting evidence that names them.
 7. Run [code-review](https://aihero.dev/skills-code-review) once against the starting SHA, check each citation, apply applicable findings in one fix batch, rerun validation, and commit that batch if needed. For a marked path, put one observable verification trailer on an implementation or fix commit for each decision whose behavior that commit verifies or changes. Follow the bounded follow-up rule below.
-8. For a valid Planning context only, ensure the union of final-history trailers and validated ticket evidence covers every preflight decision, pass the final reviewed `HEAD` and decision IDs to `coverage aggregate`, then run `checkpoint --phase implementation`. If this invocation owns only a subset of the applicable preflight decisions, pass those IDs to the implementation checkpoint with `--decisions <comma-separated-preflight-decision-IDs>`; omit it for the default fail-closed gate over every active applicable decision. The final planning checkpoint does not accept a subset. For `/implement`, the initial commit covers every preflight decision and a fix adds trailers only for decisions whose behavior it verifies or changes. Use the final reviewed tip as the supplied `--commit` so review-fix evidence is included. A markerless input skips this closeout and keeps the legacy sequence without inferring Planning state.
+8. For a valid Planning context only, ensure the union of final-history trailers and validated ticket evidence covers every applicable preflight decision that declares `verification`, pass the final reviewed `HEAD` and decision IDs to `coverage aggregate`, then run `checkpoint --phase implementation`. If this invocation owns only a subset of the applicable preflight decisions, pass those IDs to the implementation checkpoint with `--decisions <comma-separated-preflight-decision-IDs>`; omit it for the default fail-closed gate over every active applicable decision. The final planning checkpoint does not accept a subset. For `/implement`, the initial commit carries trailers only for applicable preflight decisions that declare `verification`, and a fix adds trailers only for decisions whose behavior it verifies or changes. The aggregator keeps ticket-only mode, filters selected IDs without `verification`, and fails closed when selected verification evidence is missing. Use the final reviewed tip as the supplied `--commit` so review-fix evidence is included. A markerless input skips this closeout and keeps the legacy sequence without inferring Planning state.
 
-The marked closeout uses the final planning checkpoint and the final reviewed tip:
+The marked closeout uses the final planning checkpoint and the final reviewed tip. It aggregates only decisions whose declared obligations include verification.
 
 ```bash
 python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
@@ -84,7 +84,7 @@ It follows the legacy path. No ledger, checkpoint, or coverage is inferred, and 
 
 **When is the implementation checkpoint created for a marked ticket?**
 
-After the bounded review, any eligible follow-up, and the final fix-batch validation. The owner aggregates the preflight decision IDs from the final reviewed history, then `checkpoint --phase implementation` records that verification boundary. The review checkpoint remains the stable commit reviewed by `code-review`.
+After the bounded review, any eligible follow-up, and the final fix-batch validation. The owner aggregates the applicable preflight decision IDs that declare `verification` from the final reviewed history, then `checkpoint --phase implementation` records that verification boundary. The review checkpoint remains the stable commit reviewed by `code-review`.
 
 **Why did implementation stop before TDD?**
 
@@ -132,7 +132,7 @@ Probably the ticket is too big rather than the skill being misused. A run does c
 - The implementation reaches a stable commit before review, so the reviewer sees the exact diff.
 - Applicable findings land in one validated fix batch rather than one review request per commit.
 - The run stops after its bounded follow-up rule and reports residual findings instead of chasing a clean review.
-- A marked run aggregates the final-history and ticket-evidence union for every preflight decision only after review fixes, then creates the implementation checkpoint from the final reviewed head.
+- A marked run aggregates the final-history and ticket-evidence union for every applicable preflight decision that declares `verification` only after review fixes, then creates the implementation checkpoint from the final reviewed head.
 - A markerless run never creates or infers Planning ledger, coverage, or checkpoint state.
 - The diff is one ticket's worth of change: a vertical slice through every layer, not several tickets swept together.
 

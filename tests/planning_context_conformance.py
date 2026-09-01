@@ -362,6 +362,33 @@ def test_invalid_marked_configuration_fails_closed() -> None:
         raise HarnessFailure("invalid marked configuration silently created a fallback ledger directory")
 
 
+def test_legacy_configuration_migration_validates_before_writing() -> None:
+    repo = init_repo()
+    config = repo / "docs" / "agents" / "planning.md"
+    config.parent.mkdir(parents=True)
+    legacy = "# Existing local planning notes\n\n- Ledger directory: `../outside`\n"
+    config.write_text(legacy)
+    invalid = run_helper(repo, "init", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "path escapes the repository" not in error:
+        raise HarnessFailure(f"unsafe legacy Ledger directory did not fail before migration: {invalid}")
+    if config.read_text() != legacy:
+        raise HarnessFailure("unsafe legacy configuration was mutated before validation")
+    if "planning-context:v1" in config.read_text():
+        raise HarnessFailure("unsafe legacy configuration received a migration marker")
+
+    marked_without_ledger = init_repo()
+    marked_config = marked_without_ledger / "docs" / "agents" / "planning.md"
+    marked_config.parent.mkdir(parents=True)
+    marked = "<!-- planning-context:v1 -->\n# Planning context\n"
+    marked_config.write_text(marked)
+    invalid_marked = run_helper(marked_without_ledger, "init", expected=2)
+    if "missing `ledger directory" not in (invalid_marked.stdout + invalid_marked.stderr).lower():
+        raise HarnessFailure(f"marked configuration without Ledger directory did not fail clearly: {invalid_marked}")
+    if marked_config.read_text() != marked:
+        raise HarnessFailure("marked configuration without Ledger directory was mutated")
+
+
 def test_optional_decision_fields_are_supported_and_immutable() -> None:
     repo = init_repo()
     run_helper(repo, "init")
@@ -1105,6 +1132,367 @@ def test_marker_requires_exact_full_checkpoint_sha() -> None:
         raise HarnessFailure(f"marker generation did not emit a full SHA: {generated}")
 
 
+def test_checkpoint_snapshot_phase_gate_is_atomic() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    run_git(repo, "add", "docs/agents/planning.md", "docs/planning/demo/decision-ledger.md")
+    run_git(
+        repo,
+        "commit",
+        "-m",
+        "manual final Planning checkpoint\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md"]',
+    )
+    checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    add_coverage(repo, "demo", "DEC-001", "specification", "spec.md")
+    add_coverage(repo, "demo", "DEC-001", "tickets", "issue-7")
+    context = write_marked_artifact(
+        repo,
+        "demo",
+        checkpoint,
+        "DEC-001",
+        "snapshot-gate.md",
+        "## What to build\n\nThe current ledger completed coverage after the checkpoint.",
+    )
+    before_ledger = ledger.read_text()
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--name-status").stdout
+    invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "checkpoint snapshot" not in error or "dec-001:specification" not in error:
+        raise HarnessFailure(f"snapshot phase coverage was not checked before current coverage: {invalid}")
+    if ledger.read_text() != before_ledger:
+        raise HarnessFailure("snapshot phase validation changed the ledger")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("snapshot phase validation created a commit")
+    if run_git(repo, "diff", "--cached", "--name-status").stdout != before_index:
+        raise HarnessFailure("snapshot phase validation changed the index")
+    if config.read_text() != run_git(repo, "show", f"{checkpoint}:docs/agents/planning.md").stdout:
+        raise HarnessFailure("snapshot phase validation changed the configuration")
+
+
+def test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        "demo",
+        "--decision",
+        "Keep every final decision covered",
+        "--context",
+        "A final checkpoint must represent the complete active ledger",
+        "--rationale",
+        "A consumer marker cannot hide pending final coverage",
+    )
+    for obligation in ("specification", "tickets"):
+        add_coverage(repo, "demo", "DEC-001", obligation, f"dec-001-{obligation}")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    run_git(repo, "add", config.relative_to(repo).as_posix(), ledger.relative_to(repo).as_posix())
+    run_git(
+        repo,
+        "commit",
+        "-m",
+        "forged partial final checkpoint\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md"]',
+    )
+    checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    context = repo / "partial-final.md"
+    context.write_text(
+        f"## Planning context\n\n"
+        "- Format: v1\n"
+        "- Effort: demo\n"
+        "- Decision ledger: `docs/planning/demo/decision-ledger.md`\n"
+        f"- Planning checkpoint: {checkpoint}\n"
+        "- Decisions: DEC-001\n"
+    )
+    marker_generated = run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--decisions",
+        "DEC-001",
+    )
+    if payload(marker_generated).get("status") != "generated":
+        raise HarnessFailure(f"marker generation did not produce a marker block: {marker_generated}")
+    validate_invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    validate_error = validate_invalid.stdout.lower() + validate_invalid.stderr.lower()
+    if "checkpoint snapshot" not in validate_error or "dec-002" not in validate_error:
+        raise HarnessFailure(f"final validation narrowed a forged snapshot by marker IDs: {validate_invalid}")
+
+
+def test_checkpoint_preserves_staged_planning_content() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "intermediate", "--message", "base checkpoint")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.write_text(config.read_text() + "\n# staged configuration content\n")
+    ledger.write_text(ledger.read_text() + "\n# staged ledger content\n")
+    run_git(repo, "add", config.relative_to(repo).as_posix(), ledger.relative_to(repo).as_posix())
+    run_git(
+        repo,
+        "restore",
+        "--source=HEAD",
+        "--worktree",
+        "--",
+        config.relative_to(repo).as_posix(),
+        ledger.relative_to(repo).as_posix(),
+    )
+    sentinel = repo / "staged-sentinel.txt"
+    sentinel.write_text("keep this staged work\n")
+    run_git(repo, "add", sentinel.name)
+    checkpoint = payload(
+        run_helper(repo, "checkpoint", "--effort", "demo", "--phase", "intermediate", "--message", "staged content")
+    )
+    sha = str(checkpoint["sha"])
+    if "# staged configuration content" not in run_git(repo, "show", f"{sha}:docs/agents/planning.md").stdout:
+        raise HarnessFailure("checkpoint replaced staged configuration with working-tree content")
+    if "# staged ledger content" not in run_git(repo, "show", f"{sha}:docs/planning/demo/decision-ledger.md").stdout:
+        raise HarnessFailure("checkpoint replaced staged ledger with working-tree content")
+    if run_git(repo, "show", f"{sha}:staged-sentinel.txt", check=False).returncode == 0:
+        raise HarnessFailure("checkpoint included unrelated staged work")
+    sentinel_status = run_git(repo, "status", "--porcelain", "--", sentinel.name).stdout.strip()
+    if sentinel_status != "A  staged-sentinel.txt":
+        raise HarnessFailure(f"checkpoint changed unrelated staged work: {sentinel_status!r}")
+
+
+def test_checkpoint_respects_staged_configuration_deletion_and_empty_content() -> None:
+    for mode in ("empty", "deleted"):
+        repo = init_repo()
+        create_effort(repo)
+        payload(
+            run_helper(
+                repo,
+                "checkpoint",
+                "--effort",
+                "demo",
+                "--phase",
+                "intermediate",
+                "--message",
+                f"base configuration for {mode}",
+            )
+        )
+        config = repo / "docs" / "agents" / "planning.md"
+        original_config = config.read_text()
+        before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+        if mode == "empty":
+            config.write_text("")
+            run_git(repo, "add", config.relative_to(repo).as_posix())
+            run_git(repo, "restore", "--source=HEAD", "--worktree", "--", config.relative_to(repo).as_posix())
+        else:
+            run_git(repo, "rm", "--", config.relative_to(repo).as_posix())
+            run_git(repo, "restore", "--source=HEAD", "--worktree", "--", config.relative_to(repo).as_posix())
+        before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+        invalid = run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--message",
+            f"reject staged {mode} configuration",
+            expected=2,
+        )
+        error = invalid.stdout.lower() + invalid.stderr.lower()
+        if mode == "empty" and "ledger directory" not in error:
+            raise HarnessFailure(f"empty staged configuration was not validated as the snapshot: {invalid}")
+        if mode == "deleted" and "planning configuration is missing" not in error:
+            raise HarnessFailure(f"staged configuration deletion was not rejected clearly: {invalid}")
+        if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+            raise HarnessFailure(f"staged {mode} configuration failure created a commit")
+        if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+            raise HarnessFailure(f"staged {mode} configuration failure changed the index")
+        if config.read_text() != original_config:
+            raise HarnessFailure(f"staged {mode} configuration failure rewrote the worktree")
+
+
+def test_checkpoint_rejects_unstaged_configuration_deletion_atomically() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--message",
+            "base unstaged deletion",
+        )
+    )
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.unlink()
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+    before_ledger = ledger.read_text()
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--message",
+        "reject unstaged configuration deletion",
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "planning configuration is missing" not in error:
+        raise HarnessFailure(f"unstaged configuration deletion was not rejected clearly: {invalid}")
+    if config.exists():
+        raise HarnessFailure("unstaged configuration deletion was repaired during failed checkpoint")
+    if ledger.read_text() != before_ledger:
+        raise HarnessFailure("unstaged configuration deletion changed the ledger")
+    if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+        raise HarnessFailure("unstaged configuration deletion changed the index")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("unstaged configuration deletion created a commit")
+
+
+def test_checkpoint_supports_staged_extra_deletions_and_renames() -> None:
+    for operation in ("rm", "rm-cached", "mv"):
+        repo = init_repo()
+        create_effort(repo)
+        payload(
+            run_helper(
+                repo,
+                "checkpoint",
+                "--effort",
+                "demo",
+                "--phase",
+                "intermediate",
+                "--message",
+                f"base extra for {operation}",
+            )
+        )
+        config = repo / "docs" / "agents" / "planning.md"
+        ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+        custom = repo / "custom-planning.md"
+        custom.write_text("## Planning context\n\nA tracked Planning extra.\n")
+        config.write_text(config.read_text() + f"\n# create extra for {operation}\n")
+        ledger.write_text(ledger.read_text() + f"\n# create extra for {operation}\n")
+        created = payload(
+            run_helper(
+                repo,
+                "checkpoint",
+                "--effort",
+                "demo",
+                "--phase",
+                "intermediate",
+                "--path",
+                custom.name,
+                "--message",
+                f"create extra for {operation}",
+            )
+        )
+        created_sha = str(created["sha"])
+        renamed = repo / "renamed-planning.md"
+        config.write_text(config.read_text() + f"\n# apply {operation}\n")
+        ledger.write_text(ledger.read_text() + f"\n# apply {operation}\n")
+        if operation == "rm":
+            run_git(repo, "rm", "--", custom.name)
+            requested = (custom.name,)
+        elif operation == "rm-cached":
+            run_git(repo, "rm", "--cached", "--", custom.name)
+            requested = (custom.name,)
+        else:
+            run_git(repo, "mv", "--", custom.name, renamed.name)
+            requested = (custom.name, renamed.name)
+        checkpoint_args = [
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+        ]
+        for path in requested:
+            checkpoint_args.extend(("--path", path))
+        checkpoint_args.extend(("--message", f"apply staged {operation}"))
+        result = payload(run_helper(repo, *checkpoint_args))
+        sha = str(result["sha"])
+        if sha == created_sha:
+            raise HarnessFailure(f"staged {operation} did not advance the checkpoint")
+        if run_git(repo, "cat-file", "-e", f"{sha}:{custom.name}", check=False).returncode == 0:
+            raise HarnessFailure(f"staged {operation} kept the old extra path in the checkpoint")
+        if operation == "mv":
+            if run_git(repo, "cat-file", "-e", f"{sha}:{renamed.name}", check=False).returncode != 0:
+                raise HarnessFailure("staged git mv omitted the new Planning extra path")
+            if run_git(repo, "status", "--porcelain", "--", custom.name, renamed.name).stdout.strip():
+                raise HarnessFailure("staged git mv left old or new extra state in the index")
+        elif operation == "rm-cached":
+            if not custom.exists():
+                raise HarnessFailure("git rm --cached deletion removed the worktree extra")
+            status = run_git(repo, "status", "--porcelain", "--", custom.name).stdout.strip()
+            if status != f"?? {custom.name}":
+                raise HarnessFailure(f"git rm --cached extra did not preserve it as untracked: {status!r}")
+        elif custom.exists():
+            raise HarnessFailure("git rm deletion preserved the removed worktree extra")
+
+
+def test_coverage_aggregate_rejects_staged_planning_paths_atomically() -> None:
+    for staged_path in ("config", "ledger"):
+        repo = init_repo()
+        _context, checkpoint = prepare_final_context(repo, f"staged-{staged_path}.md")
+        verification_tip = commit_change(
+            repo,
+            f"verification-{staged_path}.txt",
+            f"verification for staged {staged_path}",
+            ("Planning-Verification: DEC-001 | staged-path guard evidence",),
+        )
+        config = repo / "docs" / "agents" / "planning.md"
+        ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+        path = config if staged_path == "config" else ledger
+        original = path.read_text()
+        path.write_text(original + f"\n# pre-existing staged {staged_path}\n")
+        run_git(repo, "add", path.relative_to(repo).as_posix())
+        before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+        before_worktree_ledger = ledger.read_text()
+        before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+        invalid = run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            checkpoint,
+            "--head",
+            "HEAD",
+            "--decisions",
+            "DEC-001",
+            "--commit",
+            verification_tip,
+            expected=2,
+        )
+        error = invalid.stdout.lower() + invalid.stderr.lower()
+        if "staged" not in error or staged_path not in error:
+            raise HarnessFailure(f"staged {staged_path} Planning path was not rejected clearly: {invalid}")
+        if ledger.read_text() != before_worktree_ledger:
+            raise HarnessFailure(f"staged {staged_path} aggregation failure changed the ledger")
+        if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+            raise HarnessFailure(f"staged {staged_path} aggregation failure changed the index")
+        if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+            raise HarnessFailure(f"staged {staged_path} aggregation failure created a commit")
+
+
 def test_checkpoint_coverage_and_evidence_are_monotonic() -> None:
     repo = init_repo()
     context, checkpoint = prepare_final_context(repo)
@@ -1364,6 +1752,74 @@ def test_checkpointed_json_evidence_is_append_only() -> None:
         ledger.write_text(before)
 
 
+def test_coverage_mutators_preserve_valid_subfield_indentation() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    ledger.write_text(ledger.read_text().replace("  - ", "   - "))
+    add_coverage(repo, "demo", "DEC-001", "specification", "spec.md")
+    add_coverage(repo, "demo", "DEC-001", "tickets", "issue-7")
+    updated = ledger.read_text()
+    if "   - specification: complete" not in updated or "   - tickets: complete" not in updated:
+        raise HarnessFailure("coverage add did not accept and preserve three-space indentation")
+    if any(
+        line.startswith("  - ") and not line.startswith("   - ")
+        for line in updated.splitlines()
+        if "specification:" in line or "tickets:" in line
+    ):
+        raise HarnessFailure("coverage add rewrote a three-space subfield to two spaces")
+    checkpoint = str(
+        payload(
+            run_helper(
+                repo,
+                "checkpoint",
+                "--effort",
+                "demo",
+                "--phase",
+                "final",
+                "--message",
+                "three-space ledger checkpoint",
+            )
+        )["sha"]
+    )
+    worker = commit_change(
+        repo,
+        "three-space-verification.txt",
+        "three-space verification",
+        ("Planning-Verification: DEC-001 | three-space aggregate",),
+    )
+    aggregated = payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            checkpoint,
+            "--head",
+            worker,
+            "--decisions",
+            "DEC-001",
+            "--commit",
+            worker,
+        )
+    )
+    if aggregated.get("status") != "aggregated":
+        raise HarnessFailure(f"aggregation rejected a ledger with three-space indentation: {aggregated}")
+    updated = ledger.read_text()
+    if "   - verification: complete" not in updated:
+        raise HarnessFailure("verification aggregation did not preserve three-space coverage indentation")
+    verification_lines = [line for line in updated.splitlines() if "verification:" in line]
+    if not any(line.startswith("   - verification: [") for line in verification_lines):
+        raise HarnessFailure("verification aggregation did not preserve three-space evidence indentation")
+    if any(
+        line.startswith("  - verification:") and not line.startswith("   - verification:")
+        for line in verification_lines
+    ):
+        raise HarnessFailure("verification aggregation rewrote a three-space subfield to two spaces")
+
+
 def test_implement_preflight_wiring() -> None:
     skill = IMPLEMENT_SKILL.read_text()
     docs = IMPLEMENT_DOCS.read_text()
@@ -1415,12 +1871,14 @@ def test_implement_planning_closeout_wiring() -> None:
         "checkpoint --phase implementation",
     )
     for phrase in (
-        "one for each applicable decision returned by preflight",
+        "one for each applicable preflight decision that declares `verification`",
         "--decisions <comma-separated-preflight-decision-IDs>",
         "--head <final-reviewed-head-sha>",
         "--commit <final-reviewed-head-sha>",
         "whose behavior that commit verifies or changes",
         "the union of the final history and validated ticket evidence",
+        "filters selected decisions without `verification`",
+        "fails closed when selected verification evidence is missing",
         "Only after aggregation succeeds",
         'If preflight returned "status": "legacy"',
         "never infer a ledger, checkpoint, or coverage aggregation",
@@ -1450,7 +1908,10 @@ def test_implement_planning_closeout_wiring() -> None:
         "--commit <final-reviewed-head-sha>",
         "A worker records only decisions relevant to its ticket",
         "the union of the final history and validated ticket evidence",
-        "every decision ID returned by preflight",
+        "every applicable preflight decision that declares `verification`",
+        "filters selected decisions without `verification`",
+        "ticket-only mode valid",
+        "fails closed when selected verification evidence is missing",
         "Skip this closeout for an entirely markerless graph",
         "do not infer a ledger, coverage aggregation, or Planning checkpoint",
     ):
@@ -1631,6 +2092,137 @@ def test_implementation_checkpoint_selection_is_scoped_and_fail_closed() -> None
     valid = payload(run_helper(repo, "validate", "--context-file", marker.name, "--phase", "implementation"))
     if valid.get("status") != "valid" or valid.get("decisions") != ["DEC-001"]:
         raise HarnessFailure(f"selected implementation marker did not validate: {valid}")
+
+
+def test_verification_is_required_only_when_declared() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    run_helper(
+        repo,
+        "decision",
+        "add",
+        "--effort",
+        "demo",
+        "--decision",
+        "Keep verification optional when not declared",
+        "--context",
+        "Some planning decisions only constrain specification and tickets",
+        "--rationale",
+        "The implementation gate follows declared obligations",
+        "--obligations",
+        "specification,tickets",
+    )
+    for decision in ("DEC-001", "DEC-002"):
+        for obligation, evidence in (
+            ("specification", f"spec-{decision}.md"),
+            ("tickets", f"issue-{decision}"),
+        ):
+            add_coverage(repo, "demo", decision, obligation, evidence)
+    final = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "final",
+            "--message",
+            "verification applicability checkpoint",
+        )
+    )
+    planning_checkpoint = str(final["sha"])
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    before = ledger.read_text()
+    forged = run_helper(
+        repo,
+        "coverage",
+        "aggregate",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        planning_checkpoint,
+        "--head",
+        "HEAD",
+        "--decisions",
+        "DEC-001,DEC-002",
+        "--ticket-evidence",
+        "DEC-002 | issue-DEC-002 | forged verification evidence",
+        expected=2,
+    )
+    forged_error = forged.stdout.lower() + forged.stderr.lower()
+    if "does not declare verification" not in forged_error:
+        raise HarnessFailure(f"verification evidence for a non-verification decision was accepted: {forged}")
+    if ledger.read_text() != before:
+        raise HarnessFailure("invalid non-applicable verification evidence changed the ledger")
+    no_verification_record = payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            planning_checkpoint,
+            "--head",
+            "HEAD",
+            "--decisions",
+            "DEC-002",
+        )
+    )
+    if no_verification_record.get("status") != "unchanged" or no_verification_record.get("decisions") != []:
+        raise HarnessFailure(
+            "aggregation required a record for a selected decision without verification: "
+            f"{no_verification_record}"
+        )
+    aggregate = payload(
+        run_helper(
+            repo,
+            "coverage",
+            "aggregate",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            planning_checkpoint,
+            "--head",
+            "HEAD",
+            "--decisions",
+            "DEC-001,DEC-002",
+            "--ticket-evidence",
+            "DEC-001 | issue-DEC-001 | applicable verification evidence",
+        )
+    )
+    if aggregate.get("status") != "aggregated" or aggregate.get("decisions") != ["DEC-001"]:
+        raise HarnessFailure(f"explicit closeout did not filter to verification-applicable decisions: {aggregate}")
+    if ledger.read_text() == before:
+        raise HarnessFailure("applicable verification evidence did not update the ledger")
+    implementation = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "implementation",
+            "--decisions",
+            "DEC-001,DEC-002",
+            "--message",
+            "implementation with optional verification",
+        )
+    )
+    implementation_sha = str(implementation["sha"])
+    marker = write_marked_artifact(
+        repo,
+        "demo",
+        implementation_sha,
+        "DEC-001,DEC-002",
+        "optional-verification.md",
+        "## What to build\n\nImplement both decisions with verification only where declared.",
+    )
+    valid = payload(run_helper(repo, "validate", "--context-file", marker.name, "--phase", "implementation"))
+    if valid.get("status") != "valid" or valid.get("decisions") != ["DEC-001", "DEC-002"]:
+        raise HarnessFailure(f"implementation closeout blocked a decision without verification obligation: {valid}")
+    if "verification" in valid["coverage"].get("DEC-002", {}):
+        raise HarnessFailure("validation exposed verification coverage for a decision without that obligation")
 
 
 def test_implement_preflight_valid() -> None:
@@ -1997,6 +2589,43 @@ def test_trailers_are_read_only_from_the_final_block() -> None:
         raise HarnessFailure("forged verification trailer failure changed the ledger")
 
 
+def test_malformed_verification_trailer_fails_before_aggregation() -> None:
+    repo = init_repo()
+    _, planning_checkpoint = prepare_final_context(repo)
+    verification_tip = commit_change(
+        repo,
+        "malformed-verification.txt",
+        "malformed verification",
+        (
+            "Planning-Verification: DEC-001 | valid evidence before malformed trailer",
+            "Planning-Verification: DEC-001 |",
+        ),
+    )
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    before = ledger.read_text()
+    invalid = run_helper(
+        repo,
+        "coverage",
+        "aggregate",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        planning_checkpoint,
+        "--head",
+        verification_tip,
+        "--decisions",
+        "DEC-001",
+        "--commit",
+        verification_tip,
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "malformed planning-verification trailer" not in error:
+        raise HarnessFailure(f"malformed final verification trailer was not rejected: {invalid}")
+    if ledger.read_text() != before:
+        raise HarnessFailure("malformed verification trailer failure changed the ledger")
+
+
 def test_checkpoint_ownership_rejects_non_planning_and_mixed_diffs() -> None:
     repo = init_repo()
     _, planning_checkpoint = prepare_final_context(repo)
@@ -2200,6 +2829,578 @@ def test_checkpoint_ownership_rejects_non_planning_and_mixed_diffs() -> None:
     )
     if "non-owned paths" not in (invalid_mixed.stdout + invalid_mixed.stderr).lower():
         raise HarnessFailure(f"mixed planning and non-planning checkpoint diff was accepted: {invalid_mixed}")
+
+
+def test_checkpoint_ownership_uses_parent_for_deleted_and_renamed_artifacts() -> None:
+    repo = init_repo()
+    _, base_checkpoint = prepare_final_context(repo, "ownership-base.md")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    custom = repo / "custom-planning.md"
+    custom.write_text("## Planning context\n\nA custom Planning artifact.\n")
+    config.write_text(config.read_text() + "\n# custom artifact creation\n")
+    ledger.write_text(ledger.read_text() + "\n# custom artifact creation\n")
+    created = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--path",
+            custom.name,
+            "--message",
+            "create custom Planning artifact",
+        )
+    )
+    created_sha = str(created["sha"])
+    if custom.name not in created.get("paths", []):
+        raise HarnessFailure(f"custom Planning artifact was not recorded as owned: {created}")
+
+    renamed = repo / "renamed-planning.md"
+    custom.rename(renamed)
+    config.write_text(config.read_text() + "\n# custom artifact rename\n")
+    ledger.write_text(ledger.read_text() + "\n# custom artifact rename\n")
+    renamed_checkpoint = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--path",
+            custom.name,
+            "--path",
+            renamed.name,
+            "--message",
+            "rename custom Planning artifact",
+        )
+    )
+    renamed_sha = str(renamed_checkpoint["sha"])
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        renamed_sha,
+        "--decisions",
+        "DEC-001",
+    )
+    if run_git(repo, "cat-file", "-e", f"{renamed_sha}:{custom.name}", check=False).returncode == 0:
+        raise HarnessFailure("renamed Planning artifact still exists at its old path")
+    if run_git(repo, "cat-file", "-e", f"{renamed_sha}:{renamed.name}", check=False).returncode != 0:
+        raise HarnessFailure("renamed Planning artifact is missing at its new path")
+
+    renamed.unlink()
+    config.write_text(config.read_text() + "\n# custom artifact deletion\n")
+    ledger.write_text(ledger.read_text() + "\n# custom artifact deletion\n")
+    deleted_checkpoint = payload(
+        run_helper(
+            repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--path",
+            renamed.name,
+            "--message",
+            "delete custom Planning artifact",
+        )
+    )
+    deleted_sha = str(deleted_checkpoint["sha"])
+    run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        deleted_sha,
+        "--decisions",
+        "DEC-001",
+    )
+    if run_git(repo, "cat-file", "-e", f"{deleted_sha}:{renamed.name}", check=False).returncode == 0:
+        raise HarnessFailure("deleted Planning artifact still exists in the checkpoint tree")
+    if created_sha == renamed_sha or renamed_sha == deleted_sha or base_checkpoint == created_sha:
+        raise HarnessFailure("artifact lifecycle checkpoints did not advance independently")
+
+    non_artifact_repo = init_repo()
+    prepare_final_context(non_artifact_repo, "non-artifact-base.md")
+    evil = non_artifact_repo / "evil-planning.md"
+    evil.write_text("ordinary document\n")
+    run_git(non_artifact_repo, "add", evil.name)
+    run_git(non_artifact_repo, "commit", "-m", "track ordinary document")
+    non_config = non_artifact_repo / "docs" / "agents" / "planning.md"
+    non_ledger = non_artifact_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    non_config.write_text(non_config.read_text() + "\n# ordinary deletion attempt\n")
+    non_ledger.write_text(non_ledger.read_text() + "\n# ordinary deletion attempt\n")
+    evil.unlink()
+    before_head = run_git(non_artifact_repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(non_artifact_repo, "diff", "--cached", "--name-status").stdout
+    invalid = run_helper(
+        non_artifact_repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--path",
+        evil.name,
+        expected=2,
+    )
+    if "not identifiable as a planning context artifact" not in (invalid.stdout + invalid.stderr).lower():
+        raise HarnessFailure(f"deletion of a non-artifact was accepted: {invalid}")
+    if run_git(non_artifact_repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("rejected non-artifact deletion created a commit")
+    if run_git(non_artifact_repo, "diff", "--cached", "--name-status").stdout != before_index:
+        raise HarnessFailure("rejected non-artifact deletion changed the index")
+
+
+def test_checkpoint_ownership_validates_all_listed_extras_and_duplicates() -> None:
+    duplicate_repo = init_repo()
+    _, duplicate_base = prepare_final_context(duplicate_repo, "duplicate-base.md")
+    duplicate_config = duplicate_repo / "docs" / "agents" / "planning.md"
+    duplicate_ledger = duplicate_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    duplicate_config.write_text(duplicate_config.read_text() + "\n# duplicate ownership fixture\n")
+    duplicate_ledger.write_text(duplicate_ledger.read_text() + "\n# duplicate ownership fixture\n")
+    duplicate_tip = commit_files(
+        duplicate_repo,
+        ("docs/agents/planning.md", "docs/planning/demo/decision-ledger.md"),
+        "duplicate Planning-Paths fixture\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md",'
+        '"docs/agents/planning.md"]',
+    )
+    duplicate_invalid = run_helper(
+        duplicate_repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        duplicate_tip,
+        "--decisions",
+        "DEC-001",
+        expected=2,
+    )
+    duplicate_error = duplicate_invalid.stdout.lower() + duplicate_invalid.stderr.lower()
+    if "duplicate owned path" not in duplicate_error:
+        raise HarnessFailure(f"duplicate Planning-Paths entry was accepted: {duplicate_invalid}")
+    if duplicate_base == duplicate_tip:
+        raise HarnessFailure("duplicate ownership fixture did not create a new checkpoint tip")
+
+    invalid_extra_repo = init_repo()
+    _, _invalid_base = prepare_final_context(invalid_extra_repo, "invalid-extra-base.md")
+    ordinary = invalid_extra_repo / "ordinary.txt"
+    ordinary.write_text("ordinary tracked document\n")
+    run_git(invalid_extra_repo, "add", ordinary.name)
+    run_git(invalid_extra_repo, "commit", "-m", "track ordinary ownership fixture")
+    invalid_config = invalid_extra_repo / "docs" / "agents" / "planning.md"
+    invalid_ledger = invalid_extra_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    invalid_config.write_text(invalid_config.read_text() + "\n# unchanged invalid extra fixture\n")
+    invalid_ledger.write_text(invalid_ledger.read_text() + "\n# unchanged invalid extra fixture\n")
+    invalid_tip = commit_files(
+        invalid_extra_repo,
+        ("docs/agents/planning.md", "docs/planning/demo/decision-ledger.md"),
+        "unchanged invalid Planning extra fixture\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md","ordinary.txt"]',
+    )
+    invalid_extra = run_helper(
+        invalid_extra_repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        invalid_tip,
+        "--decisions",
+        "DEC-001",
+        expected=2,
+    )
+    invalid_extra_error = invalid_extra.stdout.lower() + invalid_extra.stderr.lower()
+    if "not identifiable as a planning context artifact" not in invalid_extra_error:
+        raise HarnessFailure(f"unchanged invalid Planning extra was accepted: {invalid_extra}")
+
+    valid_extra_repo = init_repo()
+    _, _valid_base = prepare_final_context(valid_extra_repo, "valid-extra-base.md")
+    valid_extra = valid_extra_repo / "custom-planning.md"
+    valid_extra.write_text("## Planning context\n\nA valid unchanged Planning extra.\n")
+    run_git(valid_extra_repo, "add", valid_extra.name)
+    run_git(valid_extra_repo, "commit", "-m", "track valid Planning extra")
+    valid_config = valid_extra_repo / "docs" / "agents" / "planning.md"
+    valid_ledger = valid_extra_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    valid_config.write_text(valid_config.read_text() + "\n# unchanged valid extra fixture\n")
+    valid_ledger.write_text(valid_ledger.read_text() + "\n# unchanged valid extra fixture\n")
+    valid_tip = commit_files(
+        valid_extra_repo,
+        ("docs/agents/planning.md", "docs/planning/demo/decision-ledger.md"),
+        "unchanged valid Planning extra fixture\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md","custom-planning.md"]',
+    )
+    valid_result = payload(
+        run_helper(
+            valid_extra_repo,
+            "marker",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            valid_tip,
+            "--decisions",
+            "DEC-001",
+        )
+    )
+    if valid_result.get("status") != "generated":
+        raise HarnessFailure(f"unchanged valid Planning extra was rejected: {valid_result}")
+
+
+def test_checkpoint_validation_checks_configuration_snapshot_ledger_resolution() -> None:
+    for mode in ("invalid", "mismatch"):
+        repo = init_repo()
+        _, base_checkpoint = prepare_final_context(repo, f"snapshot-{mode}-base.md")
+        config = repo / "docs" / "agents" / "planning.md"
+        ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+        if mode == "invalid":
+            config.write_text(config.read_text().replace("- Ledger directory: `docs/planning`\n", "", 1))
+        else:
+            alternate = repo / "docs" / "planning" / "alternate" / "demo" / "decision-ledger.md"
+            alternate.parent.mkdir(parents=True, exist_ok=True)
+            alternate.write_text(ledger.read_text())
+            run_git(repo, "add", alternate.relative_to(repo).as_posix())
+            run_git(repo, "commit", "-m", "track alternate snapshot ledger")
+            config.write_text(
+                config.read_text().replace(
+                    "- Ledger directory: `docs/planning`",
+                    "- Ledger directory: `docs/planning/alternate`",
+                    1,
+                )
+            )
+        ledger.write_text(ledger.read_text() + f"\n# forged {mode} configuration snapshot\n")
+        forged_tip = commit_files(
+            repo,
+            ("docs/agents/planning.md", "docs/planning/demo/decision-ledger.md"),
+            f"forged {mode} configuration snapshot\n\n"
+            "Planning-Checkpoint: demo\n"
+            "Planning-Phase: final\n"
+            "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+            'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md"]',
+        )
+        invalid = run_helper(
+            repo,
+            "marker",
+            "--effort",
+            "demo",
+            "--checkpoint",
+            forged_tip,
+            "--decisions",
+            "DEC-001",
+            expected=2,
+        )
+        error = invalid.stdout.lower() + invalid.stderr.lower()
+        if mode == "invalid" and "missing `ledger directory" not in error:
+            raise HarnessFailure(f"invalid configuration snapshot was accepted: {invalid}")
+        if mode == "mismatch" and "resolves to" not in error and "declared ledger" not in error:
+            raise HarnessFailure(f"configuration snapshot ledger mismatch was accepted: {invalid}")
+        if forged_tip == base_checkpoint:
+            raise HarnessFailure(f"{mode} configuration snapshot fixture did not advance HEAD")
+
+
+def test_checkpoint_rejects_extra_only_without_staging() -> None:
+    repo = init_repo()
+    prepare_final_context(repo, "extra-only-base.md")
+    extra = repo / "extra-planning.md"
+    extra.write_text("## Planning context\n\nAn extra artifact without base changes.\n")
+    sentinel = repo / "user-staged.txt"
+    sentinel.write_text("preserve this staged file\n")
+    run_git(repo, "add", sentinel.name)
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--name-status").stdout
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--path",
+        extra.name,
+        "--message",
+        "extra-only checkpoint",
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "extra-only" not in error or "planning configuration" not in error:
+        raise HarnessFailure(f"extra-only checkpoint did not fail with its durability invariant: {invalid}")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("extra-only checkpoint created a commit")
+    if run_git(repo, "diff", "--cached", "--name-status").stdout != before_index:
+        raise HarnessFailure("extra-only checkpoint changed the pre-existing index")
+    if not extra.exists() or run_git(repo, "status", "--porcelain", "--", extra.name).stdout.strip() != "?? extra-planning.md":
+        raise HarnessFailure("extra-only checkpoint altered the extra artifact")
+
+
+def test_checkpoint_validation_rejects_forged_extra_only_commit() -> None:
+    repo = init_repo()
+    prepare_final_context(repo, "forged-extra-only.md")
+    extra = repo / "forged-planning.md"
+    extra.write_text("## Planning context\n\nForged extra artifact.\n")
+    run_git(repo, "add", extra.name)
+    run_git(
+        repo,
+        "commit",
+        "-m",
+        "forged extra-only checkpoint\n\n"
+        "Planning-Checkpoint: demo\n"
+        "Planning-Phase: final\n"
+        "Planning-Ledger: docs/planning/demo/decision-ledger.md\n"
+        'Planning-Paths: ["docs/agents/planning.md","docs/planning/demo/decision-ledger.md","forged-planning.md"]',
+    )
+    checkpoint = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    marker_invalid = run_helper(
+        repo,
+        "marker",
+        "--effort",
+        "demo",
+        "--checkpoint",
+        checkpoint,
+        "--decisions",
+        "DEC-001",
+        expected=2,
+    )
+    marker_error = marker_invalid.stdout.lower() + marker_invalid.stderr.lower()
+    if "extra-only" not in marker_error or "config" not in marker_error or "ledger" not in marker_error:
+        raise HarnessFailure(f"marker accepted a forged extra-only checkpoint: {marker_invalid}")
+    context = repo / "forged-extra-only-consumer.md"
+    context.write_text(
+        f"## Planning context\n\n"
+        "- Format: v1\n"
+        "- Effort: demo\n"
+        "- Decision ledger: `docs/planning/demo/decision-ledger.md`\n"
+        f"- Planning checkpoint: {checkpoint}\n"
+        "- Decisions: DEC-001\n"
+    )
+    validate_invalid = run_helper(repo, "validate", "--context-file", context.name, "--phase", "final", expected=2)
+    validate_error = validate_invalid.stdout.lower() + validate_invalid.stderr.lower()
+    if "extra-only" not in validate_error:
+        raise HarnessFailure(f"validate accepted a forged extra-only checkpoint: {validate_invalid}")
+
+
+def test_checkpoint_staging_prevalidation_is_atomic() -> None:
+    repo = init_repo()
+    prepare_final_context(repo, "ignored-extra-base.md")
+    gitignore = repo / ".gitignore"
+    gitignore.write_text("ignored-planning.md\n")
+    run_git(repo, "add", gitignore.name)
+    run_git(repo, "commit", "-m", "configure ignored planning artifact")
+    extra = repo / "ignored-planning.md"
+    extra.write_text("## Planning context\n\nIgnored extra artifact.\n")
+    config = repo / "docs" / "agents" / "planning.md"
+    ledger = repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config.write_text(config.read_text() + "\n# prevalidation config change\n")
+    ledger.write_text(ledger.read_text() + "\n# prevalidation ledger change\n")
+    sentinel = repo / "prevalidation-sentinel.txt"
+    sentinel.write_text("already staged\n")
+    run_git(repo, "add", sentinel.name)
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--binary").stdout
+    before_config = config.read_text()
+    before_ledger = ledger.read_text()
+    before_extra = extra.read_text()
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--path",
+        extra.name,
+        expected=2,
+    )
+    error = invalid.stdout.lower() + invalid.stderr.lower()
+    if "ignored" not in error or "stage it explicitly" not in error:
+        raise HarnessFailure(f"ignored Planning artifact did not fail prevalidation: {invalid}")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("ignored Planning artifact failure created a commit")
+    if run_git(repo, "diff", "--cached", "--binary").stdout != before_index:
+        raise HarnessFailure("ignored Planning artifact failure changed the index")
+    if config.read_text() != before_config or ledger.read_text() != before_ledger or extra.read_text() != before_extra:
+        raise HarnessFailure("ignored Planning artifact failure changed Planning files")
+    if run_git(repo, "status", "--porcelain", "--", sentinel.name).stdout.strip() != "A  prevalidation-sentinel.txt":
+        raise HarnessFailure("ignored Planning artifact failure changed the staged sentinel")
+
+
+def test_checkpoint_message_validation_precedes_staging() -> None:
+    repo = init_repo()
+    create_effort(repo)
+    add_coverage(repo, "demo", "DEC-001", "specification", "spec.md")
+    add_coverage(repo, "demo", "DEC-001", "tickets", "issue-7")
+    sentinel = repo / "user-staged.txt"
+    sentinel.write_text("preserve this staged file\n")
+    run_git(repo, "add", sentinel.name)
+    before_head = run_git(repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(repo, "diff", "--cached", "--name-status").stdout
+    before_config = (repo / "docs" / "agents" / "planning.md").read_text()
+    before_ledger = (repo / "docs" / "planning" / "demo" / "decision-ledger.md").read_text()
+    invalid = run_helper(
+        repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "final",
+        "--message",
+        "invalid\nmessage",
+        expected=2,
+    )
+    if "message must fit on one line" not in (invalid.stdout + invalid.stderr).lower():
+        raise HarnessFailure(f"multiline checkpoint message did not fail clearly: {invalid}")
+    if run_git(repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("invalid checkpoint message created a commit")
+    if run_git(repo, "diff", "--cached", "--name-status").stdout != before_index:
+        raise HarnessFailure("invalid checkpoint message changed the index")
+    if (repo / "docs" / "agents" / "planning.md").read_text() != before_config:
+        raise HarnessFailure("invalid checkpoint message changed the configuration")
+    if (repo / "docs" / "planning" / "demo" / "decision-ledger.md").read_text() != before_ledger:
+        raise HarnessFailure("invalid checkpoint message changed the ledger")
+
+
+def test_checkpoint_rejects_merge_state_and_global_conflicts_atomically() -> None:
+    merge_repo = init_repo()
+    create_effort(merge_repo)
+    payload(
+        run_helper(
+            merge_repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--message",
+            "merge-state base",
+        )
+    )
+    run_git(merge_repo, "switch", "-c", "merge-side")
+    (merge_repo / "merge-side.txt").write_text("side\n")
+    run_git(merge_repo, "add", "merge-side.txt")
+    run_git(merge_repo, "commit", "-m", "merge side")
+    run_git(merge_repo, "switch", "-")
+    (merge_repo / "merge-main.txt").write_text("main\n")
+    run_git(merge_repo, "add", "merge-main.txt")
+    run_git(merge_repo, "commit", "-m", "merge main")
+    run_git(merge_repo, "merge", "--no-commit", "merge-side")
+    config = merge_repo / "docs" / "agents" / "planning.md"
+    ledger = merge_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    config_before = config.read_text()
+    ledger_before = ledger.read_text()
+    config.write_text(config_before + "\n# merge-state worktree change\n")
+    ledger.write_text(ledger_before + "\n# merge-state worktree change\n")
+    before_head = run_git(merge_repo, "rev-parse", "HEAD").stdout.strip()
+    before_index = run_git(merge_repo, "diff", "--cached", "--binary").stdout
+    invalid_merge = run_helper(
+        merge_repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--message",
+        "reject merge state",
+        expected=2,
+    )
+    merge_error = invalid_merge.stdout.lower() + invalid_merge.stderr.lower()
+    if "merge is in progress" not in merge_error:
+        raise HarnessFailure(f"checkpoint did not reject an in-progress merge: {invalid_merge}")
+    if run_git(merge_repo, "rev-parse", "HEAD").stdout.strip() != before_head:
+        raise HarnessFailure("merge-state checkpoint failure created a commit")
+    if run_git(merge_repo, "diff", "--cached", "--binary").stdout != before_index:
+        raise HarnessFailure("merge-state checkpoint failure changed the index")
+    if config.read_text() != config_before + "\n# merge-state worktree change\n":
+        raise HarnessFailure("merge-state checkpoint failure rewrote the configuration")
+    if ledger.read_text() != ledger_before + "\n# merge-state worktree change\n":
+        raise HarnessFailure("merge-state checkpoint failure rewrote the ledger")
+
+    conflict_repo = init_repo()
+    create_effort(conflict_repo)
+    payload(
+        run_helper(
+            conflict_repo,
+            "checkpoint",
+            "--effort",
+            "demo",
+            "--phase",
+            "intermediate",
+            "--message",
+            "conflict base",
+        )
+    )
+    conflict_file = conflict_repo / "conflict.txt"
+    conflict_file.write_text("base\n")
+    run_git(conflict_repo, "add", conflict_file.name)
+    run_git(conflict_repo, "commit", "-m", "conflict base")
+    run_git(conflict_repo, "switch", "-c", "conflict-side")
+    conflict_file.write_text("side\n")
+    run_git(conflict_repo, "add", conflict_file.name)
+    run_git(conflict_repo, "commit", "-m", "conflict side")
+    run_git(conflict_repo, "switch", "-")
+    conflict_file.write_text("main\n")
+    run_git(conflict_repo, "add", conflict_file.name)
+    run_git(conflict_repo, "commit", "-m", "conflict main")
+    base_blob = run_git(conflict_repo, "rev-parse", "HEAD~1:conflict.txt").stdout.strip()
+    main_blob = run_git(conflict_repo, "rev-parse", "HEAD:conflict.txt").stdout.strip()
+    side_blob = run_git(conflict_repo, "rev-parse", "conflict-side:conflict.txt").stdout.strip()
+    # Install unmerged index entries without opening a merge operation.
+    run_git(conflict_repo, "update-index", "--force-remove", "--", conflict_file.name)
+    run_git(
+        conflict_repo,
+        "update-index",
+        "--index-info",
+        input_text=(
+            f"100644 {base_blob} 1\t{conflict_file.name}\n"
+            f"100644 {main_blob} 2\t{conflict_file.name}\n"
+            f"100644 {side_blob} 3\t{conflict_file.name}\n"
+        ),
+    )
+    if not run_git(conflict_repo, "ls-files", "--unmerged", "-z").stdout:
+        raise HarnessFailure("conflict fixture did not create global unmerged index entries")
+    conflict_config = conflict_repo / "docs" / "agents" / "planning.md"
+    conflict_ledger = conflict_repo / "docs" / "planning" / "demo" / "decision-ledger.md"
+    conflict_config_before = conflict_config.read_text()
+    conflict_ledger_before = conflict_ledger.read_text()
+    conflict_config.write_text(conflict_config_before + "\n# conflict worktree change\n")
+    conflict_ledger.write_text(conflict_ledger_before + "\n# conflict worktree change\n")
+    conflict_head = run_git(conflict_repo, "rev-parse", "HEAD").stdout.strip()
+    conflict_index = run_git(conflict_repo, "diff", "--cached", "--binary").stdout
+    invalid_conflict = run_helper(
+        conflict_repo,
+        "checkpoint",
+        "--effort",
+        "demo",
+        "--phase",
+        "intermediate",
+        "--message",
+        "reject global conflict",
+        expected=2,
+    )
+    conflict_error = invalid_conflict.stdout.lower() + invalid_conflict.stderr.lower()
+    if "unresolved index conflicts" not in conflict_error:
+        raise HarnessFailure(f"checkpoint did not reject global index conflicts: {invalid_conflict}")
+    if run_git(conflict_repo, "rev-parse", "HEAD").stdout.strip() != conflict_head:
+        raise HarnessFailure("global-conflict checkpoint failure created a commit")
+    if run_git(conflict_repo, "diff", "--cached", "--binary").stdout != conflict_index:
+        raise HarnessFailure("global-conflict checkpoint failure changed the index")
+    if conflict_config.read_text() != conflict_config_before + "\n# conflict worktree change\n":
+        raise HarnessFailure("global-conflict checkpoint failure rewrote the configuration")
+    if conflict_ledger.read_text() != conflict_ledger_before + "\n# conflict worktree change\n":
+        raise HarnessFailure("global-conflict checkpoint failure rewrote the ledger")
 
 
 def test_verification_aggregation_requires_merged_tips_and_is_atomic() -> None:
@@ -3293,6 +4494,9 @@ def test_repository_wiring() -> None:
     )
     if aggregate_help.returncode != 0 or "optional with ticket evidence" not in aggregate_help.stdout:
         raise HarnessFailure(f"coverage aggregate option help omits ticket-only mode: {aggregate_help.stderr}")
+    normalized_help = " ".join(aggregate_help.stdout.split())
+    if "required only when selected decisions declare verification" not in normalized_help:
+        raise HarnessFailure("coverage aggregate help implies every selected decision needs evidence")
 
     plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
     if "./skills/engineering/planning-context" not in plugin.get("skills", []):
@@ -3451,6 +4655,7 @@ def main() -> int:
         test_repository_wiring,
         test_configuration_and_lazy_migration,
         test_invalid_marked_configuration_fails_closed,
+        test_legacy_configuration_migration_validates_before_writing,
         test_ledger_ids_and_supersession,
         test_none_obligation_requires_applicability_evidence,
         test_case_insensitive_none_applicability_coverage_is_atomic,
@@ -3459,9 +4664,17 @@ def main() -> int:
         test_checkpoint_gates_staging_and_trailer,
         test_validation_and_immutability,
         test_marker_requires_exact_full_checkpoint_sha,
+        test_checkpoint_snapshot_phase_gate_is_atomic,
+        test_final_snapshot_gate_cannot_be_narrowed_by_marker_selection,
+        test_checkpoint_preserves_staged_planning_content,
+        test_checkpoint_respects_staged_configuration_deletion_and_empty_content,
+        test_checkpoint_rejects_unstaged_configuration_deletion_atomically,
+        test_checkpoint_supports_staged_extra_deletions_and_renames,
+        test_coverage_aggregate_rejects_staged_planning_paths_atomically,
         test_checkpoint_coverage_and_evidence_are_monotonic,
         test_empty_structured_evidence_fails_closed_and_atomically,
         test_checkpointed_json_evidence_is_append_only,
+        test_coverage_mutators_preserve_valid_subfield_indentation,
         test_implement_preflight_wiring,
         test_implement_planning_closeout_wiring,
         test_implement_single_ticket_planning_closeout,
@@ -3474,12 +4687,22 @@ def main() -> int:
         test_implement_spec_markerless_and_mixed_graph,
         test_parallel_ticket_branches_share_checkpoint_without_ledger_edits,
         test_trailers_are_read_only_from_the_final_block,
+        test_malformed_verification_trailer_fails_before_aggregation,
         test_checkpoint_ownership_rejects_non_planning_and_mixed_diffs,
+        test_checkpoint_ownership_uses_parent_for_deleted_and_renamed_artifacts,
+        test_checkpoint_ownership_validates_all_listed_extras_and_duplicates,
+        test_checkpoint_validation_checks_configuration_snapshot_ledger_resolution,
+        test_checkpoint_rejects_extra_only_without_staging,
+        test_checkpoint_validation_rejects_forged_extra_only_commit,
+        test_checkpoint_staging_prevalidation_is_atomic,
+        test_checkpoint_message_validation_precedes_staging,
+        test_checkpoint_rejects_merge_state_and_global_conflicts_atomically,
         test_verification_aggregation_requires_merged_tips_and_is_atomic,
         test_merged_coordinator_aggregation_and_implementation_checkpoint,
         test_aggregation_rejects_ledger_edit_in_merge_commit,
         test_ticket_only_evidence_surface,
         test_implementation_checkpoint_selection_is_scoped_and_fail_closed,
+        test_verification_is_required_only_when_declared,
         test_grill_to_tickets_flow,
         test_wayfinder_decision_to_build_flow,
         test_session_boundary_router_and_catalogs,
