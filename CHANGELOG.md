@@ -1,5 +1,23 @@
 # mattpocock-skills
 
+## 1.3.0
+
+### Minor Changes
+
+- [`50574c5`](https://github.com/mattpocock/skills/commit/50574c592e37c58dcd79d6cffd21dfea3f296d51) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Route fresh sessions through Planning checkpoints and carry only resolvable artifact pointers across handoffs.
+
+- [`aeb3207`](https://github.com/mattpocock/skills/commit/aeb32077f8a4afd348226c112ba9e4c75e3d993d) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Coordinate implement-spec worktrees from one validated Planning checkpoint and aggregate ticket verification evidence atomically after the final bounded review and fix batches.
+
+- [`1e88a57`](https://github.com/mattpocock/skills/commit/1e88a57329b9efdefa2422d18af80c36e51d4df8) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Carry confirmed material decisions from grilling through specification and ticket coverage to a fail-closed final Planning checkpoint.
+
+- [`d0bb3cd`](https://github.com/mattpocock/skills/commit/d0bb3cd412746bcf478fbf3826fa2689c905aa67) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Fail closed before implementation when a declared Planning context cannot be resolved, close marked work with final reviewed verification, and preserve the legacy path for marker-less inputs.
+
+- [`64b4410`](https://github.com/mattpocock/skills/commit/64b4410117af3316ef81b1d0c215f13f1ea6b9e4) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Expose Planning coverage and checkpoint ancestry in validation results, with stdin support for remote ticket bodies.
+
+- [`8ff3254`](https://github.com/mattpocock/skills/commit/8ff3254fe931099f258b65b7849e380f01ed0540) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Add the model-invoked `planning-context` skill with versioned decision ledgers, phase-aware Git checkpoints, consumer validation, and a public conformance harness.
+
+- [`44bbb36`](https://github.com/mattpocock/skills/commit/44bbb36c7ee280772b7d0d0106f918af2dde0f80) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Carry resolved Wayfinder decisions through the shared Planning context ledger and checkpoint gate.
+
 ## 1.2.5
 
 ### Patch Changes
