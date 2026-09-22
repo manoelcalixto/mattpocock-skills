@@ -12,13 +12,14 @@ You invoke this by typing `/ask-matt`; the agent won't reach for it on its own.
 | --- | --- |
 | An idea, and no idea where to start | The head of the main flow, and whether the build is small enough to skip the spec |
 | Bugs and requests arriving from other people | The [triage](https://aihero.dev/skills-triage) on-ramp, and why [tickets](https://www.aihero.dev/ai-coding-dictionary/ticket) you generated yourself don't belong on it |
+| A change ready for a pull request | The optional beta `pr` reference, when installed, for a visual summary, before/after evidence, and merge risk |
 | Two skills that look interchangeable | The line between them, and it is usually one concrete test rather than a matter of taste. [grill-me](https://aihero.dev/skills-grill-me) or [grill-with-docs](https://aihero.dev/skills-grill-with-docs) turns on whether you are in a working directory; [grill-with-docs](https://aihero.dev/skills-grill-with-docs) or [wayfinder](https://aihero.dev/skills-wayfinder) turns on whether the effort fits one session |
 | A long session and a decision about the [context](https://www.aihero.dev/ai-coding-dictionary/context) | The ordered tree over the five options at a phase boundary |
 | A skill you have already picked | Nothing useful. Invoke that skill directly. |
 
 ## Prerequisites
 
-The router names skills; it does not install them. Everything it points at has to be installed for the recommendation to be actionable. It maps the promoted skills plus the opt-in beta `implement-spec` route; that beta is not shipped in the plugin and has to be installed directly before the router can send a whole spec through it.
+The router names skills; it does not install them. Everything it points at has to be installed for the recommendation to be actionable. It maps the promoted skills plus the opt-in betas `implement-spec` and `pr`. Both betas need a direct install and are excluded from the plugin.
 
 The tracker-dependent routes (triage, `to-spec`, `to-tickets`, `implement`) assume [setup-matt-pocock-skills](https://aihero.dev/skills-setup-matt-pocock-skills) has already configured an issue tracker in the repo. The router will happily recommend them before that has happened.
 
@@ -56,7 +57,10 @@ People keep asking for one in the README. This skill is that list: it is what it
 
 A known bug, unfixed. Most of the skills the router routes you through set `disable-model-invocation: true`, which means the harness leaves them out of the skill list it injects into the agent's context. The agent reads that list as exhaustive and reports them missing. One reported session had it declare the whole spec-and-tickets flow absent and reroute to bare `/grilling` and `/tdd`. Thirteen of the plugin's twenty-two skills carry the flag, so this is the common case rather than an edge. They are installed. Type the slash command anyway, or check `.claude-plugin/plugin.json`, which is the authority on what is present.
 
-`implement-spec` is the deliberate exception: it is an in-progress beta and really is absent from the plugin unless you installed it directly. The router should offer it conditionally, then fall back to `/implement` per ticket when it is unavailable.
+The in-progress betas are deliberate exceptions: they are absent from the plugin and need a direct install.
+
+- Offer `implement-spec` conditionally, then fall back to `/implement` per ticket when it is unavailable.
+- Offer `pr` only when installed, as an optional reference for the pull request description.
 
 **It described a skill's behaviour, and the skill doesn't do that.**
 
@@ -83,6 +87,7 @@ Check the changelog for a rename before assuming it is gone. `writing-great-skil
 - It ends by naming what to type and stops there, instead of starting the work itself.
 - The route it gives back mentions where Planning checkpoints sit, where to clear or compact context, and where the single bounded review checkpoint sits, not just a list of skill names.
 - For a whole ticket graph, it distinguishes an installed `/implement-spec` orchestration from `/implement` per ticket.
+- When a change is ready for a PR, it offers `/pr` only if that optional beta is installed.
 - Where two skills are close, it says which one and why the other is wrong for you.
 - Any claim it makes about another skill's behaviour shows up in the trace as it reading that skill's `SKILL.md`.
 - You recognise your own situation in what it hands back, rather than the nearest generic scenario.
