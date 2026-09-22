@@ -1,5 +1,15 @@
 # mattpocock-skills
 
+## 1.3.1
+
+### Patch Changes
+
+- [#1092](https://github.com/mattpocock/skills/pull/1092) [`d75dcf1`](https://github.com/mattpocock/skills/commit/d75dcf1c5bccfab736ab79f494fa248980546d45) Thanks [@mattpocock](https://github.com/mattpocock)! - Add the `pr` skill (in-progress bucket, model-invoked), a reference for opening or creating a pull request and writing or updating its body or description. The template has a visual Summary, before/after Evidence, and Merge Danger covering reversibility and blast radius. Its visualization guidance adapts `show-me`, credited in the skill's `CREDITS.md`. Relates to [#521](https://github.com/mattpocock/skills/issues/521), [#938](https://github.com/mattpocock/skills/issues/938), [#509](https://github.com/mattpocock/skills/issues/509), and [#915](https://github.com/mattpocock/skills/issues/915).
+
+- [#1083](https://github.com/mattpocock/skills/pull/1083) [`6942bff`](https://github.com/mattpocock/skills/commit/6942bff8a53666e83a2c621696d2a8e3022429e6) Thanks [@mattpocock](https://github.com/mattpocock)! - retro: classify coding-standards findings as mechanical or judgement calls before writing them. A mechanical violation (a fixed syntactic pattern, a banned API, an import shape, a file-location rule) now gets a deterministic check instead (a linter rule, a pre-commit hook, or a CI job), reserving `CODING_STANDARDS.md` for genuine judgement calls. Automated checks also now flags a repo with no guardrail at all (no pre-commit hook, no CI lint/typecheck/test job) as a finding in its own right.
+
+- Keep `ask-matt` and its docs in sync with the upstream `pr` skill, offering the optional in-progress reference only when it is installed directly.
+
 ## 1.3.0
 
 ### Minor Changes
