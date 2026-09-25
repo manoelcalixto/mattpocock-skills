@@ -164,3 +164,99 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
   - specification: none
   - tickets: none
   - verification: none
+
+## DEC-011
+- Status: active
+- Decision: Run the upstream synchronization automation weekly on Mondays at 09:00 America/Bahia, starting after the Codex plugin is functional.
+- Context: The user approved the recommended cadence and activation gate.
+- Rationale: A weekly run keeps upstream changes visible while avoiding runs against an incomplete plugin.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-012
+- Status: active
+- Decision: When upstream changes require work, the automation updates the upstream base and Codex plugin on a branch, validates them, and opens a non-draft PR; otherwise it records a no-change result.
+- Context: The user approved the recommended automation deliverable.
+- Rationale: A reviewable PR exposes the assessed adaptation and validation before integration.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-013
+- Status: active
+- Decision: Track upstream/main and record the incorporated upstream commit for each synchronization.
+- Context: The user approved the recommended upstream reference.
+- Rationale: The commit makes each evaluated update reproducible.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-014
+- Status: active
+- Decision: Preserve explicit-only invocation for skills marked user-invoked in the Codex plugin and make their Codex metadata consistent.
+- Context: Current fork metadata removes allow_implicit_invocation: false from several user-invoked skills despite their frontmatter and repository policy.
+- Rationale: The plugin should honor the declared invocation contract.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-015
+- Status: active
+- Decision: Keep existing skill documentation focused on upstream and Claude behavior, and document Codex plugin differences separately.
+- Context: The user approved separate documentation for the adapted plugin.
+- Rationale: Separate pages avoid presenting Codex-only behavior as upstream behavior.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-016
+- Status: active
+- Decision: Claim compatibility only for Codex versions verified by plugin tests.
+- Context: The installed CLI and a newer source checkout expose different plugin contracts.
+- Rationale: An untested minimum-version promise would be unreliable.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
