@@ -17,7 +17,7 @@ The repository configuration is `docs/agents/planning.md`. The default content i
 - Legacy inputs: allowed when no Planning context marker is declared.
 ```
 
-`init` is idempotent. A file that already carries the marker is preserved byte for byte after its required fields validate. An existing file without the marker receives the default block appended to it, which is the lazy migration path. A marked file without `Ledger directory` is invalid and fails with a repair message instead of silently using the default. Setup should call the `planning-context` Skill tool to perform this initialization after the user confirms the other repository settings.
+`init` is idempotent. A file that already carries the marker is preserved byte for byte after its required fields validate. An existing file without the marker receives the default block appended to it, which is the lazy migration path. A marked file without `Ledger directory` is invalid and fails with a repair message instead of silently using the default. Setup should follow the installed `mattpocock-skills-codex:planning-context` skill to perform this initialization after the repository settings are settled.
 
 ## Decision ledger
 
@@ -82,7 +82,7 @@ The helper requires complete coverage and non-empty evidence for every active en
 
 ## Fresh-session boundary
 
-When an active Planning context moves into a fresh session, create the checkpoint before the transition and pass its exact full SHA to the consumer. This includes `/compact`, `/handoff`, `/clear`, a `Subagent`, and any other fresh context; select `intermediate` while planning continues, `final` before implementation, or `implementation` after verification. Parallel subagents that consume the same unchanged planning state may reuse that exact checkpoint SHA. If a subagent changes Planning artifacts before another fresh context, create the next checkpoint first. A markerless small task and work that stays in the current session do not require this gate.
+When an active Planning context moves into a fresh session, create the checkpoint before the transition and pass its exact full SHA to the consumer. This includes a new Codex task, a handoff, a native subagent, and any other fresh context; select `intermediate` while planning continues, `final` before implementation, or `implementation` after verification. Parallel subagents that consume the same unchanged planning state may reuse that exact checkpoint SHA. If a subagent changes Planning artifacts before another fresh context, create the next checkpoint first. A markerless small task and work that stays in the current session do not require this gate.
 
 ## Implementation evidence aggregation
 
@@ -98,7 +98,7 @@ When the evidence lives only in an already-read remote ticket, the coordinator p
 The coordinator must wait until every relevant worker tip is merged into the integration branch and any required bounded review or fix batches are complete, then call the owner with the canonical `coverage aggregate` command:
 
 ```bash
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
+python3 "$planning_helper" --repo . coverage aggregate \
   --effort demo --checkpoint <final-checkpoint-sha> --head <integration-head-sha> \
   --decisions DEC-001,DEC-002 --commit <worker-tip-one> --commit <worker-tip-two> \
   --ticket-evidence "DEC-002 | issue #8 | remote acceptance evidence"
@@ -172,22 +172,24 @@ For example, a valid marker may return this deterministic shape:
 
 The public interface is the CLI:
 
+Set `planning_helper` to the absolute path of `scripts/planning_context.py` next to the installed `mattpocock-skills-codex:planning-context` skill. The examples operate on the current repository with `--repo .`.
+
 ```bash
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . init
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . ledger create --effort demo
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision add --effort demo --decision "..." --context "..." --rationale "..." --constraints "..." --rejected-alternatives "..."
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . decision reference --effort demo --decision DEC-001
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-001 --obligation specification --evidence spec.md
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage add --effort demo --decision DEC-002 --obligation applicability --evidence "non-ticket: process-only decision"
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --commit <worker-tip>
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --ticket-evidence "DEC-001 | issue #8 | remote ticket evidence"
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase final
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . checkpoint --effort demo --phase implementation --decisions DEC-001
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file spec.md --phase final
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-file local-ticket.md --effort demo --phase final
+python3 "$planning_helper" --repo . init
+python3 "$planning_helper" --repo . ledger create --effort demo
+python3 "$planning_helper" --repo . decision add --effort demo --decision "..." --context "..." --rationale "..." --constraints "..." --rejected-alternatives "..."
+python3 "$planning_helper" --repo . decision reference --effort demo --decision DEC-001
+python3 "$planning_helper" --repo . coverage add --effort demo --decision DEC-001 --obligation specification --evidence spec.md
+python3 "$planning_helper" --repo . coverage add --effort demo --decision DEC-002 --obligation applicability --evidence "non-ticket: process-only decision"
+python3 "$planning_helper" --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --commit <worker-tip>
+python3 "$planning_helper" --repo . coverage aggregate --effort demo --checkpoint <sha> --head <sha> --decisions DEC-001 --ticket-evidence "DEC-001 | issue #8 | remote ticket evidence"
+python3 "$planning_helper" --repo . checkpoint --effort demo --phase final
+python3 "$planning_helper" --repo . checkpoint --effort demo --phase implementation --decisions DEC-001
+python3 "$planning_helper" --repo . marker --effort demo --checkpoint <sha> --decisions DEC-001 --output spec.md
+python3 "$planning_helper" --repo . validate --context-file spec.md --phase final
+python3 "$planning_helper" --repo . validate --context-file local-ticket.md --effort demo --phase final
 issue_body="$(gh issue view <number> --repo owner/repository --json body --jq .body)" && \
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . validate --context-stdin --phase final <<<"$issue_body"
+python3 "$planning_helper" --repo . validate --context-stdin --phase final <<<"$issue_body"
 ```
 
 The harness runs each scenario in a temporary Git repository and invokes only this interface. Future producers and consumers extend the same harness rather than adding a parallel planning state store.
