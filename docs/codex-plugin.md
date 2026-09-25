@@ -23,4 +23,6 @@ The Planning script is bundled at `skills/planning-context/scripts/planning_cont
 
 The recorded baseline is [`.agents/upstream-skills-ref`](../.agents/upstream-skills-ref). Fetch `upstream/main`, then run `python3 scripts/compare-upstream-skills.py` to list changes since that baseline and the Codex skill directory each promoted source change affects. Review the changed upstream content and adapt the plugin copy manually. Update the baseline only after validating the resulting plugin. The full maintenance contract is in [AGENTS.md](../AGENTS.md).
 
+The Codex app automation `atualizar-skills-upstream-e-plugin-codex` is active for Mondays at 09:00 America/Bahia in the current task. It stays quiet when upstream has no relevant changes. When changes require work, it reviews the source and plugin adaptations, validates them, and opens a non-draft PR in this fork. Its live schedule and status are managed by the Codex app, not by this repository.
+
 Run `npm run test:codex-plugin`, `npm run test:planning-context`, `npm run check-plugin-version`, `claude plugin validate . --strict`, and the Codex plugin validator. For a release, install the built plugin into an isolated Codex profile and check skill discovery, explicit invocation metadata, and the Planning helper against a separate consumer repository.
