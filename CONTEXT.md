@@ -4,6 +4,14 @@ A fork of Matt Pocock's agent skills, maintained for the user's Codex workflow. 
 
 ## Language
 
+**Upstream skill**:
+A skill maintained in the original skill library and mirrored under `skills/` in this fork. It is the incoming base for Codex adaptations.
+_Avoid_: original skill (does not identify its source)
+
+**Codex plugin skill**:
+A skill maintained inside this repository's native Codex plugin and distributed to Codex users. It may adapt an **Upstream skill** or be specific to the plugin.
+_Avoid_: upstream skill (when referring to the adapted copy)
+
 **Codex-native adaptation**:
 A change maintained in this fork to improve the user's Codex workflow, even when it diverges from upstream's Claude Code-oriented conventions. It does not imply an upstream contribution.
 _Avoid_: upstream-ready change, upstream contribution
