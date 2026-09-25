@@ -49,6 +49,12 @@ def main() -> None:
     for name in ("implement", "planning-context"):
         skill = (SKILLS / name / "SKILL.md").read_text()
         assert "skills/engineering/planning-context/scripts/" not in skill, name
+    setup = (SKILLS / "setup-matt-pocock-skills/SKILL.md").read_text()
+    assert "If `AGENTS.md` exists, update it" in setup
+    assert "If `AGENTS.md` does not exist, create it" in setup
+    assert "If `CLAUDE.md` exists, edit it" not in setup
+    compatibility = (REPO / "docs/codex-plugin.md").read_text()
+    assert "codex-cli 0.158.0-alpha.8" in compatibility
     print(f"Codex plugin distribution: {len(actual)} skills and bundled resources verified")
 
 

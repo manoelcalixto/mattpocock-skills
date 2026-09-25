@@ -65,7 +65,7 @@ Offer **multi-context** (a root `CONTEXT-MAP.md` pointing to per-context `CONTEX
 
 Show the user a draft of:
 
-- The `## Agent skills` block to add to whichever of `CLAUDE.md` / `AGENTS.md` is being edited (see step 4 for selection rules)
+- The `## Agent skills` block to add to `AGENTS.md` (see step 4 for selection rules)
 - The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, and `docs/agents/triage-labels.md` (the last only when `triage` is installed)
 - The default Planning context discovery that `planning-context` will add to `docs/agents/planning.md`
 
@@ -73,15 +73,12 @@ Let them edit before writing.
 
 ### 4. Write
 
-**Pick the file to edit:**
+**Edit `AGENTS.md` for Codex:**
 
-- If `CLAUDE.md` exists, edit it.
-- Else if `AGENTS.md` exists, edit it.
-- If neither exists, ask the user which one to create; don't pick for them.
+- If `AGENTS.md` exists, update it. If it is a symlink to `CLAUDE.md`, the shared target receives the edit.
+- If `AGENTS.md` does not exist, create it, including when a separate `CLAUDE.md` already exists. Preserve that Claude-specific file.
 
-Never create `AGENTS.md` when `CLAUDE.md` already exists (or vice versa); always edit the one that's already there.
-
-If an `## Agent skills` block already exists in the chosen file, update its contents in-place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections.
+If an `## Agent skills` block already exists in `AGENTS.md`, update its contents in-place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections.
 
 The block:
 

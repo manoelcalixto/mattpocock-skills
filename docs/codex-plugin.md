@@ -11,6 +11,8 @@ codex plugin add mattpocock-skills-codex@mattpocock-skills
 
 Invoke an explicit skill with `$mattpocock-skills-codex:<skill-name>`. Start with `$mattpocock-skills-codex:setup-matt-pocock-skills` in a new repository. The plugin is the recommended Codex installation. The upstream skill tree and Claude plugin remain available for their respective consumers.
 
+Installation, discovery, invocation metadata, and the bundled Planning helper were verified with `codex-cli 0.158.0-alpha.8` in an isolated profile. Compatibility with other Codex versions has not been tested here.
+
 For development against this checkout, add the local repository path as the marketplace source instead of the GitHub repository. Install the plugin into an isolated `CODEX_HOME` when validating changes. The installed copy is cached under that profile's `plugins/cache/` directory.
 
 ## Planning helper
