@@ -1,5 +1,11 @@
 # mattpocock-skills
 
+## 1.4.0
+
+### Minor Changes
+
+- [`b046f45`](https://github.com/mattpocock/skills/commit/b046f459093ff810bbaa58da4ee60ef934f0af5b) Thanks [@manoelcalixto](https://github.com/manoelcalixto)! - Add a native Codex plugin with the upstream promoted skills and Codex-specific Planning workflow. Keep the source skills and Claude plugin aligned with upstream while maintaining reviewed Codex adaptations in the plugin.
+
 ## 1.3.1
 
 ### Patch Changes
