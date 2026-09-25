@@ -13,11 +13,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -29,11 +29,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: .agents/adr/0004-separate-upstream-skills-from-codex-plugin.md
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -45,11 +45,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -61,11 +61,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -77,11 +77,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -93,11 +93,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -109,11 +109,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -125,11 +125,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -141,11 +141,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -157,11 +157,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -173,11 +173,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -189,11 +189,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -205,11 +205,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -221,11 +221,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -237,11 +237,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -253,11 +253,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -270,11 +270,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Constraints: Keep beta skills outside the approved initial catalog and preserve explicit-only invocation where declared.
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -286,11 +286,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
 
@@ -302,10 +302,10 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - ADR: none
 - Obligations: specification, tickets, verification
 - Coverage:
-  - specification: pending
+  - specification: complete
   - tickets: pending
   - verification: pending
 - Evidence:
-  - specification: none
+  - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: none
   - verification: none
