@@ -260,3 +260,52 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
   - specification: none
   - tickets: none
   - verification: none
+
+## DEC-017
+- Status: active
+- Decision: Port useful existing fork behavior from promoted skills into the Codex plugin, including Planning, bounded review, and command safety fixes, while adapting Claude-specific instructions to verified Codex behavior.
+- Context: The fork currently changes shared skill instructions and Codex metadata relative to upstream; the user approved preserving useful behavior in the plugin.
+- Rationale: The upstream reset should not discard established Codex workflows, and the plugin should use its host correctly.
+- ADR: none
+- Constraints: Keep beta skills outside the approved initial catalog and preserve explicit-only invocation where declared.
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-018
+- Status: active
+- Decision: Distribute a public plugin named mattpocock-skills-codex through a Codex marketplace in this same Git repository.
+- Context: The user approved the proposed Git-backed marketplace rather than local-only installation.
+- Rationale: A repository marketplace provides an installable and updatable native Codex distribution.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
+
+## DEC-019
+- Status: active
+- Decision: Keep the Codex plugin version synchronized with package.json and the Claude plugin version through the existing Changesets release flow.
+- Context: The current release script synchronizes package.json and the Claude plugin; the user approved adding the Codex plugin to that shared version.
+- Rationale: A single release version keeps the repository distribution coherent and minimizes new release machinery.
+- ADR: none
+- Obligations: specification, tickets, verification
+- Coverage:
+  - specification: pending
+  - tickets: pending
+  - verification: pending
+- Evidence:
+  - specification: none
+  - tickets: none
+  - verification: none
