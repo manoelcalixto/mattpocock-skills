@@ -5,17 +5,19 @@ description: "Implement a piece of work based on a spec or set of tickets."
 
 Implement the work described by the user in the spec or tickets.
 
+Resolve the installed `mattpocock-skills-codex:planning-context` skill directory from the Codex skill catalog and set `planning_helper` to the absolute path of its bundled `scripts/planning_context.py`. The helper belongs to the plugin installation; the target repository is selected separately with `--repo .`. Do not assume this repository has a `skills/` checkout.
+
 ## Planning preflight
 
 Before calling `tdd`, editing code, or committing, identify the input source. A local spec or ticket artifact uses `--context-file`; a remote tracker item uses its already-obtained body through `--context-stdin`. For a plan that exists only in the conversation, there is no Planning context marker and the legacy path remains available.
 
 ```bash
 # Local artifact, relative to the repository root
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-file <spec-or-ticket> --phase final
+python3 "$planning_helper" --repo . --json validate --context-file <spec-or-ticket> --phase final
 
 # Remote GitHub body, read successfully before invoking the validator
 issue_body="$(gh issue view <number> --repo owner/repository --json body --jq .body)" && \
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-stdin --phase final <<<"$issue_body"
+python3 "$planning_helper" --repo . --json validate --context-stdin --phase final <<<"$issue_body"
 ```
 
 Replace `owner/repository` with the explicit target from the repository's issue-tracker configuration. The assignment and `&&` are intentional: a nonzero tracker read stops before the validator, and the here-string preserves the validator's own exit status. Surface that read error as a preflight failure, never pass empty input to the validator, and never interpret a tracker read failure as `legacy`. Continue a declared Planning context only when the JSON result reports `"status": "valid"`. Carry its resolved effort, ledger, checkpoint SHA, decision IDs, coverage, and branch ancestry into the implementation context. The `final` phase proves the selected active decisions have specification and ticket coverage; verification belongs to implementation closeout. A valid stdin result identifies `source: stdin` and `context: <stdin>`; a local marker identifies its repository-relative context file.
@@ -43,7 +45,7 @@ Only for a declared Planning context that passed preflight, after the bounded `c
 For this skill, the initial implementation commit carries one trailer for each applicable preflight decision that declares `verification`. A fix commit adds trailers only for decisions whose behavior it verifies or changes. If the final union is missing a required verification decision, add the corresponding trailer to the implementation or fix commit that verifies or changes it, then rerun final validation before aggregation. The aggregator keeps ticket-only mode available, filters selected decisions without `verification`, and fails closed when selected verification evidence is missing.
 
 ```bash
-python3 skills/engineering/planning-context/scripts/planning_context.py --repo . coverage aggregate \
+python3 "$planning_helper" --repo . coverage aggregate \
   --effort <effort> --checkpoint <final-planning-checkpoint-sha> --head <final-reviewed-head-sha> \
   --decisions <comma-separated-preflight-decision-IDs> --commit <final-reviewed-head-sha>
 ```

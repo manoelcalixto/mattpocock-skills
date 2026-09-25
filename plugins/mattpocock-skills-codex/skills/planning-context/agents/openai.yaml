@@ -1,0 +1,3 @@
+interface:
+  display_name: "Planning Context"
+  short_description: "Version and validate planning context"
