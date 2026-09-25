@@ -15,12 +15,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/19
-  - verification: none
-
+  - verification: ["commit 9545b04c72e60ebc2a836dcc07737e309a15f6bb: Local Codex plugin installation copied the skill and its resources into an isolated plugin cache."]
 ## DEC-002
 - Status: active
 - Decision: Keep the skills/ tree aligned with the upstream repository, and maintain Codex-specific skill adaptations in the native plugin.
@@ -31,12 +30,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/21; https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: skills/ and promoted docs match upstream/main at the recorded c55ee460 baseline, with Codex adaptations held in the plugin."]
 ## DEC-003
 - Status: active
 - Decision: Ship one native Codex plugin for this repository.
@@ -47,12 +45,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/19
-  - verification: none
-
+  - verification: ["commit 9545b04c72e60ebc2a836dcc07737e309a15f6bb: Codex plugin list reports one installed plugin for this repository marketplace."]
 ## DEC-004
 - Status: active
 - Decision: Document the native plugin as the recommended Codex installation route.
@@ -63,12 +60,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: README and canonical install block recommend the native plugin for Codex."]
 ## DEC-005
 - Status: active
 - Decision: Document an upstream update workflow in AGENTS.md that reconciles changed upstream skills with the plugin adaptations.
@@ -79,12 +75,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: AGENTS.md specifies the upstream reconciliation and manual Codex adaptation workflow."]
 ## DEC-006
 - Status: active
 - Decision: Include upstream-promoted skills and Codex-specific workflow skills, beginning with planning-context, in the native Codex plugin.
@@ -95,12 +90,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/20; https://github.com/manoelcalixto/mattpocock-skills/issues/21
-  - verification: none
-
+  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: Plugin catalog includes the 25 promoted upstream skills.","commit fa0e81864e2038436997512f82e8326f2e047726: The installed catalog contains 25 upstream skills plus Planning context."]
 ## DEC-007
 - Status: active
 - Decision: Use a recurring Codex automation to evaluate upstream changes and adapt the Codex plugin copies.
@@ -111,12 +105,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/23
-  - verification: none
-
+  - verification: ["commit d3c2c9cc824981c74fff5eb60078acc5fcf0c9d7: Codex automation atualizar-skills-upstream-e-plugin-codex is active and its prompt evaluates upstream before adapting plugin copies."]
 ## DEC-008
 - Status: active
 - Decision: Keep the Claude plugin tied to the upstream skill set without this fork’s Codex-specific workflow adaptations.
@@ -127,12 +120,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: Claude manifest contains only the 25 upstream promoted skills and passes strict validation."]
 ## DEC-009
 - Status: active
 - Decision: Stop creating local Codex skill links from skills/; use the native plugin for Codex development.
@@ -143,12 +135,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: link-skills.sh creates Claude links only and no Codex links."]
 ## DEC-010
 - Status: active
 - Decision: Limit the first native Codex plugin to adapted skills and their required scripts, references, and metadata.
@@ -159,12 +150,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/20
-  - verification: none
-
+  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: Each copied skill includes its scripts, references, and Codex metadata.","commit fa0e81864e2038436997512f82e8326f2e047726: Planning script, contract, and metadata travel together in the installed plugin."]
 ## DEC-011
 - Status: active
 - Decision: Run the upstream synchronization automation weekly on Mondays at 09:00 America/Bahia, starting after the Codex plugin is functional.
@@ -175,12 +165,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/23
-  - verification: none
-
+  - verification: ["commit d3c2c9cc824981c74fff5eb60078acc5fcf0c9d7: The active heartbeat runs Mondays at 09:00 America/Bahia after installed plugin validation."]
 ## DEC-012
 - Status: active
 - Decision: When upstream changes require work, the automation updates the upstream base and Codex plugin on a branch, validates them, and opens a non-draft PR; otherwise it records a no-change result.
@@ -191,12 +180,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/23
-  - verification: none
-
+  - verification: ["commit d3c2c9cc824981c74fff5eb60078acc5fcf0c9d7: The automation prompt requests a validated non-draft PR for relevant changes and no PR when unchanged."]
 ## DEC-013
 - Status: active
 - Decision: Track upstream/main and record the incorporated upstream commit for each synchronization.
@@ -207,12 +195,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22; https://github.com/manoelcalixto/mattpocock-skills/issues/23
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: The incorporated upstream commit is recorded and compared by compare-upstream-skills.py."]
 ## DEC-014
 - Status: active
 - Decision: Preserve explicit-only invocation for skills marked user-invoked in the Codex plugin and make their Codex metadata consistent.
@@ -223,12 +210,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/20
-  - verification: none
-
+  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: User-invoked plugin skills deny implicit invocation and omit unsupported Codex frontmatter.","commit 3c94f9a82aa17994c2360a242030548c2bc599cb: Installed user-invoked policies remained explicit-only in the final isolated Codex profile."]
 ## DEC-015
 - Status: active
 - Decision: Keep existing skill documentation focused on upstream and Claude behavior, and document Codex plugin differences separately.
@@ -239,12 +225,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/22
-  - verification: none
-
+  - verification: ["commit b046f459093ff810bbaa58da4ee60ef934f0af5b: Upstream skill docs remain separate from docs/codex-plugin.md."]
 ## DEC-016
 - Status: active
 - Decision: Claim compatibility only for Codex versions verified by plugin tests.
@@ -255,12 +240,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/19; https://github.com/manoelcalixto/mattpocock-skills/issues/23
-  - verification: none
-
+  - verification: ["commit 3c94f9a82aa17994c2360a242030548c2bc599cb: Documentation names the codex-cli 0.158.0-alpha.8 version used for final installed-profile validation.","commit 9545b04c72e60ebc2a836dcc07737e309a15f6bb: codex-cli 0.158.0-alpha.8 plugin add and prompt-input expose the namespaced installed skill."]
 ## DEC-017
 - Status: active
 - Decision: Port useful existing fork behavior from promoted skills into the Codex plugin, including Planning, bounded review, and command safety fixes, while adapting Claude-specific instructions to verified Codex behavior.
@@ -272,12 +256,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/20; https://github.com/manoelcalixto/mattpocock-skills/issues/21
-  - verification: none
-
+  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: Plugin copies adapt skill references and delegation guidance to Codex.","commit 3c94f9a82aa17994c2360a242030548c2bc599cb: Codex setup writes AGENTS.md and preserves a separate CLAUDE.md.","commit fa0e81864e2038436997512f82e8326f2e047726: Planning and Implement instructions resolve the bundled helper from the installed plugin; the helper initialized a separate consumer repository."]
 ## DEC-018
 - Status: active
 - Decision: Distribute a public plugin named mattpocock-skills-codex through a Codex marketplace in this same Git repository.
@@ -288,12 +271,11 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/19
-  - verification: none
-
+  - verification: ["commit 9545b04c72e60ebc2a836dcc07737e309a15f6bb: codex plugin marketplace add resolves the repository marketplace and installs mattpocock-skills-codex."]
 ## DEC-019
 - Status: active
 - Decision: Keep the Codex plugin version synchronized with package.json and the Claude plugin version through the existing Changesets release flow.
@@ -304,8 +286,8 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Coverage:
   - specification: complete
   - tickets: complete
-  - verification: pending
+  - verification: complete
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/19
-  - verification: none
+  - verification: ["commit 9545b04c72e60ebc2a836dcc07737e309a15f6bb: npm run check-plugin-version and a mismatch/update fixture validate shared manifest versions.","commit b046f459093ff810bbaa58da4ee60ef934f0af5b: Both plugin manifest versions match package.json and the Changesets workflow remains wired."]
