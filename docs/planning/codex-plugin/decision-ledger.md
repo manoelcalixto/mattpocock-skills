@@ -260,7 +260,7 @@ Decision meanings are immutable after a Planning checkpoint. Coverage advances f
 - Evidence:
   - specification: https://github.com/manoelcalixto/mattpocock-skills/issues/18
   - tickets: https://github.com/manoelcalixto/mattpocock-skills/issues/20; https://github.com/manoelcalixto/mattpocock-skills/issues/21
-  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: Plugin copies adapt skill references and delegation guidance to Codex.","commit 3c94f9a82aa17994c2360a242030548c2bc599cb: Codex setup writes AGENTS.md and preserves a separate CLAUDE.md.","commit fa0e81864e2038436997512f82e8326f2e047726: Planning and Implement instructions resolve the bundled helper from the installed plugin; the helper initialized a separate consumer repository."]
+  - verification: ["commit 1db9c58866c052ca2f906cc5a5537c6024c6021a: Plugin copies adapt skill references and delegation guidance to Codex.","commit 3c94f9a82aa17994c2360a242030548c2bc599cb: Codex setup writes AGENTS.md and preserves a separate CLAUDE.md.","commit fa0e81864e2038436997512f82e8326f2e047726: Planning and Implement instructions resolve the bundled helper from the installed plugin; the helper initialized a separate consumer repository.","ticket PR #24 thread PRRT_kwDOT_pTGM6l_ZY9: commit cef51df routes Planning-marked work through the packaged implement skill; skill and distribution validation passed"]
 ## DEC-018
 - Status: active
 - Decision: Distribute a public plugin named mattpocock-skills-codex through a Codex marketplace in this same Git repository.
