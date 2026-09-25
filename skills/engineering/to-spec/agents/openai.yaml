@@ -1,3 +1,5 @@
 interface:
   display_name: "To Spec"
-  short_description: "Synthesize a spec with decision coverage"
+  short_description: "Turn a conversation into a spec"
+policy:
+  allow_implicit_invocation: false

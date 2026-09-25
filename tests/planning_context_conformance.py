@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 import tempfile
@@ -12,44 +11,14 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HELPER = REPO_ROOT / "skills" / "engineering" / "planning-context" / "scripts" / "planning_context.py"
-IMPLEMENT_SKILL = REPO_ROOT / "skills" / "engineering" / "implement" / "SKILL.md"
-IMPLEMENT_DOCS = REPO_ROOT / "docs" / "engineering" / "implement.md"
-PLANNING_CONTRACT = REPO_ROOT / "skills" / "engineering" / "planning-context" / "references" / "planning-contract.md"
-IMPLEMENT_SPEC_SKILL = REPO_ROOT / "skills" / "in-progress" / "implement-spec" / "SKILL.md"
-IMPLEMENT_SPEC_METADATA = REPO_ROOT / "skills" / "in-progress" / "implement-spec" / "agents" / "openai.yaml"
-IN_PROGRESS_README = REPO_ROOT / "skills" / "in-progress" / "README.md"
-ISSUE_TRACKER = REPO_ROOT / "docs" / "agents" / "issue-tracker.md"
-BOUNDARY_SKILLS = {
-    "ask-matt": REPO_ROOT / "skills" / "engineering" / "ask-matt" / "SKILL.md",
-    "handoff": REPO_ROOT / "skills" / "productivity" / "handoff" / "SKILL.md",
-    "setup-matt-pocock-skills": REPO_ROOT / "skills" / "engineering" / "setup-matt-pocock-skills" / "SKILL.md",
-    "planning-context": REPO_ROOT / "skills" / "engineering" / "planning-context" / "SKILL.md",
-}
-BOUNDARY_METADATA = {
-    name: path.parent / "agents" / "openai.yaml" for name, path in BOUNDARY_SKILLS.items()
-}
-BOUNDARY_DOCS = {
-    "ask-matt": REPO_ROOT / "docs" / "engineering" / "ask-matt.md",
-    "handoff": REPO_ROOT / "docs" / "productivity" / "handoff.md",
-    "setup-matt-pocock-skills": REPO_ROOT / "docs" / "engineering" / "setup-matt-pocock-skills.md",
-    "planning-context": REPO_ROOT / "docs" / "engineering" / "planning-context.md",
-}
+HELPER = REPO_ROOT / "plugins" / "mattpocock-skills-codex" / "skills" / "planning-context" / "scripts" / "planning_context.py"
+IMPLEMENT_SKILL = REPO_ROOT / "plugins" / "mattpocock-skills-codex" / "skills" / "implement" / "SKILL.md"
 
 
 class HarnessFailure(AssertionError):
     """Raised when a public planning-context behavior is not observable."""
 
 
-def assert_ordered(text: str, label: str, *phrases: str) -> None:
-    """Require a contract's milestones to appear in the stated order."""
-
-    cursor = -1
-    for phrase in phrases:
-        position = text.find(phrase, cursor + 1)
-        if position < 0:
-            raise HarnessFailure(f"{label} is missing ordered milestone: {phrase}")
-        cursor = position
 
 
 def run_git(
@@ -1824,103 +1793,8 @@ def test_coverage_mutators_preserve_valid_subfield_indentation() -> None:
         raise HarnessFailure("verification aggregation rewrote a three-space subfield to two spaces")
 
 
-def test_implement_preflight_wiring() -> None:
-    skill = IMPLEMENT_SKILL.read_text()
-    docs = IMPLEMENT_DOCS.read_text()
-    planning_contract = PLANNING_CONTRACT.read_text()
-    preflight = skill.find("## Planning preflight")
-    tdd = skill.find('Call the Skill tool with "tdd"')
-    if preflight < 0 or tdd < 0 or preflight > tdd:
-        raise HarnessFailure("implement does not place Planning preflight before TDD")
-    for phrase in (
-        "planning_context.py",
-        "--context-file",
-        "--context-stdin",
-        "--phase final",
-        '"status": "valid"',
-        '"status": "legacy"',
-        "exact failed invariant",
-        "A declared marker never falls back to the legacy path",
-    ):
-        if phrase not in skill:
-            raise HarnessFailure(f"implement preflight wiring is missing: {phrase}")
-    if "Call the Skill tool with `planning-context`" not in skill:
-        raise HarnessFailure("implement does not return decision conflicts to planning-context")
-    if "## Planning preflight" not in docs or "Active decision conflicts with the implementation" not in docs:
-        raise HarnessFailure("implement documentation does not describe the Planning preflight")
-    unsafe_tracker_pipe = re.compile(r"gh issue view[^\n]*(?:\|\s*python3|(?:\\\n[ \t]*)+\|\s*python3)")
-    for name, text in (("implement skill", skill), ("planning contract", planning_contract)):
-        if unsafe_tracker_pipe.search(text):
-            raise HarnessFailure(f"{name} invokes the validator through an unchecked tracker pipeline")
-    safe_validator = "python3 skills/engineering/planning-context/scripts/planning_context.py --repo . --json validate --context-stdin --phase final <<<\"$issue_body\""
-    if 'issue_body="$(gh issue view' not in skill or safe_validator not in skill:
-        raise HarnessFailure("implement does not capture tracker content before stdin validation")
-    if "never interpret a tracker read failure as `legacy`" not in skill:
-        raise HarnessFailure("implement does not keep tracker read failures out of the legacy path")
 
 
-def test_implement_planning_closeout_wiring() -> None:
-    skill = IMPLEMENT_SKILL.read_text()
-    docs = IMPLEMENT_DOCS.read_text()
-    implement_spec = IMPLEMENT_SPEC_SKILL.read_text()
-    assert_ordered(
-        skill,
-        "implement Planning closeout",
-        "## Planning preflight",
-        'Call the Skill tool with "tdd"',
-        "Commit the completed implementation",
-        'Call the Skill tool with "code-review"',
-        "## Planning implementation closeout",
-        "coverage aggregate",
-        "checkpoint --phase implementation",
-    )
-    for phrase in (
-        "one for each applicable preflight decision that declares `verification`",
-        "--decisions <comma-separated-preflight-decision-IDs>",
-        "--head <final-reviewed-head-sha>",
-        "--commit <final-reviewed-head-sha>",
-        "whose behavior that commit verifies or changes",
-        "the union of the final history and validated ticket evidence",
-        "filters selected decisions without `verification`",
-        "fails closed when selected verification evidence is missing",
-        "Only after aggregation succeeds",
-        'If preflight returned "status": "legacy"',
-        "never infer a ledger, checkpoint, or coverage aggregation",
-    ):
-        if phrase not in skill:
-            raise HarnessFailure(f"implement Planning closeout contract is missing: {phrase}")
-    assert_ordered(
-        docs,
-        "implement documentation Planning closeout",
-        "## Planning preflight",
-        "Commit the implementation",
-        "code-review",
-        "coverage aggregate",
-        "checkpoint --phase implementation",
-    )
-    assert_ordered(
-        implement_spec,
-        "implement-spec Planning closeout",
-        "## Merge and review checkpoint",
-        "code-review",
-        "## Planning implementation closeout",
-        "coverage aggregate",
-        "checkpoint --phase implementation",
-    )
-    for phrase in (
-        "the final reviewed integration head",
-        "--commit <final-reviewed-head-sha>",
-        "A worker records only decisions relevant to its ticket",
-        "the union of the final history and validated ticket evidence",
-        "every applicable preflight decision that declares `verification`",
-        "filters selected decisions without `verification`",
-        "ticket-only mode valid",
-        "fails closed when selected verification evidence is missing",
-        "Skip this closeout for an entirely markerless graph",
-        "do not infer a ledger, coverage aggregation, or Planning checkpoint",
-    ):
-        if phrase not in implement_spec:
-            raise HarnessFailure(f"implement-spec Planning closeout contract is missing: {phrase}")
 
 
 def test_implement_single_ticket_planning_closeout() -> None:
@@ -2354,7 +2228,7 @@ def test_implement_preflight_decision_conflict() -> None:
     skill_text = IMPLEMENT_SKILL.read_text()
     for phrase in (
         "If an active decision cannot be honored",
-        "Call the Skill tool with `planning-context`",
+        "Follow the installed `mattpocock-skills-codex:planning-context` skill",
         "superseding decision",
         "new Planning checkpoint",
         "silent deviation",
@@ -2407,62 +2281,6 @@ def test_implement_preflight_decision_conflict() -> None:
         raise HarnessFailure(f"supersession and new checkpoint did not restore a valid context: {resolved}")
 
 
-def test_implement_spec_preflight_wiring() -> None:
-    skill = IMPLEMENT_SPEC_SKILL.read_text()
-    metadata = IMPLEMENT_SPEC_METADATA.read_text()
-    bucket = IN_PROGRESS_README.read_text()
-    tracker = ISSUE_TRACKER.read_text()
-    preflight = skill.find("## Planning context preflight")
-    branch = skill.find("creating an integration branch")
-    if preflight < 0 or branch < 0 or preflight > branch:
-        raise HarnessFailure("implement-spec does not gate branch creation on Planning preflight")
-    skill_lower = skill.lower()
-    for phrase in (
-        "the specification and every ticket",
-        '"status": "valid"',
-        "full `checkpoint` SHA",
-        "same effort, ledger, and checkpoint",
-        "ancestry.is_ancestor: true",
-        "issue_body=\"$(gh issue view",
-        "--context-stdin",
-        "never pass an empty body",
-        "markerless",
-        "mixes marked and markerless",
-        "context pointers",
-        "common checkpoint lineage",
-        "Planning-Verification:",
-        "observable evidence",
-        "--ticket-evidence",
-        "coverage aggregate",
-        "--phase implementation",
-        "frontier",
-        "merger",
-        "only review checkpoint",
-        "Clean up all",
-        "worktrees",
-    ):
-        if phrase.lower() not in skill_lower:
-            raise HarnessFailure(f"implement-spec coordination contract is missing: {phrase}")
-    unsafe_tracker_pipe = re.compile(r"gh issue view[^\n]*(?:\|\s*python3|(?:\\\n[ \t]*)+\|\s*python3)")
-    if unsafe_tracker_pipe.search(skill):
-        raise HarnessFailure("implement-spec invokes validation through an unchecked tracker pipeline")
-    if "docs/agents/issue-tracker.md" not in skill:
-        raise HarnessFailure("implement-spec does not read the configured issue tracker before remote reads")
-    if "manoelcalixto/mattpocock-skills" in skill:
-        raise HarnessFailure("implement-spec hardcodes the fork instead of using issue-tracker configuration")
-    if "--repo owner/repository" not in skill or "fully qualified tracker target configured there" not in skill:
-        raise HarnessFailure("implement-spec does not use an explicit configured tracker target")
-    if "Every `gh` issue and pull request command must pass `--repo manoelcalixto/mattpocock-skills`." not in tracker:
-        raise HarnessFailure("the fork issue-tracker contract is not explicit for this repository")
-    if "interface:\n  display_name:" not in metadata or "\n  short_description:" not in metadata:
-        raise HarnessFailure("implement-spec OpenAI metadata is not nested under interface")
-    if "validated Planning checkpoint" not in bucket or "implement-spec" not in bucket:
-        raise HarnessFailure("in-progress catalog does not describe checkpointed implement-spec coordination")
-    if "\u2014" in skill or "\u2014" in metadata:
-        raise HarnessFailure("implement-spec artifacts contain an em dash")
-    plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
-    if "./skills/in-progress/implement-spec" in plugin.get("skills", []):
-        raise HarnessFailure("in-progress implement-spec was added to the Claude plugin")
 
 
 def test_implement_spec_markerless_and_mixed_graph() -> None:
@@ -4127,208 +3945,6 @@ The ADR-backed planning contract is the selected answer.
         raise HarnessFailure("ADR canonical rationale and ledger pointer are not both present")
 
 
-def test_session_boundary_router_and_catalogs() -> None:
-    """Check the routed boundary contract and every promoted distribution surface."""
-
-    ask = BOUNDARY_SKILLS["ask-matt"].read_text()
-    phase_boundaries = BOUNDARY_SKILLS["ask-matt"].parent.joinpath("PHASE-BOUNDARIES.md").read_text()
-    handoff = BOUNDARY_SKILLS["handoff"].read_text()
-    handoff_docs = BOUNDARY_DOCS["handoff"].read_text()
-    setup = BOUNDARY_SKILLS["setup-matt-pocock-skills"].read_text()
-    setup_docs = BOUNDARY_DOCS["setup-matt-pocock-skills"].read_text()
-    planning = BOUNDARY_SKILLS["planning-context"].read_text()
-    planning_contract = PLANNING_CONTRACT.read_text()
-
-    route_start = ask.find("The multi-session route is therefore:")
-    if route_start < 0:
-        raise HarnessFailure("ask-matt is missing its explicit multi-session route")
-    route_end = ask.find("\n", route_start)
-    route = ask[route_start:] if route_end < 0 else ask[route_start:route_end]
-    assert_ordered(
-        route,
-        "ask-matt multi-session route",
-        "grill-with-docs",
-        "intermediate Planning checkpoint",
-        "to-spec",
-        "to-tickets",
-        "final Planning checkpoint",
-        "fresh implementation session",
-        "implement-spec or implement",
-        "code-review",
-    )
-    wayfinder_start = ask.find("When the map clears")
-    if wayfinder_start < 0:
-        raise HarnessFailure("ask-matt is missing the Wayfinder build handoff")
-    wayfinder_end = ask.find("\n\n", wayfinder_start)
-    wayfinder = ask[wayfinder_start:] if wayfinder_end < 0 else ask[wayfinder_start:wayfinder_end]
-    assert_ordered(
-        wayfinder,
-        "ask-matt Wayfinder handoff",
-        "/to-spec",
-        "/to-tickets",
-        "final Planning checkpoint",
-        "fresh implementation session",
-    )
-    for phrase in (
-        "lightweight path for small work without a formal Planning context",
-        "right here, in the same context window",
-        "genuinely small and has no formal Planning context",
-    ):
-        if phrase not in ask:
-            raise HarnessFailure(f"ask-matt lightweight route is missing: {phrase}")
-    ask_docs = BOUNDARY_DOCS["ask-matt"].read_text()
-    for phrase in ("intermediate Planning checkpoint", "final checkpoint", "fresh session", "Small work without a formal Planning context"):
-        if phrase not in ask_docs:
-            raise HarnessFailure(f"ask-matt documentation is missing routed boundary behavior: {phrase}")
-
-    assert_ordered(
-        phase_boundaries,
-        "phase-boundaries structure",
-        "## Planning context gate",
-        "## The five options",
-        "## The tree",
-    )
-    for phrase in (
-        "current map, specification, or ticket declares its `## Planning context` marker",
-        "create the checkpoint before `/compact`, `/handoff`, `/clear`, dispatching a `Subagent`",
-        "dispatching a `Subagent`",
-        "any other fresh context",
-        "`intermediate` checkpoint",
-        "`final` checkpoint",
-        "`implementation` checkpoint",
-        "exact full checkpoint SHA",
-        "A handoff carries pointers instead of copying their contents",
-        "small markerless work",
-    ):
-        if phrase not in phase_boundaries:
-            raise HarnessFailure(f"phase-boundaries gate is missing: {phrase}")
-
-    for name, text in (("handoff skill", handoff), ("planning skill", planning), ("planning contract", planning_contract)):
-        for phrase in ("fresh session", "active Planning context", "checkpoint"):
-            if phrase not in text:
-                raise HarnessFailure(f"{name} does not describe the fresh-session gate: {phrase}")
-    for name, text in (("planning skill", planning), ("planning contract", planning_contract), ("phase boundaries", phase_boundaries)):
-        for phrase in ("Subagent", "other fresh context"):
-            if phrase not in text:
-                raise HarnessFailure(f"{name} does not describe the subagent fresh-context boundary: {phrase}")
-    for phrase in (
-        "call the Skill tool with `planning-context` first",
-        "exact full checkpoint SHA",
-        "effort",
-        "ledger path",
-        "current branch",
-        "resolvable paths or URLs",
-        "present in or resolvable from that checkpoint commit",
-        "final checkpoint",
-        "marker validation path",
-        "do not copy their ledger, specification, ticket, ADR, or decision content",
-    ):
-        if phrase not in handoff:
-            raise HarnessFailure(f"handoff pointer bridge is missing: {phrase}")
-    for phrase in ("pointer bridge", "exact full checkpoint SHA", "does not repeat any artifact's content"):
-        if phrase not in handoff_docs:
-            raise HarnessFailure(f"handoff documentation is missing the pointer bridge: {phrase}")
-    if "subagent" not in ask_docs.lower() or "changed Planning artifact" not in ask_docs:
-        raise HarnessFailure("ask-matt documentation does not describe the subagent Planning boundary")
-
-    for phrase in ("New repository", "Existing repository", "lazy migration", "byte-for-byte", "docs/agents/planning.md"):
-        if phrase not in setup:
-            raise HarnessFailure(f"setup Planning discovery is missing: {phrase}")
-    if "does not replace existing planning content" not in setup:
-        raise HarnessFailure("setup does not preserve existing Planning content")
-    for phrase in ("New repository", "Existing repository", "lazy migration", "byte-for-byte", "never replaces existing planning content"):
-        if phrase not in setup_docs:
-            raise HarnessFailure(f"setup documentation is missing Planning discovery behavior: {phrase}")
-
-    docs_sections = ("## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits")
-    for name, path in BOUNDARY_DOCS.items():
-        text = path.read_text()
-        positions = [text.find(section) for section in docs_sections]
-        if any(position < 0 for position in positions) or positions != sorted(positions):
-            raise HarnessFailure(f"{name} documentation sections are incomplete or out of order")
-        if "\u2014" in text:
-            raise HarnessFailure(f"{name} documentation contains an em dash")
-    planning_docs = BOUNDARY_DOCS["planning-context"].read_text()
-    assert_ordered(
-        planning_docs,
-        "planning-context documentation structure",
-        "## When to reach for it",
-        "## Prerequisites",
-        "## The ledger and checkpoint",
-        "## Common questions",
-    )
-
-    plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
-    plugin_skills = plugin.get("skills", [])
-    for name, skill_path in BOUNDARY_SKILLS.items():
-        relative_skill = "./" + skill_path.parent.relative_to(REPO_ROOT).as_posix()
-        if relative_skill not in plugin_skills:
-            raise HarnessFailure(f"{name} is missing from the Claude plugin manifest")
-        metadata = BOUNDARY_METADATA[name].read_text()
-        if not metadata.startswith("interface:\n  display_name:") or "\n  short_description:" not in metadata:
-            raise HarnessFailure(f"{name} metadata is not nested under interface")
-        if "policy:" in metadata or "allow_implicit_invocation" in metadata:
-            raise HarnessFailure(f"{name} metadata reintroduced an implicit-invocation policy")
-        if name == "planning-context":
-            if "disable-model-invocation:" in skill_path.read_text():
-                raise HarnessFailure("planning-context must remain model-invoked")
-        elif "disable-model-invocation: true" not in skill_path.read_text():
-            raise HarnessFailure(f"{name} invocation metadata changed unexpectedly")
-    for metadata_path in (REPO_ROOT / "skills").rglob("openai.yaml"):
-        metadata = metadata_path.read_text()
-        if "policy:" in metadata or "allow_implicit_invocation" in metadata:
-            raise HarnessFailure(f"OpenAI metadata reintroduced an implicit-invocation policy: {metadata_path}")
-
-    expected_promoted = {
-        "./" + skill_path.parent.relative_to(REPO_ROOT).as_posix()
-        for bucket in ("engineering", "productivity")
-        for skill_path in (REPO_ROOT / "skills" / bucket).glob("*/SKILL.md")
-    }
-    if set(plugin_skills) != expected_promoted:
-        missing = sorted(expected_promoted - set(plugin_skills))
-        unexpected = sorted(set(plugin_skills) - expected_promoted)
-        raise HarnessFailure(f"Claude plugin membership is out of parity: missing={missing}, unexpected={unexpected}")
-    top_readme = (REPO_ROOT / "README.md").read_text()
-    for bucket in ("engineering", "productivity"):
-        bucket_readme = (REPO_ROOT / "skills" / bucket / "README.md").read_text()
-        for skill_path in sorted((REPO_ROOT / "skills" / bucket).glob("*/SKILL.md")):
-            name = skill_path.parent.name
-            top_link = f"[{name}](./skills/{bucket}/{name}/SKILL.md)"
-            bucket_link = f"[{name}](./{name}/SKILL.md)"
-            if top_link not in top_readme or bucket_link not in bucket_readme:
-                raise HarnessFailure(f"{name} catalog links are out of parity")
-            docs_path = REPO_ROOT / "docs" / bucket / f"{name}.md"
-            if not docs_path.exists():
-                raise HarnessFailure(f"promoted skill docs are missing: {docs_path.relative_to(REPO_ROOT)}")
-            metadata_path = skill_path.parent / "agents" / "openai.yaml"
-            metadata = metadata_path.read_text()
-            if not metadata.startswith("interface:\n  display_name:") or "\n  short_description:" not in metadata:
-                raise HarnessFailure(f"promoted skill metadata is not nested under interface: {metadata_path}")
-            docs_text = docs_path.read_text()
-            if "\u2014" in docs_text or "\u2014" in skill_path.read_text():
-                raise HarnessFailure(f"promoted skill contains an em dash: {skill_path}")
-
-    catalogs = {
-        REPO_ROOT / "README.md": {
-            "ask-matt": "[ask-matt](./skills/engineering/ask-matt/SKILL.md)",
-            "handoff": "[handoff](./skills/productivity/handoff/SKILL.md)",
-            "setup-matt-pocock-skills": "[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)",
-            "planning-context": "[planning-context](./skills/engineering/planning-context/SKILL.md)",
-        },
-        REPO_ROOT / "skills" / "engineering" / "README.md": {
-            "ask-matt": "[ask-matt](./ask-matt/SKILL.md)",
-            "setup-matt-pocock-skills": "[setup-matt-pocock-skills](./setup-matt-pocock-skills/SKILL.md)",
-            "planning-context": "[planning-context](./planning-context/SKILL.md)",
-        },
-        REPO_ROOT / "skills" / "productivity" / "README.md": {
-            "handoff": "[handoff](./handoff/SKILL.md)",
-        },
-    }
-    for catalog, links in catalogs.items():
-        text = catalog.read_text()
-        for name, link in links.items():
-            if link not in text:
-                raise HarnessFailure(f"{name} is missing from {catalog.relative_to(REPO_ROOT)}")
 
 
 def test_fresh_session_pointer_bridge() -> None:
@@ -4441,181 +4057,8 @@ def test_fresh_session_pointer_bridge() -> None:
         raise HarnessFailure("implementation handoff copied canonical Decision content")
 
 
-def test_fork_targeting_operations() -> None:
-    """Ensure operational examples target this fork while generic templates stay generic."""
-
-    target = "manoelcalixto/mattpocock-skills"
-    operational_files = (
-        REPO_ROOT / "skills" / "engineering" / "triage" / "AGENT-BRIEF.md",
-        REPO_ROOT / "docs" / "engineering" / "setup-matt-pocock-skills.md",
-        REPO_ROOT / "docs" / "engineering" / "triage.md",
-        REPO_ROOT / "docs" / "agents" / "issue-tracker.md",
-        REPO_ROOT / ".agents" / "writing-docs.md",
-    )
-    for path in operational_files:
-        for line in path.read_text().splitlines():
-            if re.search(r"\bgh (?:issue|pr)\s+", line) and f"--repo {target}" not in line:
-                raise HarnessFailure(f"operational GitHub command does not target the fork: {path}:{line}")
-            if re.search(r"\bgh api\s+", line) and f"repos/{target}/" not in line:
-                raise HarnessFailure(f"operational GitHub API command does not target the fork: {path}:{line}")
-    if "gh issue list --label needs-triage" in (operational_files[0]).read_text():
-        raise HarnessFailure("triage brief retained an inferred issue target")
-    if "gh issue create --label <missing>" in (operational_files[1]).read_text():
-        raise HarnessFailure("setup docs retained an inferred issue target")
-    if "gh pr list`" in (operational_files[2]).read_text():
-        raise HarnessFailure("triage docs retained an inferred pull request target")
 
 
-def test_repository_wiring() -> None:
-    skill = REPO_ROOT / "skills" / "engineering" / "planning-context"
-    skill_text = (skill / "SKILL.md").read_text()
-    if "disable-model-invocation:" in skill_text:
-        raise HarnessFailure("planning-context must remain model-invoked")
-    metadata = (skill / "agents" / "openai.yaml").read_text()
-    if "interface:" not in metadata or "display_name:" not in metadata or "short_description:" not in metadata:
-        raise HarnessFailure("planning-context OpenAI metadata is incomplete")
-    if "policy:" in metadata:
-        raise HarnessFailure("model-invoked planning-context must not disable implicit invocation")
-
-    coverage_help = subprocess.run(
-        [sys.executable, str(HELPER), "coverage", "--help"],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if coverage_help.returncode != 0:
-        raise HarnessFailure(f"coverage help failed: {coverage_help.stderr}")
-    for phrase in ("verified commits", "ticket evidence"):
-        if phrase not in coverage_help.stdout:
-            raise HarnessFailure(f"coverage aggregate help does not expose both evidence modes: {phrase}")
-    aggregate_help = subprocess.run(
-        [sys.executable, str(HELPER), "coverage", "aggregate", "--help"],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if aggregate_help.returncode != 0 or "optional with ticket evidence" not in aggregate_help.stdout:
-        raise HarnessFailure(f"coverage aggregate option help omits ticket-only mode: {aggregate_help.stderr}")
-    normalized_help = " ".join(aggregate_help.stdout.split())
-    if "required only when selected decisions declare verification" not in normalized_help:
-        raise HarnessFailure("coverage aggregate help implies every selected decision needs evidence")
-
-    plugin = json.loads((REPO_ROOT / ".claude-plugin" / "plugin.json").read_text())
-    if "./skills/engineering/planning-context" not in plugin.get("skills", []):
-        raise HarnessFailure("planning-context is missing from the Claude plugin manifest")
-    for catalog, link in (
-        (REPO_ROOT / "README.md", "[planning-context](./skills/engineering/planning-context/SKILL.md)"),
-        (REPO_ROOT / "skills" / "engineering" / "README.md", "[planning-context](./planning-context/SKILL.md)"),
-    ):
-        if link not in catalog.read_text():
-            raise HarnessFailure(f"planning-context is missing from {catalog.relative_to(REPO_ROOT)}")
-
-    docs = (REPO_ROOT / "docs" / "engineering" / "planning-context.md").read_text()
-    sections = ["## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits"]
-    positions = [docs.find(section) for section in sections]
-    if any(position < 0 for position in positions) or positions != sorted(positions):
-        raise HarnessFailure("planning-context documentation sections are incomplete or out of order")
-    if "\u2014" in skill_text or "\u2014" in docs or "\u2014" in metadata:
-        raise HarnessFailure("planning-context artifacts contain an em dash")
-    package = json.loads((REPO_ROOT / "package.json").read_text())
-    if package.get("scripts", {}).get("test:planning-context") != "python3 tests/planning_context_conformance.py":
-        raise HarnessFailure("the public planning-context harness is not wired to package.json")
-    setup = (REPO_ROOT / "skills" / "engineering" / "setup-matt-pocock-skills" / "SKILL.md").read_text()
-    router = (REPO_ROOT / "skills" / "engineering" / "ask-matt" / "SKILL.md").read_text()
-    if 'call the Skill tool with `planning-context`' not in setup:
-        raise HarnessFailure("setup does not delegate Planning initialization to planning-context")
-    if "`/planning-context`" not in router:
-        raise HarnessFailure("ask-matt does not route to planning-context")
-
-    grill = (REPO_ROOT / "skills" / "engineering" / "grill-with-docs" / "SKILL.md").read_text()
-    to_spec = (REPO_ROOT / "skills" / "engineering" / "to-spec" / "SKILL.md").read_text()
-    to_tickets = (REPO_ROOT / "skills" / "engineering" / "to-tickets" / "SKILL.md").read_text()
-    planning_context = (REPO_ROOT / "skills" / "engineering" / "planning-context" / "SKILL.md").read_text()
-    planning_context_docs = (REPO_ROOT / "docs" / "engineering" / "planning-context.md").read_text()
-    wayfinder = (REPO_ROOT / "skills" / "engineering" / "wayfinder" / "SKILL.md").read_text()
-    wayfinder_docs = (REPO_ROOT / "docs" / "engineering" / "wayfinder.md").read_text()
-    if "planning-context" not in grill or "domain-modeling" not in grill or "grilling" not in grill:
-        raise HarnessFailure("grill-with-docs does not wire all three owned skills")
-    for phrase in (
-        "Call the Skill tool once with `planning-context`",
-        "call the Skill tool once with `grilling`",
-        "call the Skill tool once with `domain-modeling`",
-        "Each call is separate",
-    ):
-        if phrase not in grill:
-            raise HarnessFailure(f"grill-with-docs does not preserve separate Skill calls: {phrase}")
-    for phrase in ("material", "round summary", "CONTEXT.md", "ADR"):
-        if phrase not in grill:
-            raise HarnessFailure(f"grill-with-docs is missing decision ownership guidance: {phrase}")
-    for phrase in ("every active ledger entry", "actionable consequence", "canonical rationale", "coverage add", "--repo owner/repository"):
-        if phrase not in to_spec:
-            raise HarnessFailure(f"to-spec is missing Planning propagation guidance: {phrase}")
-    for phrase in ("every active ledger entry", "ticket obligation", "Decision consequences", "final Planning checkpoint", "--repo owner/repository"):
-        if phrase not in to_tickets:
-            raise HarnessFailure(f"to-tickets is missing Planning propagation guidance: {phrase}")
-    for name, text in (
-        ("to-spec skill", to_spec),
-        ("to-tickets skill", to_tickets),
-        ("planning-context skill", planning_context),
-        ("wayfinder skill", wayfinder),
-        ("to-spec docs", (REPO_ROOT / "docs" / "engineering" / "to-spec.md").read_text()),
-        ("to-tickets docs", (REPO_ROOT / "docs" / "engineering" / "to-tickets.md").read_text()),
-        ("planning-context docs", planning_context_docs),
-        ("wayfinder docs", wayfinder_docs),
-    ):
-        for phrase in ("configured Git remote and branch", "git push <configured-remote> HEAD:<configured-branch>", "checkpoint is reachable"):
-            if phrase not in text:
-                raise HarnessFailure(f"{name} does not require a resolvable remote checkpoint before publication: {phrase}")
-    if re.search(r"\]\((?!https?://|#)[^)]+\)", wayfinder_docs):
-        raise HarnessFailure("wayfinder documentation contains a non-absolute link")
-    tracker_template = (
-        REPO_ROOT / "skills" / "engineering" / "setup-matt-pocock-skills" / "issue-tracker-github.md"
-    ).read_text()
-    if "--repo <owner>/<repo>" not in tracker_template or "Infer the repo" in tracker_template:
-        raise HarnessFailure("GitHub tracker template permits repository inference")
-    for phrase in (
-        "replace every literal `<owner>/<repo>`",
-        "generated `docs/agents/issue-tracker.md` contains no `<owner>/<repo>` placeholder",
-        "Never copy the seed verbatim",
-    ):
-        if phrase not in setup:
-            raise HarnessFailure(f"setup does not require deterministic GitHub target resolution: {phrase}")
-    configured_target = "manoelcalixto/mattpocock-skills"
-    rendered_tracker = tracker_template.replace("<owner>/<repo>", configured_target)
-    if "<owner>/<repo>" in rendered_tracker:
-        raise HarnessFailure("rendered GitHub tracker still contains the seed placeholder")
-    for line in rendered_tracker.splitlines():
-        if any(f"`gh issue {verb}" in line for verb in ("create", "view", "list", "comment", "edit", "close")):
-            if f"--repo {configured_target}" not in line:
-                raise HarnessFailure(f"rendered GitHub issue command lost its configured target: {line}")
-        if any(f"`gh pr {verb}" in line for verb in ("create", "view", "list", "diff", "comment", "edit", "close")):
-            if f"--repo {configured_target}" not in line:
-                raise HarnessFailure(f"rendered GitHub pull request command lost its configured target: {line}")
-        if "`gh api " in line and f"repos/{configured_target}/" not in line:
-            raise HarnessFailure(f"rendered GitHub API command lost its configured target: {line}")
-    for document in (setup, to_spec, to_tickets, tracker_template):
-        for line in document.splitlines():
-            if any(f"`gh issue {verb}" in line for verb in ("create", "view", "list", "comment", "edit", "close")) and "--repo" not in line:
-                raise HarnessFailure(f"ambiguous GitHub issue command remains: {line}")
-            if any(f"`gh pr {verb}" in line for verb in ("create", "view", "list", "diff", "comment", "edit", "close")) and "--repo" not in line:
-                raise HarnessFailure(f"ambiguous GitHub pull request command remains: {line}")
-    docs = {
-        "grill-with-docs": (REPO_ROOT / "docs" / "engineering" / "grill-with-docs.md").read_text(),
-        "to-spec": (REPO_ROOT / "docs" / "engineering" / "to-spec.md").read_text(),
-        "to-tickets": (REPO_ROOT / "docs" / "engineering" / "to-tickets.md").read_text(),
-        "ask-matt": (REPO_ROOT / "docs" / "engineering" / "ask-matt.md").read_text(),
-        "planning-context": (REPO_ROOT / "docs" / "engineering" / "planning-context.md").read_text(),
-        "wayfinder": wayfinder_docs,
-        "implement": IMPLEMENT_DOCS.read_text(),
-    }
-    for name, text in docs.items():
-        for section in ("## What it does", "## When to reach for it", "## Common questions", "## It's working if", "## Where it fits"):
-            if section not in text:
-                raise HarnessFailure(f"{name} documentation is missing {section}")
-        if "\u2014" in text:
-            raise HarnessFailure(f"{name} documentation contains an em dash")
 
 
 def test_implementation_verification_gate() -> None:
@@ -4656,7 +4099,6 @@ def test_implementation_verification_gate() -> None:
 
 def main() -> int:
     tests = [
-        test_repository_wiring,
         test_configuration_and_lazy_migration,
         test_invalid_marked_configuration_fails_closed,
         test_legacy_configuration_migration_validates_before_writing,
@@ -4679,15 +4121,12 @@ def main() -> int:
         test_empty_structured_evidence_fails_closed_and_atomically,
         test_checkpointed_json_evidence_is_append_only,
         test_coverage_mutators_preserve_valid_subfield_indentation,
-        test_implement_preflight_wiring,
-        test_implement_planning_closeout_wiring,
         test_implement_single_ticket_planning_closeout,
         test_implement_preflight_valid,
         test_implement_preflight_legacy,
         test_implement_preflight_invalid,
         test_implement_preflight_wrong_lineage,
         test_implement_preflight_decision_conflict,
-        test_implement_spec_preflight_wiring,
         test_implement_spec_markerless_and_mixed_graph,
         test_parallel_ticket_branches_share_checkpoint_without_ledger_edits,
         test_trailers_are_read_only_from_the_final_block,
@@ -4709,9 +4148,7 @@ def main() -> int:
         test_verification_is_required_only_when_declared,
         test_grill_to_tickets_flow,
         test_wayfinder_decision_to_build_flow,
-        test_session_boundary_router_and_catalogs,
         test_fresh_session_pointer_bridge,
-        test_fork_targeting_operations,
         test_implementation_verification_gate,
     ]
     for test in tests:

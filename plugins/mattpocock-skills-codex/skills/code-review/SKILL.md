@@ -20,7 +20,7 @@ Use the fixed point the user supplied (a commit SHA, branch name, tag, `main`, `
 
 Resolve `HEAD` to an exact SHA and keep that SHA for the whole pass. Capture the diff command once: `git diff <fixed-point>...<head-sha>` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..<head-sha> --oneline`.
 
-Before going further, confirm the fixed point and head SHA resolve and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents. Use the exact head SHA even if the branch moves while the review runs. A bounded follow-up keeps the original fixed point, pins the new head SHA, and reviews the full `<fixed-point>...<new-head-sha>` diff.
+Before going further, confirm the fixed point and head SHA resolve and the diff is non-empty. A bad ref or empty diff should fail here, before either review pass. Use the exact head SHA even if the branch moves while the review runs. A bounded follow-up keeps the original fixed point, pins the new head SHA, and reviews the full `<fixed-point>...<new-head-sha>` diff.
 
 ### 2. Identify the spec source
 

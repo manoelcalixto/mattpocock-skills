@@ -1,6 +1,6 @@
 # The canonical install block
 
-One install story, one wording. `README.md`, `.changeset/*`, and every page under `docs/` must say **this** and nothing else. Change it here first, then propagate.
+One install story, one wording. `README.md`, `.changeset/*`, and every page under `docs/` must use the applicable route below. Change it here first, then propagate.
 
 `mattpocock-skills` is listed in **Claude Code's official marketplace** (configured name `claude-plugins-official`, source repo `anthropics/claude-plugins-official`), which every Claude Code install has out of the box. There is no marketplace to add first. Official Anthropic marketplaces have auto-update enabled by default ([discover-plugins](https://code.claude.com/docs/en/discover-plugins)), so "updates arrive automatically" is a true claim, not a hope.
 
@@ -22,9 +22,24 @@ It's in Claude Code's official marketplace, so there's nothing to add first, and
 
 </canonical-block>
 
-## Codex, and other agents: skills.sh
+## Codex: the native plugin
 
-The plugin is Claude Code only. Everywhere else, [skills.sh](https://skills.sh/mattpocock/skills) copies editable skill files into the project. Use the whole-set form on `README.md`:
+The Codex plugin ships physical copies adapted from the upstream skills plus `planning-context`. Its public marketplace is this fork. Use this route for Codex:
+
+<canonical-block name="codex-plugin">
+
+```bash
+codex plugin marketplace add manoelcalixto/mattpocock-skills
+codex plugin add mattpocock-skills-codex@mattpocock-skills
+```
+
+Invoke a skill as `$mattpocock-skills-codex:<skill-name>`.
+
+</canonical-block>
+
+## Other agents and editable copies: skills.sh
+
+[skills.sh](https://skills.sh/mattpocock/skills) copies the upstream skill files into the project. Use the whole-set form on `README.md`:
 
 <canonical-block name="skills-sh-whole-set">
 
@@ -32,7 +47,7 @@ The plugin is Claude Code only. Everywhere else, [skills.sh](https://skills.sh/m
 npx skills@latest add mattpocock/skills
 ```
 
-Pick the skills you want, and which coding agents to install them on. **The installer lets you choose which skills to take: make sure `setup-matt-pocock-skills` is one of them.**
+Pick the skills you want and the target harness. For Codex, use the native plugin above to get the adapted skills. For other agents, make sure `setup-matt-pocock-skills` is among the selected skills.
 
 </canonical-block>
 
@@ -52,9 +67,9 @@ npx skills@latest update <name>
 
 `skills@latest` is the pinned spelling in all three. The pages under `docs/` used to carry their own copy of these commands; those blocks are now deleted rather than corrected, because the site renders the install commands itself.
 
-## The two routes are exclusive
+## Avoid duplicate installations
 
-The plugin is a managed, read-only bundle you subscribe to. skills.sh writes files you own and edit. Installing both leaves the user with every skill twice: always say "pick one".
+The plugins are managed bundles. skills.sh writes files you own and edit. Do not install the same skills through the plugin and skills.sh in one harness.
 
 ## Not the install story
 
